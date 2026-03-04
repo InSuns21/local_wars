@@ -198,7 +198,7 @@ describe('BattleScreen UIテスト: 状態表示と導線', () => {
     render(<BattleScreen useStore={store} />);
 
     expect(screen.getByText('自軍資金: 10000')).toBeInTheDocument();
-    expect(screen.getByText('自軍収入: +2000/ターン')).toBeInTheDocument();
+    expect(screen.getByText('自軍収入: +3000/ターン')).toBeInTheDocument();
   });
 
   it('生産UIでユニット価格を表示し、資金不足時は生産実行が不活性になる', () => {
@@ -358,4 +358,5 @@ describe('BattleScreen UIテスト: 状態表示と導線', () => {
     expect(screen.getByText(/与ダメージ/)).toBeInTheDocument();
   });
 });
+
 

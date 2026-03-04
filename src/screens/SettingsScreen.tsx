@@ -95,7 +95,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
 
           <TextField
             id="income-per-property"
-            label="1ターン収入（工場/司令部）"
+            label="1ターン収入（都市/工場/司令部）"
             type="number"
             value={settings.incomePerProperty}
             onChange={(e) => update('incomePerProperty', Number(e.target.value))}
@@ -154,4 +154,5 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
     </Box>
   );
 };
+
 

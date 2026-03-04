@@ -24,7 +24,7 @@ export type GameState = {
   rngSeed: number;
   actionLog: ActionLogEntry[];
   winner: PlayerId | null;
-  // ターン開始時の拠点収入（工場/HQ）
+  // ターン開始時の拠点収入（都市/工場/HQ）
   incomePerProperty?: number;
   hpRecoveryCity?: number;
   hpRecoveryFactory?: number;
@@ -77,5 +77,6 @@ export type CommandResult = {
   ok: boolean;
   reason?: string;
 };
+
 
 

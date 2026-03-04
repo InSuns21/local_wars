@@ -21,19 +21,19 @@ describe('turnEngine 収入処理', () => {
     });
 
     const next = nextTurnState(state);
-    // P2所有: HQ + FACTORY = 2拠点
-    expect(next.players.P2.funds).toBe(5000 + 3000);
+    // P2所有: HQ + FACTORY + CITY = 3拠点
+    expect(next.players.P2.funds).toBe(5000 + 4500);
   });
 
-  it('収入対象は工場と司令部のみで都市は含まない', () => {
+  it('収入対象は都市・工場・司令部', () => {
     const state = createInitialGameState();
     state.incomePerProperty = 1000;
     const p2Before = state.players.P2.funds;
 
     const next = nextTurnState(state);
 
-    // P2所有は CITY もあるが、収入対象は HQ/FACTORY の2拠点のみ
-    expect(next.players.P2.funds).toBe(p2Before + 2000);
+    // P2所有は CITY もあるが、収入対象は CITY/HQ/FACTORY の3拠点
+    expect(next.players.P2.funds).toBe(p2Before + 3000);
   });
 });
 
@@ -162,3 +162,4 @@ describe('turnEngine 拠点耐久回復処理', () => {
     expect(next.map.tiles['1,1']?.capturePoints).toBe(20);
   });
 });
+

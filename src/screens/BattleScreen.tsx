@@ -47,7 +47,7 @@ const PRODUCIBLE_UNITS: UnitType[] = [
 ];
 
 const isIncomeProperty = (terrainType: string): boolean =>
-  terrainType === "FACTORY" || terrainType === "HQ";
+  terrainType === "CITY" || terrainType === "FACTORY" || terrainType === "HQ";
 
 const getTurnIncome = (state: GameState, playerId: "P1" | "P2"): number => {
   const owned = Object.values(state.map.tiles).filter(

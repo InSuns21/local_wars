@@ -12,7 +12,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     fireEvent.change(screen.getByLabelText('人間が担当する陣営'), { target: { value: 'P2' } });
     fireEvent.click(screen.getByLabelText('索敵あり'));
     fireEvent.change(screen.getByLabelText('初期資金'), { target: { value: '12345' } });
-    fireEvent.change(screen.getByLabelText('1ターン収入（工場/司令部）'), { target: { value: '777' } });
+    fireEvent.change(screen.getByLabelText('1ターン収入（都市/工場/司令部）'), { target: { value: '777' } });
     fireEvent.change(screen.getByLabelText('都市のHP回復量（ターン開始時）'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('工場のHP回復量（ターン開始時）'), { target: { value: '4' } });
     fireEvent.change(screen.getByLabelText('HQのHP回復量（ターン開始時）'), { target: { value: '6' } });
@@ -65,6 +65,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
+
 
 
 

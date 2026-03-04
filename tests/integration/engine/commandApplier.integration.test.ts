@@ -206,8 +206,8 @@ describe('commandApplier 統合テスト', () => {
     expect(result.ok).toBe(true);
     expect(next.currentPlayerId).toBe('P2');
     expect(next.turn).toBe(1);
-    // P2所有: HQ(1) + FACTORY(1) = 2拠点、既定収入1000
-    expect(next.players.P2.funds).toBe(p2Before + 2000);
+    // P2所有: HQ(1) + FACTORY(1) + CITY(1) = 3拠点、既定収入1000
+    expect(next.players.P2.funds).toBe(p2Before + 3000);
   });
 
   it('生産コマンドで資金消費とユニット追加が行われる', () => {
@@ -466,6 +466,7 @@ describe('commandApplier 統合テスト', () => {
   });
 
 });
+
 
 
 

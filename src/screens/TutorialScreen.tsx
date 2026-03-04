@@ -41,7 +41,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({ onBack }) => (
             <li>道路/橋: 車両が進みやすい主進軍ルート。</li>
             <li>川: 歩兵は通行可。車両は通行不可。</li>
             <li>海: 海ユニットと航空ユニットの行動領域。</li>
-            <li>都市: 歩兵で占領可能。自軍所有時はターン開始時に補給地点。</li>
+            <li>都市: 歩兵で占領可能。自軍所有時はターン開始時に補給地点かつ収入対象。</li>
             <li>工場: 歩兵で占領可能。自軍所有かつ空きマスで生産可能。収入対象。</li>
             <li>司令部（HQ）: 歩兵で占領可能。収入対象かつ勝敗に直結。</li>
             <li>空港/港: 航空・海ユニットを使うマップで重要な拠点。</li>
@@ -118,4 +118,5 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({ onBack }) => (
     </Paper>
   </Box>
 );
+
 

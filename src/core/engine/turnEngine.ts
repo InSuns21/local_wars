@@ -7,7 +7,7 @@ const CAPTURE_TARGET = 20;
 
 const nextPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 
-const isIncomeProperty = (terrainType: string): boolean => terrainType === 'FACTORY' || terrainType === 'HQ';
+const isIncomeProperty = (terrainType: string): boolean => terrainType === 'CITY' || terrainType === 'FACTORY' || terrainType === 'HQ';
 
 const isSupplyProperty = (terrainType: string): boolean =>
   terrainType === 'CITY' || terrainType === 'FACTORY' || terrainType === 'HQ';
@@ -115,3 +115,5 @@ export const nextTurnState = (state: GameState): GameState => {
     players: nextPlayers,
   };
 };
+
+
