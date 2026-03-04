@@ -16,30 +16,28 @@ const infantry: UnitState = {
 
 describe('占領ルール', () => {
   it('歩兵は拠点を占領できる', () => {
-    const city: TileState = { coord: { x: 0, y: 0 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+    const city: TileState = { coord: { x: 0, y: 0 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10 };
     expect(canCapture(infantry, city)).toBe(true);
     expect(getCapturePower(infantry)).toBe(10);
   });
 
-  it('占領値を減らし完了時に所有者を更新する', () => {
-    const city: TileState = { coord: { x: 0, y: 0 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+  it('都市はHP10歩兵で1ターン占領できる', () => {
+    const city: TileState = { coord: { x: 0, y: 0 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10 };
 
-    const step1 = applyCaptureStep(infantry, city);
+    const step = applyCaptureStep(infantry, city);
+    expect(step.completed).toBe(true);
+    expect(step.tile.owner).toBe('P1');
+    expect(step.tile.capturePoints).toBe(10);
+  });
+
+  it('中立工場はP1歩兵で2ターン占領できる', () => {
+    const neutralFactory: TileState = { coord: { x: 2, y: 2 }, terrainType: 'FACTORY', capturePoints: 20 };
+
+    const step1 = applyCaptureStep(infantry, neutralFactory);
     expect(step1.completed).toBe(false);
     expect(step1.tile.capturePoints).toBe(10);
 
     const step2 = applyCaptureStep(infantry, step1.tile);
-    expect(step2.completed).toBe(true);
-    expect(step2.tile.owner).toBe('P1');
-    expect(step2.tile.capturePoints).toBe(20);
-  });
-
-  it('中立工場はP1歩兵で占領できる', () => {
-    const neutralFactory: TileState = { coord: { x: 2, y: 2 }, terrainType: 'FACTORY', capturePoints: 20 };
-
-    const step1 = applyCaptureStep(infantry, neutralFactory);
-    const step2 = applyCaptureStep(infantry, step1.tile);
-
     expect(step2.completed).toBe(true);
     expect(step2.tile.owner).toBe('P1');
     expect(step2.tile.capturePoints).toBe(20);
@@ -58,7 +56,7 @@ describe('占領ルール', () => {
   });
 
   it('体力が低いほど占領完了までのターン数が増える', () => {
-    const city: TileState = { coord: { x: 0, y: 0 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+    const city: TileState = { coord: { x: 0, y: 0 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10 };
 
     const fullHpInfantry: UnitState = { ...infantry, id: 'full', hp: 10 };
     const lowHpInfantry: UnitState = { ...infantry, id: 'low', hp: 4 };
@@ -66,20 +64,12 @@ describe('占領ルール', () => {
     const fullStep1 = applyCaptureStep(fullHpInfantry, city);
     const lowStep1 = applyCaptureStep(lowHpInfantry, city);
 
+    expect(fullStep1.completed).toBe(true);
     expect(fullStep1.tile.capturePoints).toBe(10);
-    expect(lowStep1.tile.capturePoints).toBe(16);
+    expect(lowStep1.tile.capturePoints).toBe(6);
 
-    let fullTile = city;
     let lowTile = city;
-    let fullTurns = 0;
     let lowTurns = 0;
-
-    while (fullTurns < 10) {
-      fullTurns += 1;
-      const next = applyCaptureStep(fullHpInfantry, fullTile);
-      fullTile = next.tile;
-      if (next.completed) break;
-    }
 
     while (lowTurns < 10) {
       lowTurns += 1;
@@ -88,14 +78,12 @@ describe('占領ルール', () => {
       if (next.completed) break;
     }
 
-    expect(fullTurns).toBe(2);
-    expect(lowTurns).toBe(5);
-    expect(lowTurns).toBeGreaterThan(fullTurns);
+    expect(lowTurns).toBe(3);
   });
 
   it('歩兵以外は占領できずタイルは変化しない', () => {
     const tank: UnitState = { ...infantry, id: 't1', type: 'TANK' };
-    const city: TileState = { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+    const city: TileState = { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10 };
 
     expect(canCapture(tank, city)).toBe(false);
     const result = applyCaptureStep(tank, city);
@@ -103,11 +91,11 @@ describe('占領ルール', () => {
     expect(result.tile).toBe(city);
   });
 
-  it('capturePoints未指定タイルは20から占領計算される', () => {
+  it('capturePoints未指定の都市は10から占領計算される', () => {
     const cityWithoutCp: TileState = { coord: { x: 2, y: 1 }, terrainType: 'CITY', owner: 'P2' };
     const step = applyCaptureStep(infantry, cityWithoutCp);
 
-    expect(step.completed).toBe(false);
+    expect(step.completed).toBe(true);
     expect(step.tile.capturePoints).toBe(10);
   });
 

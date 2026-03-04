@@ -127,12 +127,12 @@ describe('turnEngine HP回復処理', () => {
 });
 
 describe('turnEngine 拠点耐久回復処理', () => {
-  it('ターン終了時、敵ユニットがいない自軍HQ/工場/都市の拠点耐久は20まで回復する', () => {
+  it('ターン終了時、敵ユニットがいない自軍HQ/工場/都市の拠点耐久は地形ごとの上限まで回復する', () => {
     const state = createInitialGameState();
 
     state.map.tiles['0,0'] = { ...state.map.tiles['0,0'], capturePoints: 8 }; // P1 HQ
     state.map.tiles['0,1'] = { ...state.map.tiles['0,1'], capturePoints: 12 }; // P1 FACTORY
-    state.map.tiles['1,1'] = { ...state.map.tiles['1,1'], capturePoints: 15 }; // P1 CITY
+    state.map.tiles['1,1'] = { ...state.map.tiles['1,1'], capturePoints: 3 }; // P1 CITY
 
     state.units.p1_tank.position = { x: 0, y: 0 }; // 味方ユニットがいても回復
 
@@ -140,7 +140,7 @@ describe('turnEngine 拠点耐久回復処理', () => {
 
     expect(next.map.tiles['0,0']?.capturePoints).toBe(20);
     expect(next.map.tiles['0,1']?.capturePoints).toBe(20);
-    expect(next.map.tiles['1,1']?.capturePoints).toBe(20);
+    expect(next.map.tiles['1,1']?.capturePoints).toBe(10);
   });
 
   it('ターン終了時、敵ユニットがいる自軍拠点の拠点耐久は回復しない', () => {
@@ -148,7 +148,7 @@ describe('turnEngine 拠点耐久回復処理', () => {
 
     state.map.tiles['0,0'] = { ...state.map.tiles['0,0'], capturePoints: 8 }; // P1 HQ
     state.map.tiles['0,1'] = { ...state.map.tiles['0,1'], capturePoints: 12 }; // P1 FACTORY
-    state.map.tiles['1,1'] = { ...state.map.tiles['1,1'], capturePoints: 15 }; // P1 CITY
+    state.map.tiles['1,1'] = { ...state.map.tiles['1,1'], capturePoints: 3 }; // P1 CITY
 
     state.units.p2_tank.position = { x: 0, y: 0 }; // 敵がいるHQは回復しない
     state.units.p2_inf.position = { x: 0, y: 1 }; // 敵がいるFACTORYは回復しない
@@ -159,7 +159,8 @@ describe('turnEngine 拠点耐久回復処理', () => {
 
     expect(next.map.tiles['0,0']?.capturePoints).toBe(8);
     expect(next.map.tiles['0,1']?.capturePoints).toBe(12);
-    expect(next.map.tiles['1,1']?.capturePoints).toBe(20);
+    expect(next.map.tiles['1,1']?.capturePoints).toBe(10);
   });
 });
+
 

@@ -2,8 +2,7 @@
 import type { GameState } from '@core/types/state';
 import type { PlayerId } from '@core/types/game';
 import { toCoordKey } from '@/utils/coord';
-
-const CAPTURE_TARGET = 20;
+import { getCaptureTarget } from '@core/rules/capture';
 
 const nextPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 
@@ -40,14 +39,15 @@ const recoverPropertyCapturePointsOnTurnEnd = (state: GameState, endedPlayerId: 
       if (tile.owner !== endedPlayerId) return [key, tile];
       if (enemyOccupiedCoords.has(key)) return [key, tile];
 
-      const current = tile.capturePoints ?? CAPTURE_TARGET;
-      if (current >= CAPTURE_TARGET) return [key, tile];
+      const captureTarget = getCaptureTarget(tile.terrainType);
+      const current = tile.capturePoints ?? captureTarget;
+      if (current >= captureTarget) return [key, tile];
 
       return [
         key,
         {
           ...tile,
-          capturePoints: CAPTURE_TARGET,
+          capturePoints: captureTarget,
         },
       ];
     }),
@@ -115,5 +115,3 @@ export const nextTurnState = (state: GameState): GameState => {
     players: nextPlayers,
   };
 };
-
-

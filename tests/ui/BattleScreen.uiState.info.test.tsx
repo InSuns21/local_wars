@@ -108,7 +108,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
 
     expect(hqTile.getAttribute('title') ?? '').toContain('拠点耐久: 20/20');
     expect(factoryTile.getAttribute('title') ?? '').toContain('拠点耐久: 20/20');
-    expect(cityTile.getAttribute('title') ?? '').toContain('拠点耐久: 20/20');
+    expect(cityTile.getAttribute('title') ?? '').toContain('拠点耐久: 10/10');
   });
 
   it('敵方ログ表示設定がOFFのとき、経過ログに敵方の行動は表示されない', () => {
@@ -130,3 +130,4 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     expect(text).not.toContain('END_TURN');
   });
 });
+

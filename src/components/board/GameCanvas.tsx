@@ -1,6 +1,7 @@
 ﻿import React, { useMemo } from 'react';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getVisibleEnemyCoordKeys, getVisibleTileCoordKeys } from '@core/rules/visibility';
+import { getCaptureTarget } from '@core/rules/capture';
 import type { TerrainType } from '@core/types/map';
 import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
@@ -196,7 +197,8 @@ const buildTileTooltip = (
   ];
 
   if (isCapturableProperty(terrainType)) {
-    lines.push(`拠点耐久: ${capturePoints ?? 20}/20`);
+    const captureTarget = getCaptureTarget(terrainType as TerrainType);
+    lines.push(`拠点耐久: ${capturePoints ?? captureTarget}/${captureTarget}`);
   }
 
   if (unit) {
@@ -338,7 +340,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const unitHpLabel = isVisible && unit ? 'HP ' + unit.hp : null;
               const propertyDurabilityLabel =
                 isVisible && isCapturableProperty(tile?.terrainType)
-                  ? '耐久 ' + (tile?.capturePoints ?? 20)
+                  ? '耐久 ' + (tile?.capturePoints ?? getCaptureTarget(tile?.terrainType ?? 'CITY'))
                   : null;
 
               const routeOutline = isSelectedTile
@@ -466,6 +468,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     </section>
   );
 };
+
+
+
+
 
 
 

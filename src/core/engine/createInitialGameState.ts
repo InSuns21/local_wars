@@ -74,8 +74,8 @@ const buildFallbackMapState = (): Pick<GameState, 'map' | 'units'> => ({
     tiles: {
       '0,0': { coord: { x: 0, y: 0 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 },
       '4,4': { coord: { x: 4, y: 4 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 },
-      '1,1': { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P1', capturePoints: 20 },
-      '3,3': { coord: { x: 3, y: 3 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 },
+      '1,1': { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P1', capturePoints: 10 },
+      '3,3': { coord: { x: 3, y: 3 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10 },
       '0,1': { coord: { x: 0, y: 1 }, terrainType: 'FACTORY', owner: 'P1', capturePoints: 20 },
       '4,3': { coord: { x: 4, y: 3 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 },
       '0,2': { coord: { x: 0, y: 2 }, terrainType: 'PLAIN' },
@@ -201,6 +201,7 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
 
   return applyFeatureToggles(base, options.settings);
 };
+
 
 
 

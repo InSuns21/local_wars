@@ -2,6 +2,7 @@
 import type { CommandHqByPlayer, MapState, TerrainType, TileState } from '@core/types/map';
 import type { UnitState, UnitType } from '@core/types/unit';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
+import { getCaptureTarget } from '@core/rules/capture';
 import { toCoordKey } from '@/utils/coord';
 
 type TileSpec = {
@@ -41,7 +42,7 @@ const createTile = (spec: TileSpec): TileState => ({
   coord: { x: spec.x, y: spec.y },
   terrainType: spec.terrainType,
   owner: spec.owner,
-  capturePoints: CAPTURABLE_TERRAIN.has(spec.terrainType) ? 20 : undefined,
+  capturePoints: CAPTURABLE_TERRAIN.has(spec.terrainType) ? getCaptureTarget(spec.terrainType) : undefined,
 });
 
 const buildMap = (template: SkirmishTemplate): MapState => {
@@ -510,6 +511,7 @@ export const getSkirmishScenario = (mapId: string): SkirmishScenario | null => {
     ),
   };
 };
+
 
 
 

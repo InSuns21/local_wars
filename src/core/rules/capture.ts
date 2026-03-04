@@ -1,7 +1,11 @@
 ﻿import type { TileState } from '@core/types/map';
 import type { UnitState } from '@core/types/unit';
 
-const CAPTURE_TARGET = 20;
+export const getCaptureTarget = (terrainType: TileState['terrainType']): number => {
+  if (terrainType === 'CITY') return 10;
+  if (terrainType === 'FACTORY' || terrainType === 'HQ') return 20;
+  return 20;
+};
 
 export const canCapture = (unit: UnitState, tile: TileState): boolean =>
   unit.type === 'INFANTRY' && ['CITY', 'FACTORY', 'HQ'].includes(tile.terrainType);
@@ -18,7 +22,8 @@ export const applyCaptureStep = (unit: UnitState, tile: TileState): CaptureResul
     return { tile, completed: false };
   }
 
-  const current = tile.capturePoints ?? CAPTURE_TARGET;
+  const captureTarget = getCaptureTarget(tile.terrainType);
+  const current = tile.capturePoints ?? captureTarget;
   const next = Math.max(0, current - getCapturePower(unit));
 
   if (next === 0) {
@@ -26,7 +31,7 @@ export const applyCaptureStep = (unit: UnitState, tile: TileState): CaptureResul
       tile: {
         ...tile,
         owner: unit.owner,
-        capturePoints: CAPTURE_TARGET,
+        capturePoints: captureTarget,
       },
       completed: true,
     };
