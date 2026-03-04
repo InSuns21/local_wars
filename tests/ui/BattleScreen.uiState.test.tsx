@@ -57,17 +57,20 @@ describe('BattleScreen UIテスト: 状態表示と導線', () => {
     expect(screen.getByText('ターン: 1')).toBeInTheDocument();
   });
 
-  it('勝敗確定時に結果表示とタイトル復帰ボタンが表示される', () => {
+  it('勝敗確定時に結果モーダルと勝利条件が表示され、タイトル復帰ボタンが機能する', () => {
     const state = createInitialGameState();
     state.winner = 'P1';
+    state.victoryReason = 'HQ_CAPTURE';
     state.humanPlayerSide = 'P1';
 
     const store = createGameStore(state, { rng: () => 0.5 });
     const onReturnToTitle = jest.fn();
     render(<BattleScreen useStore={store} onReturnToTitle={onReturnToTitle} />);
 
+    expect(screen.getByRole('dialog', { name: '対局結果' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '対局結果' })).toBeInTheDocument();
     expect(screen.getByText('勝敗: 勝利')).toBeInTheDocument();
+    expect(screen.getByText('勝利条件: 司令部占領')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'タイトルへ戻る' }));
     expect(onReturnToTitle).toHaveBeenCalledTimes(1);
@@ -97,6 +100,23 @@ describe('BattleScreen UIテスト: 状態表示と導線', () => {
 
     expect(screen.getByRole('button', { name: 'タイル 4,4' })).toHaveAttribute('data-fog-hidden', 'true');
     expect(screen.getByRole('button', { name: 'タイル 0,1' })).toHaveAttribute('data-fog-hidden', 'false');
+  });
+
+  it('同一タイルでユニットHPと拠点耐久が左右に分離表示される', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank.position = { x: 0, y: 1 };
+    state.units.p1_tank.hp = 7;
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    const tile = screen.getByRole('button', { name: 'タイル 0,1' });
+    const hpLabel = within(tile).getByText('HP 7');
+    const durabilityLabel = within(tile).getByText('耐久 20');
+
+    expect(tile).toHaveStyle({ width: '112px', height: '96px' });
+    expect(hpLabel).toHaveStyle({ right: '4px' });
+    expect(durabilityLabel).toHaveStyle({ left: '4px' });
   });
 
   it('盤面上にユニットHPと拠点耐久を表示し、不可視タイルの拠点耐久は非表示になる', () => {
@@ -358,5 +378,6 @@ describe('BattleScreen UIテスト: 状態表示と導線', () => {
     expect(screen.getByText(/与ダメージ/)).toBeInTheDocument();
   });
 });
+
 
 

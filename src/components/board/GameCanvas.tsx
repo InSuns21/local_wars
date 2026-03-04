@@ -20,11 +20,12 @@ type GameCanvasProps = {
   onSelectTile: (coord: Coord) => void;
 };
 
-const TILE_SIZE = 84;
+const TILE_WIDTH = 112;
+const TILE_HEIGHT = 96;
 
 const tileStyle: React.CSSProperties = {
-  width: TILE_SIZE,
-  height: TILE_SIZE,
+  width: TILE_WIDTH,
+  height: TILE_HEIGHT,
   border: '1px solid #cbd5e1',
   fontSize: 12,
   display: 'flex',
@@ -455,6 +456,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     </section>
   );
 };
+
+
 
 
 

@@ -71,6 +71,7 @@ const appendLog = (state: GameState, playerId: PlayerId, action: string, detail?
 const applyVictory = (state: GameState): void => {
   const verdict = checkVictory(state);
   state.winner = verdict.winner;
+  state.victoryReason = verdict.reason;
 };
 
 const applyMoveCommand = (
@@ -418,6 +419,7 @@ export const applyCommand = (
 
   return { state, result };
 };
+
 
 
 

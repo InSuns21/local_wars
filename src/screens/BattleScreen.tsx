@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -6,6 +6,10 @@ import {
   AppBar,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   Paper,
@@ -85,6 +89,21 @@ const formatActionLogEntry = (
   return `${base} | ${entry.detail}`;
 };
 
+const getVictoryReasonLabel = (
+  reason: GameState["victoryReason"],
+): string => {
+  switch (reason) {
+    case "HQ_CAPTURE":
+      return "司令部占領";
+    case "ANNIHILATION":
+      return "敵軍全滅";
+    case "VP_LIMIT":
+      return "VP上限到達";
+    default:
+      return "不明";
+  }
+};
+
 export const BattleScreen: React.FC<BattleScreenProps> = ({
   useStore = battleStore,
   onSaveAndExit,
@@ -127,6 +146,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       : gameState.winner === humanSide
       ? "勝利"
       : "敗北";
+  const victoryReasonLabel = getVictoryReasonLabel(
+    gameState.victoryReason ?? null,
+  );
 
   const humanFunds = gameState.players[humanSide].funds;
   const humanIncome = getTurnIncome(gameState, humanSide);
@@ -722,22 +744,27 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
             />
           </Paper>
 
-          {isGameOver && resultLabel && (
-            <Paper
-              component="section"
-              aria-label={"対局結果"}
-              variant="outlined"
-              sx={{ p: 2, mt: 1.5 }}
-            >
-              <Typography component="h2" variant="h5">
-                {"対局結果"}
-              </Typography>
-              <Typography>
-                {"勝敗"}: {resultLabel}
-              </Typography>
-              <Typography sx={{ mb: 1 }}>
-                {"勝者"}: {gameState.winner}
-              </Typography>
+          <Dialog
+            open={Boolean(isGameOver && resultLabel)}
+            aria-label={"対局結果"}
+            maxWidth="xs"
+            fullWidth
+          >
+            <DialogTitle>{"対局結果"}</DialogTitle>
+            <DialogContent dividers>
+              <Stack spacing={1}>
+                <Typography>
+                  {"勝敗"}: {resultLabel}
+                </Typography>
+                <Typography>
+                  {"勝利条件"}: {victoryReasonLabel}
+                </Typography>
+                <Typography>
+                  {"勝者"}: {gameState.winner}
+                </Typography>
+              </Stack>
+            </DialogContent>
+            <DialogActions>
               <Button
                 type="button"
                 variant="contained"
@@ -745,8 +772,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
               >
                 {"タイトルへ戻る"}
               </Button>
-            </Paper>
-          )}
+            </DialogActions>
+          </Dialog>
         </Box>
         <Paper
           component="section"
@@ -785,3 +812,5 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     </Box>
   );
 };
+
+

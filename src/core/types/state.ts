@@ -24,6 +24,7 @@ export type GameState = {
   rngSeed: number;
   actionLog: ActionLogEntry[];
   winner: PlayerId | null;
+  victoryReason?: 'HQ_CAPTURE' | 'ANNIHILATION' | 'VP_LIMIT' | null;
   // ターン開始時の拠点収入（都市/工場/HQ）
   incomePerProperty?: number;
   hpRecoveryCity?: number;

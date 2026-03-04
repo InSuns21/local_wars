@@ -192,6 +192,7 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
       ? [{ turn: 1, playerId: startPlayer, action: 'MAP_SELECTED', detail: options.mapId }]
       : [],
     winner: null,
+    victoryReason: null,
     incomePerProperty: options.settings?.incomePerProperty ?? 1000,
     hpRecoveryCity: options.settings?.hpRecoveryCity ?? 1,
     hpRecoveryFactory: options.settings?.hpRecoveryFactory ?? 2,
@@ -200,6 +201,7 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
 
   return applyFeatureToggles(base, options.settings);
 };
+
 
 
 
