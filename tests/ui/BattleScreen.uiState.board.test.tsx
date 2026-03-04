@@ -116,4 +116,17 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
 
     expect(screen.getByRole('button', { name: 'タイル 2,2' })).toHaveStyle({ borderStyle: 'dashed' });
   });
+
+  it('移動実行後は移動可能範囲表示が更新され、移動可能マスが残らない', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.click(screen.getByRole('button', { name: '移動実行' }));
+
+    expect(screen.getByRole('button', { name: 'タイル 2,1' })).toHaveAttribute('data-move-reachable', 'false');
+    expect(screen.getByRole('button', { name: 'タイル 2,3' })).toHaveAttribute('data-move-reachable', 'false');
+  });
 });
+

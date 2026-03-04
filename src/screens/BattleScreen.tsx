@@ -176,9 +176,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   }, [aliveUnitByTile, gameState.currentPlayerId, gameState.map.tiles]);
 
   const moveRangeTiles = useMemo(() => {
-    if (!selectedUnitId || !canControlSelectedUnit) return [];
+    if (
+      !selectedUnitId ||
+      !selectedUnit ||
+      !canControlSelectedUnit ||
+      selectedUnit.moved ||
+      selectedUnit.acted
+    ) {
+      return [];
+    }
     return getMoveRange(selectedUnitId);
-  }, [canControlSelectedUnit, getMoveRange, selectedUnitId]);
+  }, [canControlSelectedUnit, getMoveRange, selectedUnit, selectedUnitId]);
 
   const previewPath = useMemo(() => {
     if (!selectedUnitId || !selectedTile || !canControlSelectedUnit) return [];
@@ -812,5 +820,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     </Box>
   );
 };
+
 
 
