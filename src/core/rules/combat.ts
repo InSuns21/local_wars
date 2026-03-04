@@ -1,0 +1,139 @@
+﻿import type { CombatForecast, CombatResult } from '@core/types/combat';
+import type { UnitState, UnitType } from '@core/types/unit';
+import { manhattanDistance } from '@/utils/coord';
+
+const baseDamageTable: Record<UnitType, Partial<Record<UnitType, number>>> = {
+  INFANTRY: { INFANTRY: 55, RECON: 12, TANK: 5, ANTI_TANK: 8, ARTILLERY: 15, ANTI_AIR: 8 },
+  RECON: { INFANTRY: 70, RECON: 35, TANK: 6, ANTI_TANK: 10, ARTILLERY: 45, ANTI_AIR: 12 },
+  TANK: { INFANTRY: 75, RECON: 80, TANK: 55, ANTI_TANK: 45, ARTILLERY: 70, ANTI_AIR: 65 },
+  ANTI_TANK: { INFANTRY: 65, RECON: 75, TANK: 85, ANTI_TANK: 50, ARTILLERY: 70, ANTI_AIR: 60 },
+  ARTILLERY: { INFANTRY: 90, RECON: 85, TANK: 70, ANTI_TANK: 80, ARTILLERY: 75, ANTI_AIR: 80 },
+  ANTI_AIR: { INFANTRY: 95, RECON: 100, TANK: 25, ANTI_TANK: 45, ARTILLERY: 75, ANTI_AIR: 55 },
+  FIGHTER: { FIGHTER: 75, BOMBER: 95, INFANTRY: 20, RECON: 25, TANK: 15, ANTI_AIR: 10 },
+  BOMBER: { INFANTRY: 110, RECON: 105, TANK: 95, ANTI_TANK: 90, ARTILLERY: 100, ANTI_AIR: 85 },
+  DESTROYER: { DESTROYER: 70, LANDER: 90, INFANTRY: 50, TANK: 45, ARTILLERY: 60 },
+  LANDER: {},
+};
+
+export type CombatOptions = {
+  luckMin?: number;
+  luckMax?: number;
+  defenseModifier?: number;
+  attackerDefenseModifier?: number;
+  defenderDefenseModifier?: number;
+  canCounter?: boolean;
+};
+
+const resolveDefenderDefenseModifier = (options: CombatOptions): number =>
+  options.defenderDefenseModifier ?? options.defenseModifier ?? 1;
+
+const resolveAttackerDefenseModifier = (options: CombatOptions): number =>
+  options.attackerDefenseModifier ?? options.defenseModifier ?? 1;
+
+export const getBaseDamage = (attackerType: UnitType, defenderType: UnitType): number =>
+  baseDamageTable[attackerType][defenderType] ?? 0;
+
+export const computeDamage = (
+  baseDamage: number,
+  attackerHp: number,
+  luckFactor: number,
+  defenseModifier = 1,
+): number => {
+  const hpScale = Math.max(attackerHp, 0) / 10;
+  const raw = baseDamage * hpScale * luckFactor * defenseModifier;
+  const normalized = Math.floor(raw / 10);
+  return Math.max(0, Math.min(10, normalized));
+};
+
+export const canCounterAttack = (attacker: UnitState, defender: UnitState): boolean => {
+  const distance = manhattanDistance(attacker.position, defender.position);
+  const attackerIsIndirect = attacker.type === 'ARTILLERY';
+  const defenderIsIndirect = defender.type === 'ARTILLERY';
+  if (attackerIsIndirect && distance > 1) return false;
+  if (defenderIsIndirect && distance > 1) return false;
+  return distance === 1;
+};
+
+export const forecastCombat = (
+  attacker: UnitState,
+  defender: UnitState,
+  options: CombatOptions = {},
+): CombatForecast => {
+  const luckMin = options.luckMin ?? 0.95;
+  const luckMax = options.luckMax ?? 1.05;
+  const defenderDefenseModifier = resolveDefenderDefenseModifier(options);
+  const attackerDefenseModifier = resolveAttackerDefenseModifier(options);
+
+  const baseAD = getBaseDamage(attacker.type, defender.type);
+  const attackerSamples = [
+    computeDamage(baseAD, attacker.hp, luckMin, defenderDefenseModifier),
+    computeDamage(baseAD, attacker.hp, luckMax, defenderDefenseModifier),
+  ];
+  const minAD = Math.min(...attackerSamples);
+  const maxAD = Math.max(...attackerSamples);
+
+  if (options.canCounter === false || !canCounterAttack(attacker, defender)) {
+    return {
+      attackerToDefender: { min: minAD, max: maxAD },
+      defenderToAttacker: null,
+    };
+  }
+
+  const baseDA = getBaseDamage(defender.type, attacker.type);
+  const counterSamples = [luckMin, luckMax].map((luck) => {
+    const damageToDefender = computeDamage(baseAD, attacker.hp, luck, defenderDefenseModifier);
+    if (damageToDefender >= defender.hp) {
+      return 0;
+    }
+    return computeDamage(baseDA, defender.hp, luck, attackerDefenseModifier);
+  });
+
+  return {
+    attackerToDefender: { min: minAD, max: maxAD },
+    defenderToAttacker: {
+      min: Math.min(...counterSamples),
+      max: Math.max(...counterSamples),
+    },
+  };
+};
+
+export const executeCombat = (
+  attacker: UnitState,
+  defender: UnitState,
+  rng: () => number,
+  options: CombatOptions = {},
+): CombatResult => {
+  const defenderDefenseModifier = resolveDefenderDefenseModifier(options);
+  const attackerDefenseModifier = resolveAttackerDefenseModifier(options);
+  const luckRoll = 0.95 + rng() * 0.1;
+  const damageToDefender = computeDamage(
+    getBaseDamage(attacker.type, defender.type),
+    attacker.hp,
+    luckRoll,
+    defenderDefenseModifier,
+  );
+
+  const nextDefenderHp = Math.max(0, defender.hp - damageToDefender);
+
+  let damageToAttacker = 0;
+  if (nextDefenderHp > 0 && canCounterAttack(attacker, defender) && options.canCounter !== false) {
+    damageToAttacker = computeDamage(
+      getBaseDamage(defender.type, attacker.type),
+      defender.hp,
+      luckRoll,
+      attackerDefenseModifier,
+    );
+  }
+
+  return {
+    attacker: { ...attacker, hp: Math.max(0, attacker.hp - damageToAttacker), acted: true },
+    defender: { ...defender, hp: nextDefenderHp },
+    inflictedToDefender: damageToDefender,
+    inflictedToAttacker: damageToAttacker,
+  };
+};
+
+
+
+
+

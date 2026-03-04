@@ -1,0 +1,205 @@
+﻿import type { GameSettings } from '@/app/types';
+import { getSkirmishScenario } from '@data/skirmishMaps';
+import type { GameState } from '@core/types/state';
+import type { TerrainType } from '@core/types/map';
+import type { UnitType } from '@core/types/unit';
+
+export type GameInitializationOptions = {
+  mapId?: string;
+  settings?: GameSettings;
+};
+
+const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameState => {
+  if (!settings) return state;
+
+  const next: GameState = {
+    ...state,
+    players: {
+      P1: { ...state.players.P1, funds: settings.initialFunds },
+      P2: { ...state.players.P2, funds: settings.initialFunds },
+    },
+    map: {
+      ...state.map,
+      tiles: { ...state.map.tiles },
+    },
+    units: { ...state.units },
+    incomePerProperty: settings.incomePerProperty,
+    hpRecoveryCity: settings.hpRecoveryCity,
+    hpRecoveryFactory: settings.hpRecoveryFactory,
+    hpRecoveryHq: settings.hpRecoveryHq,
+    fogOfWar: settings.fogOfWar,
+    enableFuelSupply: settings.enableFuelSupply,
+    enableAmmoSupply: settings.enableAmmoSupply,
+    showEnemyActionLogs: settings.showEnemyActionLogs ?? false,
+  };
+
+  const airTerrain = new Set<TerrainType>(['AIRPORT']);
+  const navalTerrain = new Set<TerrainType>(['PORT', 'SEA']);
+  const airUnits = new Set<UnitType>(['FIGHTER', 'BOMBER']);
+  const navalUnits = new Set<UnitType>(['DESTROYER', 'LANDER']);
+
+  if (!settings.enableAirUnits) {
+    for (const [key, tile] of Object.entries(next.map.tiles)) {
+      if (airTerrain.has(tile.terrainType)) {
+        delete next.map.tiles[key];
+      }
+    }
+    for (const [id, unit] of Object.entries(next.units)) {
+      if (airUnits.has(unit.type)) {
+        delete next.units[id];
+      }
+    }
+  }
+
+  if (!settings.enableNavalUnits) {
+    for (const [key, tile] of Object.entries(next.map.tiles)) {
+      if (navalTerrain.has(tile.terrainType)) {
+        delete next.map.tiles[key];
+      }
+    }
+    for (const [id, unit] of Object.entries(next.units)) {
+      if (navalUnits.has(unit.type)) {
+        delete next.units[id];
+      }
+    }
+  }
+
+  return next;
+};
+
+const buildFallbackMapState = (): Pick<GameState, 'map' | 'units'> => ({
+  map: {
+    width: 5,
+    height: 5,
+    tiles: {
+      '0,0': { coord: { x: 0, y: 0 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 },
+      '4,4': { coord: { x: 4, y: 4 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 },
+      '1,1': { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P1', capturePoints: 20 },
+      '3,3': { coord: { x: 3, y: 3 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 },
+      '0,1': { coord: { x: 0, y: 1 }, terrainType: 'FACTORY', owner: 'P1', capturePoints: 20 },
+      '4,3': { coord: { x: 4, y: 3 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 },
+      '0,2': { coord: { x: 0, y: 2 }, terrainType: 'PLAIN' },
+      '0,3': { coord: { x: 0, y: 3 }, terrainType: 'PLAIN' },
+      '0,4': { coord: { x: 0, y: 4 }, terrainType: 'PLAIN' },
+      '1,0': { coord: { x: 1, y: 0 }, terrainType: 'PLAIN' },
+      '1,2': { coord: { x: 1, y: 2 }, terrainType: 'PLAIN' },
+      '1,3': { coord: { x: 1, y: 3 }, terrainType: 'PLAIN' },
+      '1,4': { coord: { x: 1, y: 4 }, terrainType: 'PLAIN' },
+      '2,0': { coord: { x: 2, y: 0 }, terrainType: 'FACTORY', capturePoints: 20 },
+      '2,1': { coord: { x: 2, y: 1 }, terrainType: 'PLAIN' },
+      '2,2': { coord: { x: 2, y: 2 }, terrainType: 'PLAIN' },
+      '2,3': { coord: { x: 2, y: 3 }, terrainType: 'PLAIN' },
+      '2,4': { coord: { x: 2, y: 4 }, terrainType: 'PLAIN' },
+      '3,0': { coord: { x: 3, y: 0 }, terrainType: 'PLAIN' },
+      '3,1': { coord: { x: 3, y: 1 }, terrainType: 'PLAIN' },
+      '3,2': { coord: { x: 3, y: 2 }, terrainType: 'PLAIN' },
+      '3,4': { coord: { x: 3, y: 4 }, terrainType: 'PLAIN' },
+      '4,0': { coord: { x: 4, y: 0 }, terrainType: 'PLAIN' },
+      '4,1': { coord: { x: 4, y: 1 }, terrainType: 'PLAIN' },
+      '4,2': { coord: { x: 4, y: 2 }, terrainType: 'PLAIN' },
+    },
+  },
+  units: {
+    p1_inf: {
+      id: 'p1_inf',
+      owner: 'P1',
+      type: 'INFANTRY',
+      hp: 10,
+      fuel: 99,
+      ammo: 9,
+      position: { x: 1, y: 1 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    },
+    p1_tank: {
+      id: 'p1_tank',
+      owner: 'P1',
+      type: 'TANK',
+      hp: 10,
+      fuel: 70,
+      ammo: 6,
+      position: { x: 1, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    },
+    p2_inf: {
+      id: 'p2_inf',
+      owner: 'P2',
+      type: 'INFANTRY',
+      hp: 10,
+      fuel: 99,
+      ammo: 9,
+      position: { x: 3, y: 3 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    },
+    p2_tank: {
+      id: 'p2_tank',
+      owner: 'P2',
+      type: 'TANK',
+      hp: 10,
+      fuel: 70,
+      ammo: 6,
+      position: { x: 3, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    },
+  },
+});
+
+const resolveMapState = (mapId?: string): Pick<GameState, 'map' | 'units'> => {
+  if (!mapId) {
+    return buildFallbackMapState();
+  }
+
+  const scenario = getSkirmishScenario(mapId);
+  if (!scenario) {
+    return buildFallbackMapState();
+  }
+
+  return {
+    map: scenario.map,
+    units: scenario.units,
+  };
+};
+
+export const createInitialGameState = (options: GameInitializationOptions = {}): GameState => {
+  const startPlayer = options.settings?.humanPlayerSide ?? 'P1';
+  const mapState = resolveMapState(options.mapId);
+
+  const base: GameState = {
+    turn: 1,
+    currentPlayerId: startPlayer,
+    humanPlayerSide: startPlayer,
+    aiDifficulty: options.settings?.aiDifficulty ?? 'normal',
+    fogOfWar: options.settings?.fogOfWar ?? false,
+    enableFuelSupply: options.settings?.enableFuelSupply ?? true,
+    enableAmmoSupply: options.settings?.enableAmmoSupply ?? true,
+    showEnemyActionLogs: options.settings?.showEnemyActionLogs ?? false,
+    phase: 'command',
+    map: mapState.map,
+    units: mapState.units,
+    players: {
+      P1: { id: 'P1', funds: 10000, vp: 0 },
+      P2: { id: 'P2', funds: 10000, vp: 0 },
+    },
+    rngSeed: 1,
+    actionLog: options.mapId
+      ? [{ turn: 1, playerId: startPlayer, action: 'MAP_SELECTED', detail: options.mapId }]
+      : [],
+    winner: null,
+    incomePerProperty: options.settings?.incomePerProperty ?? 1000,
+    hpRecoveryCity: options.settings?.hpRecoveryCity ?? 1,
+    hpRecoveryFactory: options.settings?.hpRecoveryFactory ?? 2,
+    hpRecoveryHq: options.settings?.hpRecoveryHq ?? 3,
+  };
+
+  return applyFeatureToggles(base, options.settings);
+};
+
+
+

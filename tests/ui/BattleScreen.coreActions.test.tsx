@@ -1,0 +1,145 @@
+﻿import '@testing-library/jest-dom';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { BattleScreen } from '@/screens/BattleScreen';
+import { createGameStore } from '@store/gameStore';
+import { createInitialGameState } from '@core/engine/createInitialGameState';
+
+describe('BattleScreen UIテスト: 基本操作', () => {
+  it('初期表示でターン情報が表示される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
+    expect(screen.getByText('ターン: 1')).toBeInTheDocument();
+    expect(screen.getByText('手番: P1')).toBeInTheDocument();
+  });
+
+  it('タイルクリックでユニット選択できる', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+
+    expect(screen.getByText('ID')).toBeInTheDocument();
+    expect(screen.getByText('p1_tank')).toBeInTheDocument();
+    expect(screen.getByText('種類')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('ユニット情報')).getByText('戦車')).toBeInTheDocument();
+  });
+
+
+  it('同じユニットを再クリックすると選択解除される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    const unitTile = screen.getByRole('button', { name: 'タイル 1,2' });
+    fireEvent.click(unitTile);
+    expect(screen.getByText('p1_tank')).toBeInTheDocument();
+
+    fireEvent.click(unitTile);
+    expect(within(screen.getByLabelText('ユニット情報')).getByText('ユニット未選択')).toBeInTheDocument();
+  });
+  it('移動可能マスのみクリック可能になる', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+
+    expect(screen.getByRole('button', { name: 'タイル 2,2' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'タイル 4,4' })).toBeDisabled();
+  });
+
+  it('空タイルクリックで移動先指定と経路プレビューが出る', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+
+    expect(screen.getByText('選択移動先: 2,2')).toBeInTheDocument();
+    expect(screen.getByText('経路プレビュー: 2,2')).toBeInTheDocument();
+  });
+
+  it('移動実行ボタンで実コマンドが実行される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.click(screen.getByRole('button', { name: '移動実行' }));
+
+    expect(screen.getByText('最終コマンド: 成功')).toBeInTheDocument();
+    expect(screen.getByText('2,2')).toBeInTheDocument();
+  });
+
+  it('攻撃実行ボタンで実コマンドが実行される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.click(screen.getByRole('button', { name: '移動実行' }));
+
+    fireEvent.change(screen.getByLabelText('攻撃対象'), { target: { value: 'p2_tank' } });
+    fireEvent.click(screen.getByRole('button', { name: '攻撃実行' }));
+
+    expect(screen.getByText('最終コマンド: 成功')).toBeInTheDocument();
+  });
+
+  it('占領実行ボタンで実コマンドが実行される', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 2, y: 3 };
+    state.map.tiles['2,3'] = { coord: { x: 2, y: 3 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,3' }));
+    fireEvent.click(screen.getByRole('button', { name: '占領実行' }));
+
+    expect(screen.getByText('最終コマンド: 成功')).toBeInTheDocument();
+  });
+
+  it('生産実行ボタンで工場からユニットを生産できる', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    const beforeCount = Object.keys(store.getState().gameState.units).length;
+
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.change(screen.getByLabelText('工場'), { target: { value: '0,1' } });
+    fireEvent.change(screen.getByLabelText('ユニット'), { target: { value: 'INFANTRY' } });
+    fireEvent.click(screen.getByRole('button', { name: '生産実行' }));
+
+    expect(screen.getByText('最終コマンド: 成功')).toBeInTheDocument();
+
+    const nextState = store.getState().gameState;
+    const afterCount = Object.keys(nextState.units).length;
+    expect(afterCount).toBe(beforeCount + 1);
+    expect(Object.values(nextState.units).some((u) => u.id.startsWith('P1_INFANTRY_'))).toBe(true);
+  });
+
+  it('攻撃射程マスに赤表示用属性が付く', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+
+    const inRangeTile = screen.getByRole('button', { name: 'タイル 2,2' });
+    const outRangeTile = screen.getByRole('button', { name: 'タイル 4,4' });
+
+    expect(inRangeTile).toHaveAttribute('data-attack-range', 'true');
+    expect(outRangeTile).toHaveAttribute('data-attack-range', 'false');
+  });
+
+  it('移動先を指定すると移動後の攻撃可能マス表示へ更新される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    expect(screen.getByRole('button', { name: 'タイル 3,2' })).toHaveAttribute('data-attack-range', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    expect(screen.getByRole('button', { name: 'タイル 3,2' })).toHaveAttribute('data-attack-range', 'true');
+  });
+});
+
+
