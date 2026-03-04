@@ -21,7 +21,7 @@ const config: Config = {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  maxWorkers: 6,
+  maxWorkers: 7,
   // testSequencer: '<rootDir>/tests/jest.sequencer.js',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.tsx'],
   coverageDirectory: 'coverage',
