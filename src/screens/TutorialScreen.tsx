@@ -6,12 +6,23 @@ type TutorialScreenProps = {
 };
 
 export const TutorialScreen: React.FC<TutorialScreenProps> = ({ onBack }) => (
-  <Box component="main" sx={{ maxWidth: 980, mx: 'auto', mt: { xs: 2, md: 3 }, px: 2 }}>
-    <Paper elevation={3} sx={{ p: 3 }}>
-      <Typography variant="h1" sx={{ fontSize: { xs: 28, md: 34 }, mb: 1 }}>チュートリアル</Typography>
-      <Typography sx={{ mb: 2 }}>LOCAL WARS の基本ルールと、勝つための要点をまとめています。</Typography>
+  <Box
+    component="main"
+    sx={{
+      maxWidth: 980,
+      mx: 'auto',
+      px: 2,
+      py: 2,
+      height: '100vh',
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+    }}
+  >
+    <Paper elevation={3} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Typography variant="h1" sx={{ fontSize: { xs: 28, md: 34 }, mb: 1, flexShrink: 0 }}>チュートリアル</Typography>
+      <Typography sx={{ mb: 2, flexShrink: 0 }}>LOCAL WARS の基本ルールと、勝つための要点をまとめています。</Typography>
 
-      <Stack spacing={2.5}>
+      <Stack data-testid="tutorial-scroll-content" spacing={2.5} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5, mb: 2 }}>
         <Box component="section" aria-label="ゲームの進め方">
           <Typography variant="h2" sx={{ fontSize: 22, mb: 0.5 }}>ゲームの進め方</Typography>
           <ol>
@@ -114,9 +125,9 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({ onBack }) => (
         </Box>
       </Stack>
 
-      <Button type="button" variant="contained" onClick={onBack} sx={{ mt: 2 }}>戻る</Button>
+      <Box data-testid="tutorial-footer" sx={{ flexShrink: 0, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Button type="button" variant="contained" onClick={onBack}>戻る</Button>
+      </Box>
     </Paper>
   </Box>
 );
-
-

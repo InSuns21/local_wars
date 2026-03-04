@@ -29,11 +29,22 @@ export const SaveSelectScreen: React.FC<SaveSelectScreenProps> = ({
   onDelete,
   onBack,
 }) => (
-  <Box component="main" sx={{ maxWidth: 780, mx: 'auto', mt: { xs: 2, md: 4 }, px: 2 }}>
-    <Paper elevation={3} sx={{ p: 3 }}>
-      <Typography variant="h1" sx={{ fontSize: { xs: 28, md: 34 }, mb: 2 }}>セーブ選択</Typography>
+  <Box
+    component="main"
+    sx={{
+      maxWidth: 780,
+      mx: 'auto',
+      px: 2,
+      py: 2,
+      height: '100vh',
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+    }}
+  >
+    <Paper elevation={3} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Typography variant="h1" sx={{ fontSize: { xs: 28, md: 34 }, mb: 2, flexShrink: 0 }}>セーブ選択</Typography>
 
-      <Stack spacing={1.5}>
+      <Stack data-testid="save-select-scroll-content" spacing={1.5} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5, mb: 2 }}>
         {[1, 2, 3].map((n) => {
           const slotId = n as 1 | 2 | 3;
           const slot = slots[String(slotId) as keyof SaveSlotsRecord];
@@ -70,7 +81,7 @@ export const SaveSelectScreen: React.FC<SaveSelectScreenProps> = ({
         })}
       </Stack>
 
-      <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
+      <Stack data-testid="save-select-footer" direction="row" spacing={1.5} sx={{ flexShrink: 0, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
         <Button type="button" variant="contained" onClick={onConfirmLoad}>このスロットで開始</Button>
         <Button type="button" variant="outlined" onClick={onBack}>戻る</Button>
       </Stack>

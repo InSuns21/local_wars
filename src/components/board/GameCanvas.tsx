@@ -385,7 +385,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   aria-label={'タイル ' + x + ',' + y}
                 >
                   {isVisible && unit ? <UnitIcon unit={unit} currentPlayerId={gameState.currentPlayerId} /> : null}
-                  <span style={{ textShadow: '0 0 1px #fff' }}>
+                  <span
+                    style={{
+                      padding: '1px 4px',
+                      borderRadius: 4,
+                      background: 'rgba(248,250,252,0.72)',
+                      border: '1px solid rgba(15,23,42,0.35)',
+                      lineHeight: 1.1,
+                      textShadow:
+                        '-1px 0 rgba(248,250,252,0.9), 0 1px rgba(248,250,252,0.9), 1px 0 rgba(248,250,252,0.9), 0 -1px rgba(248,250,252,0.9)',
+                    }}
+                  >
                     {terrainVisual.short}
                     {isVisible && propertyVisual ? `(${propertyVisual.tag})` : ''}
                   </span>
@@ -456,6 +466,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     </section>
   );
 };
+
 
 
 

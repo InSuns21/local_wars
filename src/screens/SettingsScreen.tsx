@@ -48,11 +48,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
   };
 
   return (
-    <Box component="main" sx={{ maxWidth: 760, mx: 'auto', mt: { xs: 2, md: 4 }, px: 2 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h1" sx={{ fontSize: { xs: 28, md: 34 }, mb: 2 }}>設定画面</Typography>
+    <Box
+      component="main"
+      sx={{
+        maxWidth: 760,
+        mx: 'auto',
+        px: 2,
+        py: 2,
+        height: '100vh',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+      }}
+    >
+      <Paper elevation={3} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Typography variant="h1" sx={{ fontSize: { xs: 28, md: 34 }, mb: 2, flexShrink: 0 }}>設定画面</Typography>
 
-        <Stack spacing={2}>
+        <Stack data-testid="settings-scroll-content" spacing={2} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5, mb: 2 }}>
           <FormControl fullWidth>
             <InputLabel variant="standard" htmlFor="ai-difficulty">AIの強さ</InputLabel>
             <NativeSelect
@@ -128,7 +139,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
           <FormControlLabel
             control={<Checkbox checked={Boolean(settings.showEnemyActionLogs)} onChange={(e) => update('showEnemyActionLogs', e.target.checked)} />}
             label="経過ログに敵方の行動を表示"
-          />          <FormControlLabel
+          />
+          <FormControlLabel
             control={<Checkbox checked={settings.enableAirUnits} onChange={(e) => update('enableAirUnits', e.target.checked)} />}
             label="航空ユニットあり"
           />
@@ -144,15 +156,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
             control={<Checkbox checked={settings.enableAmmoSupply} onChange={(e) => update('enableAmmoSupply', e.target.checked)} />}
             label="弾薬補給あり"
           />
+        </Stack>
 
-          <Stack direction="row" spacing={1.5}>
-            <Button type="button" variant="contained" onClick={() => onConfirm(settings)} disabled={!isValid}>この設定で開始</Button>
-            <Button type="button" variant="outlined" onClick={onBack}>戻る</Button>
-          </Stack>
+        <Stack data-testid="settings-footer" direction="row" spacing={1.5} sx={{ flexShrink: 0, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button type="button" variant="contained" onClick={() => onConfirm(settings)} disabled={!isValid}>この設定で開始</Button>
+          <Button type="button" variant="outlined" onClick={onBack}>戻る</Button>
         </Stack>
       </Paper>
     </Box>
   );
 };
-
-
