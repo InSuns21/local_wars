@@ -10,11 +10,6 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:fast": "jest --testPathIgnorePatterns=tests/ui/AppFlow tests/ui/BattleScreen tests/ui/App.e2e-like",
-    "test:slow": "jest --runInBand tests/ui/AppFlow tests/ui/BattleScreen tests/ui/App.e2e-like",
-    "test:ui": "jest tests/ui",
-    "test:ui:fast": "jest tests/ui --testPathIgnorePatterns=tests/ui/AppFlow tests/ui/BattleScreen tests/ui/App.e2e-like",
-    "test:ui:slow": "jest --runInBand tests/ui/AppFlow tests/ui/BattleScreen tests/ui/App.e2e-like",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"
   },
