@@ -145,4 +145,16 @@ describe('BattleScreen UIテスト: コマンド操作', () => {
     expect(screen.getByText(/攻撃予測:/)).toBeInTheDocument();
     expect(screen.getByText(/与ダメージ/)).toBeInTheDocument();
   });
+  it('生産可能な工場がないときは工場セレクトを表示せずメッセージを表示する', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 0, y: 1 };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    expect(screen.getByText('工場: 選択可能な工場なし')).toBeInTheDocument();
+    expect(screen.queryByLabelText('工場')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '生産実行' })).toBeDisabled();
+  });
 });
+

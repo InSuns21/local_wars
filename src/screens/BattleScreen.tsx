@@ -699,21 +699,26 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
             </AccordionSummary>
             <AccordionDetails>
               <Stack spacing={1}>
-                <FormControl>
-                  <InputLabel variant="standard" htmlFor="factory-select">工場</InputLabel>
-                  <NativeSelect
-                    inputProps={{ id: "factory-select" }}
-                    value={selectedFactoryKey}
-                    onChange={(e) => setSelectedFactoryKey(e.target.value)}
-                    disabled={availableFactories.length === 0 || isGameOver}
-                  >
-                    {availableFactories.length === 0 && <option value="">選択可能な工場なし</option>}
-                    {availableFactories.map((coord) => {
-                      const key = toCoordKey(coord);
-                      return <option key={key} value={key}>{coord.x},{coord.y}</option>;
-                    })}
-                  </NativeSelect>
-                </FormControl>
+                {availableFactories.length === 0 ? (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">工場: 選択可能な工場なし</Typography>
+                  </Box>
+                ) : (
+                  <FormControl>
+                    <InputLabel variant="standard" htmlFor="factory-select">工場</InputLabel>
+                    <NativeSelect
+                      inputProps={{ id: "factory-select" }}
+                      value={selectedFactoryKey}
+                      onChange={(e) => setSelectedFactoryKey(e.target.value)}
+                      disabled={isGameOver}
+                    >
+                      {availableFactories.map((coord) => {
+                        const key = toCoordKey(coord);
+                        return <option key={key} value={key}>{coord.x},{coord.y}</option>;
+                      })}
+                    </NativeSelect>
+                  </FormControl>
+                )}
 
                 <FormControl>
                   <InputLabel variant="standard" htmlFor="produce-unit-type">ユニット</InputLabel>
@@ -820,6 +825,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     </Box>
   );
 };
+
+
 
 
 
