@@ -105,7 +105,25 @@ tests/          unit / integration / ui テスト
 - MUI
 - Jest + Testing Library
 
+## 音源クレジット
+
+BGM は以下のフリー素材を利用しています。
+
+- 提供元: incompetech (Kevin MacLeod)
+- URL: https://incompetech.com/music/royalty-free/music.html
+- ライセンス: CC BY 4.0
+- ライセンスURL: https://creativecommons.org/licenses/by/4.0/
+
+曲ごとの割り当てはゲーム内のクレジット画面に記載しています。
+
+※ 配布音源をそのままではなく、ゲーム用途向けに約20秒の短尺ループ用へ編集して利用しています。
+
 ## ライセンス
 
 ライセンス表記は未設定です。公開時に必要であれば `LICENSE` を追加してください。
+
+
+
+
+
 

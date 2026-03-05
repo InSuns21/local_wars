@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -25,6 +25,7 @@ import { SaveSelectScreen } from '@/screens/SaveSelectScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { TitleScreen } from '@/screens/TitleScreen';
 import { TutorialScreen } from '@/screens/TutorialScreen';
+import { AudioSettingsScreen } from '@/screens/AudioSettingsScreen';
 import {
   deleteSaveSlot,
   findFirstEmptySlot,
@@ -33,10 +34,12 @@ import {
   type SaveSlotsRecord,
   upsertSaveSlot,
 } from '@services/saveSlots';
+import { getBgmTrackByContext, type BgmContext } from '@services/bgmTracks';
+import { loadBgmVolume, saveBgmVolume } from '@services/bgmVolume';
 import { appTheme } from '@/theme';
 import { DEFAULT_SETTINGS, type GameSettings } from './types';
 
-type Screen = 'title' | 'map-select' | 'settings' | 'save-select' | 'credits' | 'tutorial' | 'battle';
+type Screen = 'title' | 'map-select' | 'settings' | 'save-select' | 'credits' | 'tutorial' | 'battle' | 'audio-settings';
 
 type OverwriteState = {
   gameState: GameState;
@@ -44,6 +47,18 @@ type OverwriteState = {
 
 type AppProps = {
   saveSlotsStorageKey?: string;
+};
+
+const toGain = (volumePercent: number): number => Math.max(0, Math.min(1, volumePercent / 100));
+const isAudioDisabled = process.env.NODE_ENV === 'test';
+
+const tryPlay = async (audio: HTMLAudioElement): Promise<boolean> => {
+  try {
+    await audio.play();
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
@@ -61,6 +76,10 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
   const [overwriteState, setOverwriteState] = useState<OverwriteState | null>(null);
   const [overwriteTargetSlotId, setOverwriteTargetSlotId] = useState<1 | 2 | 3>(1);
   const [notice, setNotice] = useState<string>('');
+  const [bgmVolume, setBgmVolume] = useState<number>(loadBgmVolume());
+  const [isBgmBlocked, setIsBgmBlocked] = useState<boolean>(false);
+  const [battleWinner, setBattleWinner] = useState<GameState['winner']>(null);
+  const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const refreshSlots = (): void => {
     setSaveSlots(getAllSaveSlots(saveSlotsStorageKey));
@@ -69,6 +88,104 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
   useEffect(() => {
     refreshSlots();
   }, []);
+
+  useEffect(() => {
+    if (!activeStore) {
+      setBattleWinner(null);
+      return;
+    }
+
+    setBattleWinner(activeStore.getState().gameState.winner);
+    const unsubscribe = activeStore.subscribe((state) => {
+      setBattleWinner(state.gameState.winner);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeStore]);
+
+  const bgmContext: BgmContext =
+    screen === 'battle' && battleWinner !== null ? 'battle-result' : screen;
+
+  useEffect(() => {
+    if (isAudioDisabled) {
+      return;
+    }
+
+    const src = getBgmTrackByContext(bgmContext);
+    const gain = toGain(bgmVolume);
+
+    if (!bgmAudioRef.current) {
+      const audio = new Audio(src);
+      audio.loop = true;
+      audio.preload = 'auto';
+      audio.volume = gain;
+      bgmAudioRef.current = audio;
+      void tryPlay(audio).then((ok) => {
+        setIsBgmBlocked(!ok);
+      });
+      return;
+    }
+
+    const audio = bgmAudioRef.current;
+    audio.volume = gain;
+    if (audio.src !== new URL(src, window.location.origin).toString()) {
+      audio.src = src;
+      audio.currentTime = 0;
+      audio.load();
+    }
+    void tryPlay(audio).then((ok) => {
+      setIsBgmBlocked(!ok);
+    });
+  }, [bgmContext, bgmVolume]);
+
+  useEffect(() => {
+    if (isAudioDisabled || !isBgmBlocked) {
+      return;
+    }
+
+    const retryPlay = (): void => {
+      const audio = bgmAudioRef.current;
+      if (!audio) {
+        return;
+      }
+
+      void tryPlay(audio).then((ok) => {
+        if (ok) {
+          setIsBgmBlocked(false);
+        }
+      });
+    };
+
+    window.addEventListener('pointerdown', retryPlay, { passive: true });
+    window.addEventListener('touchstart', retryPlay, { passive: true });
+    window.addEventListener('keydown', retryPlay);
+
+    return () => {
+      window.removeEventListener('pointerdown', retryPlay);
+      window.removeEventListener('touchstart', retryPlay);
+      window.removeEventListener('keydown', retryPlay);
+    };
+  }, [isBgmBlocked]);
+
+  useEffect(() => {
+    return () => {
+      if (isAudioDisabled) {
+        return;
+      }
+
+      if (bgmAudioRef.current) {
+        bgmAudioRef.current.pause();
+        bgmAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleChangeBgmVolume = (volume: number): void => {
+    const saved = saveBgmVolume(volume);
+    setBgmVolume(saved);
+  };
 
   const startNewGame = (mapId: string, gameSettings: GameSettings): void => {
     const initialState = createInitialGameState({ mapId, settings: gameSettings });
@@ -159,6 +276,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
               setTutorialReturnScreen('title');
               setScreen('tutorial');
             }}
+            onOpenAudioSettings={() => setScreen('audio-settings')}
           />
         )}
 
@@ -196,6 +314,14 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
         {screen === 'credits' && <CreditsScreen onBack={() => setScreen('title')} />}
 
         {screen === 'tutorial' && <TutorialScreen onBack={() => setScreen(tutorialReturnScreen)} />}
+
+        {screen === 'audio-settings' && (
+          <AudioSettingsScreen
+            volume={bgmVolume}
+            onChangeVolume={handleChangeBgmVolume}
+            onBack={() => setScreen('title')}
+          />
+        )}
 
         {screen === 'battle' && activeStore && (
           <BattleScreen
@@ -283,6 +409,9 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
     </ThemeProvider>
   );
 };
+
+
+
 
 
 

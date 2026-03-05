@@ -6,9 +6,10 @@ type TitleScreenProps = {
   onContinue: () => void;
   onCredits: () => void;
   onTutorial: () => void;
+  onOpenAudioSettings: () => void;
 };
 
-export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, onContinue, onCredits, onTutorial }) => (
+export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, onContinue, onCredits, onTutorial, onOpenAudioSettings }) => (
   <Box component="main" sx={{ maxWidth: 560, mx: 'auto', mt: { xs: 3, md: 7 }, px: 2 }}>
     <Paper elevation={4} sx={{ p: 4, borderTop: '6px solid', borderColor: 'primary.main' }}>
       <Typography variant="h1" sx={{ fontSize: { xs: 36, md: 46 }, mb: 1 }}>
@@ -23,6 +24,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, onContinue, o
         <Button type="button" variant="contained" size="large" color="secondary" onClick={onContinue}>つづきから</Button>
         <Button type="button" variant="outlined" size="large" onClick={onCredits}>クレジット</Button>
         <Button type="button" variant="outlined" size="large" onClick={onTutorial}>チュートリアル</Button>
+        <Button type="button" variant="outlined" size="large" onClick={onOpenAudioSettings}>音量設定</Button>
       </Stack>
     </Paper>
   </Box>

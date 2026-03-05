@@ -53,4 +53,15 @@ describe('App 導線テスト: ナビゲーション', () => {
     expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'その他' })).toBeInTheDocument();
   });
+
+  it('タイトルから音量設定へ遷移して戻れる', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: '音量設定' }));
+    expect(screen.getByRole('heading', { name: '音量設定' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイトルへ戻る' }));
+    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+  });
 });
+
