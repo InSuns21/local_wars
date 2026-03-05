@@ -429,6 +429,56 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       return;
     }
 
+    if (selectedTile && selectedUnit && !selectedUnit.moved) {
+      const path = buildMovePath(selectedUnitId, selectedTile);
+      const moveResult = dispatchCommand({
+        type: "MOVE_UNIT",
+        unitId: selectedUnitId,
+        to: selectedTile,
+        path: path ?? undefined,
+      });
+
+      if (!moveResult.ok) {
+        setCommandResult(false, moveResult.reason);
+        return;
+      }
+
+      const movedState = useStore.getState().gameState;
+      const movedUnit = movedState.units[selectedUnitId];
+      const targetAfterMove = movedState.units[targetUnitId];
+      const reachedPlannedTile = Boolean(
+        movedUnit &&
+          movedUnit.position.x === selectedTile.x &&
+          movedUnit.position.y === selectedTile.y,
+      );
+
+      selectTile(null);
+
+      if (!reachedPlannedTile) {
+        setLastResult("成功: 移動中に遭遇戦が発生したため、攻撃はキャンセルされました。");
+        return;
+      }
+
+      if (!targetAfterMove) {
+        setLastResult("成功: 移動は完了しましたが、攻撃対象が消失したため攻撃はキャンセルされました。");
+        return;
+      }
+
+      const attackAfterMoveResult = dispatchCommand({
+        type: "ATTACK",
+        attackerId: selectedUnitId,
+        defenderId: targetUnitId,
+      });
+
+      if (attackAfterMoveResult.ok) {
+        setLastResult("成功: 移動後に攻撃しました。");
+        return;
+      }
+
+      setCommandResult(false, attackAfterMoveResult.reason);
+      return;
+    }
+
     const result = dispatchCommand({
       type: "ATTACK",
       attackerId: selectedUnitId,
@@ -436,7 +486,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     });
     setCommandResult(result.ok, result.reason);
   };
-
   const handleCapture = (): void => {
     if (isGameOver) {
       setLastResult(
@@ -457,10 +506,49 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       return;
     }
 
+    if (selectedTile && selectedUnit && !selectedUnit.moved) {
+      const path = buildMovePath(selectedUnitId, selectedTile);
+      const moveResult = dispatchCommand({
+        type: "MOVE_UNIT",
+        unitId: selectedUnitId,
+        to: selectedTile,
+        path: path ?? undefined,
+      });
+
+      if (!moveResult.ok) {
+        setCommandResult(false, moveResult.reason);
+        return;
+      }
+
+      const movedState = useStore.getState().gameState;
+      const movedUnit = movedState.units[selectedUnitId];
+      const reachedPlannedTile = Boolean(
+        movedUnit &&
+          movedUnit.position.x === selectedTile.x &&
+          movedUnit.position.y === selectedTile.y,
+      );
+
+      selectTile(null);
+
+      if (!reachedPlannedTile) {
+        setLastResult("成功: 移動中に遭遇戦が発生したため、占領はキャンセルされました。");
+        return;
+      }
+
+      const captureAfterMoveResult = dispatchCommand({ type: "CAPTURE", unitId: selectedUnitId });
+
+      if (captureAfterMoveResult.ok) {
+        setLastResult("成功: 移動後に占領しました。");
+        return;
+      }
+
+      setCommandResult(false, captureAfterMoveResult.reason);
+      return;
+    }
+
     const result = dispatchCommand({ type: "CAPTURE", unitId: selectedUnitId });
     setCommandResult(result.ok, result.reason);
   };
-
   const handleProduce = (): void => {
     if (isGameOver) {
       setLastResult(
@@ -827,6 +915,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     </Box>
   );
 };
+
 
 
 

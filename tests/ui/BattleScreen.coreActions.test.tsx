@@ -71,6 +71,19 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     expect(screen.getByText('2,2')).toBeInTheDocument();
   });
 
+  it('移動先選択後に攻撃実行すると移動してから攻撃までまとめて実行される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.change(screen.getByLabelText('攻撃対象'), { target: { value: 'p2_tank' } });
+    fireEvent.click(screen.getByRole('button', { name: '攻撃実行' }));
+
+    expect(screen.getByText('最終コマンド: 成功: 移動後に攻撃しました。')).toBeInTheDocument();
+    expect(screen.getByText('2,2')).toBeInTheDocument();
+  });
+
   it('攻撃実行ボタンで実コマンドが実行される', () => {
     const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
     render(<BattleScreen useStore={store} />);
@@ -83,6 +96,42 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     fireEvent.click(screen.getByRole('button', { name: '攻撃実行' }));
 
     expect(screen.getByText('最終コマンド: 成功')).toBeInTheDocument();
+  });
+
+  it('移動先選択後に占領実行すると移動してから占領までまとめて実行される', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 1, y: 3 };
+    state.map.tiles['2,3'] = { coord: { x: 2, y: 3 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,3' }));
+    fireEvent.click(screen.getByRole('button', { name: '占領実行' }));
+
+    expect(screen.getByText('最終コマンド: 成功: 移動後に占領しました。')).toBeInTheDocument();
+    expect(store.getState().gameState.units.p1_inf.position).toEqual({ x: 2, y: 3 });
+  });
+
+  it('FoW遭遇戦で移動が中断した場合は占領実行がキャンセルされる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+    state.units.p1_inf.position = { x: 1, y: 2 };
+    state.units.p2_inf.position = { x: 3, y: 2 };
+    state.map.tiles['3,2'] = { coord: { x: 3, y: 2 }, terrainType: 'FOREST' };
+    state.map.tiles['4,2'] = { coord: { x: 4, y: 2 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 4,2' }));
+    fireEvent.click(screen.getByRole('button', { name: '占領実行' }));
+
+    const nextState = store.getState().gameState;
+    expect(nextState.map.tiles['4,2'].owner).toBe('P2');
+    expect(nextState.actionLog.some((entry) => entry.action === 'CAPTURE')).toBe(false);
   });
 
   it('占領実行ボタンで実コマンドが実行される', () => {
@@ -141,5 +190,7 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     expect(screen.getByRole('button', { name: 'タイル 3,2' })).toHaveAttribute('data-attack-range', 'true');
   });
 });
+
+
 
 
