@@ -16,10 +16,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     fireEvent.change(screen.getByLabelText('都市のHP回復量（ターン開始時）'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('工場のHP回復量（ターン開始時）'), { target: { value: '4' } });
     fireEvent.change(screen.getByLabelText('HQのHP回復量（ターン開始時）'), { target: { value: '6' } });
-    fireEvent.click(screen.getByLabelText('航空ユニットあり'));
-    fireEvent.click(screen.getByLabelText('海ユニットあり'));
-    fireEvent.click(screen.getByLabelText('燃料補給あり'));
-    fireEvent.click(screen.getByLabelText('弾薬補給あり'));
+    fireEvent.click(screen.getByLabelText('燃料消費あり'));
+    fireEvent.click(screen.getByLabelText('弾薬消費あり'));
 
     fireEvent.click(screen.getByRole('button', { name: 'この設定で開始' }));
 
@@ -33,8 +31,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(submitted.hpRecoveryCity).toBe(2);
     expect(submitted.hpRecoveryFactory).toBe(4);
     expect(submitted.hpRecoveryHq).toBe(6);
-    expect(submitted.enableAirUnits).toBe(false);
-    expect(submitted.enableNavalUnits).toBe(false);
+    expect(submitted.enableAirUnits).toBe(true);
+    expect(submitted.enableNavalUnits).toBe(true);
     expect(submitted.enableFuelSupply).toBe(false);
     expect(submitted.enableAmmoSupply).toBe(false);
     expect(submitted.showEnemyActionLogs).toBe(false);
@@ -65,9 +63,3 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
-
-
-
-
-
-

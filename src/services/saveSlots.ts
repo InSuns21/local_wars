@@ -56,10 +56,8 @@ const normalizeSettings = (value: unknown): GameSettings => {
       typeof value.hpRecoveryHq === 'number'
         ? value.hpRecoveryHq
         : DEFAULT_SETTINGS.hpRecoveryHq,
-    enableAirUnits:
-      typeof value.enableAirUnits === 'boolean' ? value.enableAirUnits : DEFAULT_SETTINGS.enableAirUnits,
-    enableNavalUnits:
-      typeof value.enableNavalUnits === 'boolean' ? value.enableNavalUnits : DEFAULT_SETTINGS.enableNavalUnits,
+    enableAirUnits: true,
+    enableNavalUnits: true,
     enableFuelSupply:
       typeof value.enableFuelSupply === 'boolean' ? value.enableFuelSupply : DEFAULT_SETTINGS.enableFuelSupply,
     enableAmmoSupply:
@@ -155,6 +153,7 @@ export const findFirstEmptySlot = (storageKey?: string): SlotId | null => {
   if (!slots['3']) return 3;
   return null;
 };
+
 
 
 

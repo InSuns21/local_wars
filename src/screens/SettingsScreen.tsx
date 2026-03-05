@@ -141,20 +141,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
             label="経過ログに敵方の行動を表示"
           />
           <FormControlLabel
-            control={<Checkbox checked={settings.enableAirUnits} onChange={(e) => update('enableAirUnits', e.target.checked)} />}
-            label="航空ユニットあり"
-          />
-          <FormControlLabel
-            control={<Checkbox checked={settings.enableNavalUnits} onChange={(e) => update('enableNavalUnits', e.target.checked)} />}
-            label="海ユニットあり"
-          />
-          <FormControlLabel
             control={<Checkbox checked={settings.enableFuelSupply} onChange={(e) => update('enableFuelSupply', e.target.checked)} />}
-            label="燃料補給あり"
+            label="燃料消費あり"
           />
           <FormControlLabel
             control={<Checkbox checked={settings.enableAmmoSupply} onChange={(e) => update('enableAmmoSupply', e.target.checked)} />}
-            label="弾薬補給あり"
+            label="弾薬消費あり"
           />
         </Stack>
 

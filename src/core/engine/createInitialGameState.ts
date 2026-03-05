@@ -1,8 +1,6 @@
 ﻿import type { GameSettings } from '@/app/types';
 import { getSkirmishScenario } from '@data/skirmishMaps';
 import type { GameState } from '@core/types/state';
-import type { TerrainType } from '@core/types/map';
-import type { UnitType } from '@core/types/unit';
 
 export type GameInitializationOptions = {
   mapId?: string;
@@ -12,7 +10,7 @@ export type GameInitializationOptions = {
 const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameState => {
   if (!settings) return state;
 
-  const next: GameState = {
+  return {
     ...state,
     players: {
       P1: { ...state.players.P1, funds: settings.initialFunds },
@@ -32,39 +30,6 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
     enableAmmoSupply: settings.enableAmmoSupply,
     showEnemyActionLogs: settings.showEnemyActionLogs ?? false,
   };
-
-  const airTerrain = new Set<TerrainType>(['AIRPORT']);
-  const navalTerrain = new Set<TerrainType>(['PORT', 'SEA']);
-  const airUnits = new Set<UnitType>(['FIGHTER', 'BOMBER']);
-  const navalUnits = new Set<UnitType>(['DESTROYER', 'LANDER']);
-
-  if (!settings.enableAirUnits) {
-    for (const [key, tile] of Object.entries(next.map.tiles)) {
-      if (airTerrain.has(tile.terrainType)) {
-        delete next.map.tiles[key];
-      }
-    }
-    for (const [id, unit] of Object.entries(next.units)) {
-      if (airUnits.has(unit.type)) {
-        delete next.units[id];
-      }
-    }
-  }
-
-  if (!settings.enableNavalUnits) {
-    for (const [key, tile] of Object.entries(next.map.tiles)) {
-      if (navalTerrain.has(tile.terrainType)) {
-        delete next.map.tiles[key];
-      }
-    }
-    for (const [id, unit] of Object.entries(next.units)) {
-      if (navalUnits.has(unit.type)) {
-        delete next.units[id];
-      }
-    }
-  }
-
-  return next;
 };
 
 const buildFallbackMapState = (): Pick<GameState, 'map' | 'units'> => ({
@@ -201,6 +166,9 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
 
   return applyFeatureToggles(base, options.settings);
 };
+
+
+
 
 
 

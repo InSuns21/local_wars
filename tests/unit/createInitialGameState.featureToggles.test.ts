@@ -62,34 +62,32 @@ const buildScenario = (): SkirmishScenario => ({
   },
 });
 
-describe('createInitialGameState フィーチャートグル', () => {
+describe('createInitialGameState 航空/海ユニット常時有効', () => {
   beforeEach(() => {
     mockedGetSkirmishScenario.mockReset();
     mockedGetSkirmishScenario.mockReturnValue(buildScenario());
   });
 
-  it('航空ユニットOFFで空港タイルと航空ユニットを除外する', () => {
+  it('旧設定で航空ユニットOFFが渡されても空港と航空ユニットを保持する', () => {
     const state = createInitialGameState({
       mapId: 'mock-map',
       settings: { ...baseSettings, enableAirUnits: false },
     });
 
-    expect(state.map.tiles['0,0']).toBeUndefined();
-    expect(state.units.p1_fighter).toBeUndefined();
-    expect(state.units.p1_bomber).toBeUndefined();
-    expect(state.units.p2_destroyer).toBeDefined();
+    expect(state.map.tiles['0,0']).toBeDefined();
+    expect(state.units.p1_fighter).toBeDefined();
+    expect(state.units.p1_bomber).toBeDefined();
   });
 
-  it('海ユニットOFFで港/海タイルと海ユニットを除外する', () => {
+  it('旧設定で海ユニットOFFが渡されても港/海と海ユニットを保持する', () => {
     const state = createInitialGameState({
       mapId: 'mock-map',
       settings: { ...baseSettings, enableNavalUnits: false },
     });
 
-    expect(state.map.tiles['0,1']).toBeUndefined();
-    expect(state.map.tiles['0,2']).toBeUndefined();
-    expect(state.units.p2_destroyer).toBeUndefined();
-    expect(state.units.p2_lander).toBeUndefined();
-    expect(state.units.p1_fighter).toBeDefined();
+    expect(state.map.tiles['0,1']).toBeDefined();
+    expect(state.map.tiles['0,2']).toBeDefined();
+    expect(state.units.p2_destroyer).toBeDefined();
+    expect(state.units.p2_lander).toBeDefined();
   });
 });
