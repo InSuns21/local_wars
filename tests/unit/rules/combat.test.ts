@@ -100,11 +100,18 @@ describe('戦闘ルール', () => {
     expect((overridden.defenderToAttacker?.max ?? 0)).toBeGreaterThan((onlyGlobal.defenderToAttacker?.max ?? 0));
   });
 
-  it('防御側が間接ユニットで距離2以上の場合は反撃できない', () => {
+  it('防御側が自走砲のとき隣接では反撃できない', () => {
+    const attacker = makeUnit({ type: 'TANK', position: { x: 0, y: 0 } });
+    const defender = makeUnit({ owner: 'P2', type: 'ARTILLERY', position: { x: 1, y: 0 } });
+
+    expect(canCounterAttack(attacker, defender)).toBe(false);
+  });
+
+  it('防御側が自走砲のとき距離2では反撃できる', () => {
     const attacker = makeUnit({ type: 'TANK', position: { x: 0, y: 0 } });
     const defender = makeUnit({ owner: 'P2', type: 'ARTILLERY', position: { x: 2, y: 0 } });
 
-    expect(canCounterAttack(attacker, defender)).toBe(false);
+    expect(canCounterAttack(attacker, defender)).toBe(true);
   });
 
   it('executeCombatでcanCounter=falseなら反撃ダメージは0になる', () => {
@@ -144,4 +151,6 @@ describe('戦闘ルール', () => {
     expect(forecast.defenderToAttacker?.min).toBe(0);
   });
 });
+
+
 

@@ -1,6 +1,7 @@
 ﻿import type { CombatForecast, CombatResult } from '@core/types/combat';
 import type { UnitState, UnitType } from '@core/types/unit';
 import { manhattanDistance } from '@/utils/coord';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 
 const baseDamageTable: Record<UnitType, Partial<Record<UnitType, number>>> = {
   INFANTRY: { INFANTRY: 55, RECON: 12, TANK: 5, ANTI_TANK: 8, ARTILLERY: 15, ANTI_AIR: 8 },
@@ -47,11 +48,8 @@ export const computeDamage = (
 
 export const canCounterAttack = (attacker: UnitState, defender: UnitState): boolean => {
   const distance = manhattanDistance(attacker.position, defender.position);
-  const attackerIsIndirect = attacker.type === 'ARTILLERY';
-  const defenderIsIndirect = defender.type === 'ARTILLERY';
-  if (attackerIsIndirect && distance > 1) return false;
-  if (defenderIsIndirect && distance > 1) return false;
-  return distance === 1;
+  const defenderDef = UNIT_DEFINITIONS[defender.type];
+  return distance >= defenderDef.attackRangeMin && distance <= defenderDef.attackRangeMax;
 };
 
 export const forecastCombat = (
@@ -132,6 +130,7 @@ export const executeCombat = (
     inflictedToAttacker: damageToAttacker,
   };
 };
+
 
 
 
