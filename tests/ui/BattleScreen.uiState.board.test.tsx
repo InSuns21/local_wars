@@ -18,6 +18,22 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     expect(screen.queryByText('p2_tank')).not.toBeInTheDocument();
   });
 
+  it('盤面凡例に主要な視覚ルールが表示される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    const legend = screen.getByLabelText('盤面凡例');
+    expect(within(legend).getByText('選択中ユニット')).toBeInTheDocument();
+    expect(within(legend).getByText('選択移動先')).toBeInTheDocument();
+    expect(within(legend).getByText('経路プレビュー')).toBeInTheDocument();
+    expect(within(legend).getByText('移動可能')).toBeInTheDocument();
+    expect(within(legend).getByText('攻撃範囲')).toBeInTheDocument();
+    expect(within(legend).getByText('味方ユニット')).toBeInTheDocument();
+    expect(within(legend).getByText('敵ユニット')).toBeInTheDocument();
+    expect(within(legend).getByText('自軍拠点')).toBeInTheDocument();
+    expect(within(legend).getByText('敵軍拠点')).toBeInTheDocument();
+  });
+
   it('FoW時は不可視マスが判別でき、自軍拠点は常に可視になる', () => {
     const state = createInitialGameState();
     state.fogOfWar = true;
@@ -106,6 +122,18 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     expect(screen.getByRole('button', { name: 'タイル 4,4' })).toHaveAttribute('data-property-owner', 'P2');
     expect(screen.getByRole('button', { name: 'タイル 1,1' })).toHaveAttribute('data-property-owner', 'P1');
     expect(screen.getByRole('button', { name: 'タイル 3,3' })).toHaveAttribute('data-property-owner', 'P2');
+  });
+
+  it('経路プレビューは移動可能マスと別属性で表示される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+
+    expect(screen.getByRole('button', { name: 'タイル 2,2' })).toHaveAttribute('data-preview-path', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 2,1' })).toHaveAttribute('data-preview-path', 'false');
+    expect(screen.getByRole('button', { name: 'タイル 2,1' })).toHaveAttribute('data-move-reachable', 'true');
   });
 
   it('移動可能マスは破線枠で表示される', () => {

@@ -19,8 +19,9 @@ import {
   NativeSelect,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { GameCanvas } from "@components/board/GameCanvas";
+import { BoardLegend } from "@components/board/BoardLegend";
 import { createGameStore, type GameStoreState } from "@store/gameStore";
+import { GameCanvas } from "@components/board/GameCanvas";
 import { createInitialGameState } from "@core/engine/createInitialGameState";
 import { UNIT_DEFINITIONS } from "@core/engine/unitDefinitions";
 import { getEnemyUnits, getPathCost } from "@core/rules/movement";
@@ -744,6 +745,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         </Box>
 
         <Box sx={{ overflowY: "auto", pr: 0.5, minHeight: 0, height: "100%" }}>
+          <BoardLegend />
           <Paper variant="outlined" sx={{ p: 1.5, minHeight: 640 }}>
             <GameCanvas
               gameState={gameState}
@@ -825,6 +827,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     </Box>
   );
 };
+
 
 
 

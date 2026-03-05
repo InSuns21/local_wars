@@ -9,6 +9,7 @@ import type { UnitState } from '@core/types/unit';
 import { toCoordKey } from '@/utils/coord';
 import { getUnitTypeLabel } from '@/utils/unitLabel';
 import { TERRAIN_TEXTURES, UNIT_GLYPH_PATHS } from './boardArt';
+import { BOARD_VISUAL_TOKENS } from './boardVisualTokens';
 
 type GameCanvasProps = {
   gameState: GameState;
@@ -35,8 +36,8 @@ const tileStyle: React.CSSProperties = {
 };
 
 const getPropertyOwnerVisual = (owner?: 'P1' | 'P2'): { tag: string; color: string } => {
-  if (owner === 'P1') return { tag: 'P1', color: '#2563eb' };
-  if (owner === 'P2') return { tag: 'P2', color: '#dc2626' };
+  if (owner === 'P1') return { tag: 'P1', color: BOARD_VISUAL_TOKENS.friendlyProperty.borderColor };
+  if (owner === 'P2') return { tag: 'P2', color: BOARD_VISUAL_TOKENS.enemyProperty.borderColor };
   return { tag: 'NEUTRAL', color: '#6b7280' };
 };
 
@@ -214,7 +215,7 @@ const buildTileTooltip = (
 
 const UnitIcon: React.FC<{ unit: UnitState; currentPlayerId: 'P1' | 'P2' }> = ({ unit, currentPlayerId }) => {
   const isFriendly = unit.owner === currentPlayerId;
-  const ring = isFriendly ? '#16a34a' : '#dc2626';
+  const ring = isFriendly ? BOARD_VISUAL_TOKENS.friendlyUnit.borderColor : BOARD_VISUAL_TOKENS.enemyUnit.borderColor;
   const fill = isFriendly ? '#1e40af' : '#9f1239';
   const paths = UNIT_GLYPH_PATHS[unit.type] ?? UNIT_GLYPH_PATHS.INFANTRY;
 
@@ -323,16 +324,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 : null;
 
               const overlayColor = isSelectedUnit
-                ? 'rgba(110,231,183,0.58)'
+                ? BOARD_VISUAL_TOKENS.selectedUnit.overlay
                 : isSelectedTile
-                  ? 'rgba(253,230,138,0.62)'
+                  ? BOARD_VISUAL_TOKENS.selectedTile.overlay
                   : isPreview
-                    ? 'rgba(147,197,253,0.5)'
+                    ? BOARD_VISUAL_TOKENS.previewPath.overlay
                     : isMoveReachable
-                      ? 'rgba(191,219,254,0.42)'
+                      ? BOARD_VISUAL_TOKENS.moveReachable.overlay
                       : isAttackRange
-                        ? 'rgba(252,165,165,0.5)'
-                        : 'rgba(255,255,255,0.06)';              const ownerBadge = unit
+                        ? BOARD_VISUAL_TOKENS.attackRange.overlay
+                        : 'rgba(255,255,255,0.06)';
+              const ownerBadge = unit
                 ? unit.owner === gameState.currentPlayerId
                   ? '味'
                   : '敵'
@@ -343,15 +345,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   ? '耐久 ' + (tile?.capturePoints ?? getCaptureTarget(tile?.terrainType ?? 'CITY'))
                   : null;
 
-              const routeOutline = isSelectedTile
-                ? 'inset 0 0 0 3px #d97706'
-                : isPreview
-                  ? 'inset 0 0 0 3px #1d4ed8'
-                  : isMoveReachable
-                    ? 'inset 0 0 0 2px #2563eb'
-                    : undefined;
+              const routeOutline = isSelectedUnit
+                ? BOARD_VISUAL_TOKENS.selectedUnit.outline
+                : isSelectedTile
+                  ? BOARD_VISUAL_TOKENS.selectedTile.outline
+                  : isPreview
+                    ? BOARD_VISUAL_TOKENS.previewPath.outline
+                    : isMoveReachable
+                      ? BOARD_VISUAL_TOKENS.moveReachable.outline
+                      : undefined;
 
               const tooltipText = buildTileTooltip(terrainType, isVisible ? unit : undefined, coord, tile?.capturePoints);
+              const ownerBadgeToken = ownerBadge === '味'
+                ? BOARD_VISUAL_TOKENS.friendlyUnit
+                : BOARD_VISUAL_TOKENS.enemyUnit;
 
               return (
                 <button
@@ -367,7 +374,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     backgroundPosition: 'center',
                     borderColor: propertyVisual ? propertyVisual.color : '#64748b',
                     borderWidth: propertyVisual ? 3 : 1,
-                    borderStyle: isMoveReachable && !isPreview && !isSelectedTile ? 'dashed' : 'solid',
+                    borderStyle: isMoveReachable && !isPreview && !isSelectedTile ? BOARD_VISUAL_TOKENS.moveReachable.borderStyle : 'solid',
                     boxShadow: routeOutline,
                     cursor: isClickable ? 'pointer' : 'not-allowed',
                     flexDirection: 'column',
@@ -380,6 +387,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   disabled={!isClickable}
                   data-attack-range={isAttackRange ? 'true' : 'false'}
                   data-move-reachable={isMoveReachable ? 'true' : 'false'}
+                  data-preview-path={isPreview ? 'true' : 'false'}
                   data-property-owner={propertyVisual ? propertyVisual.tag : 'NONE'}
                   data-fog-hidden={isVisible ? 'false' : 'true'}
                   data-unit-hp={unitHpLabel ?? 'NONE'}
@@ -401,6 +409,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     {terrainVisual.short}
                     {isVisible && propertyVisual ? `(${propertyVisual.tag})` : ''}
                   </span>
+                  {isPreview ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: BOARD_VISUAL_TOKENS.previewPath.markerBg,
+                        border: `2px solid ${BOARD_VISUAL_TOKENS.previewPath.markerBorder}`,
+                        boxShadow: '0 0 0 1px rgba(15,23,42,0.18)',
+                      }}
+                    />
+                  ) : null}
                   {unitHpLabel ? (
                     <span
                       style={{
@@ -451,9 +475,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         fontWeight: 800,
                         padding: '1px 3px',
                         borderRadius: 3,
-                        background: ownerBadge === '味' ? '#dcfce7' : '#fee2e2',
-                        color: ownerBadge === '味' ? '#166534' : '#991b1b',
-                        border: `1px solid ${ownerBadge === '味' ? '#16a34a' : '#ef4444'}`,
+                        background: ownerBadgeToken.badgeBg,
+                        color: ownerBadgeToken.badgeColor,
+                        border: `1px solid ${ownerBadgeToken.borderColor}`,
                       }}
                     >
                       {ownerBadge}
@@ -468,32 +492,3 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     </section>
   );
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
