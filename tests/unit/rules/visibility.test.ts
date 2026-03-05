@@ -111,5 +111,35 @@ describe('visibility ルール', () => {
     expect(visibleTiles.has('1,1')).toBe(true); // P1 CITY
   });
 
+  it('FoW時、森タイル上の敵は非隣接だと不可視になる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+
+    state.map.tiles['3,1'] = {
+      ...state.map.tiles['3,1'],
+      terrainType: 'FOREST',
+    };
+    state.units.p2_inf.position = { x: 3, y: 1 }; // p1_inf(1,1)の視界2内だが非隣接
+    state.units.p1_tank.position = { x: 0, y: 4 };
+
+    const visible = getVisibleEnemyUnitIds(state, 'P1');
+    expect(visible.has('p2_inf')).toBe(false);
+  });
+
+  it('FoW時、森タイル上の敵は隣接時のみ可視になる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+
+    state.map.tiles['3,1'] = {
+      ...state.map.tiles['3,1'],
+      terrainType: 'FOREST',
+    };
+    state.units.p2_inf.position = { x: 3, y: 1 };
+    state.units.p1_tank.position = { x: 2, y: 1 }; // 隣接
+
+    const visible = getVisibleEnemyUnitIds(state, 'P1');
+    expect(visible.has('p2_inf')).toBe(true);
+  });
 });
+
 

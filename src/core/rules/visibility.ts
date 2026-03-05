@@ -64,6 +64,17 @@ export const getVisibleTileCoordKeys = (state: GameState, viewer: PlayerId): Set
   return visible;
 };
 
+const isForestConcealedEnemyVisible = (state: GameState, viewer: PlayerId, enemyCoordKey: string): boolean => {
+  const tile = state.map.tiles[enemyCoordKey];
+  if (!tile || tile.terrainType !== 'FOREST') {
+    return true;
+  }
+
+  return Object.values(state.units)
+    .filter((u) => u.owner === viewer && u.hp > 0)
+    .some((u) => manhattanDistance(u.position, tile.coord) <= 1);
+};
+
 export const getVisibleEnemyUnitIds = (state: GameState, viewer: PlayerId): Set<string> => {
   if (!state.fogOfWar) {
     return new Set(
@@ -77,7 +88,11 @@ export const getVisibleEnemyUnitIds = (state: GameState, viewer: PlayerId): Set<
   return new Set(
     Object.values(state.units)
       .filter((u) => u.owner !== viewer && u.hp > 0)
-      .filter((u) => visibleTiles.has(toCoordKey(u.position)))
+      .filter((u) => {
+        const enemyCoordKey = toCoordKey(u.position);
+        if (!visibleTiles.has(enemyCoordKey)) return false;
+        return isForestConcealedEnemyVisible(state, viewer, enemyCoordKey);
+      })
       .map((u) => u.id),
   );
 };
@@ -94,3 +109,4 @@ export const getVisibleEnemyCoordKeys = (state: GameState, viewer: PlayerId): Se
 
   return keys;
 };
+
