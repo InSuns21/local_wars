@@ -842,6 +842,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
               previewPath={previewPath}
               moveRangeTiles={moveRangeTiles}
               attackRangeTiles={attackRangeTiles}
+              highlightedTargetUnitId={canIssueAttack ? targetUnitId || null : null}
               onSelectUnit={isGameOver ? () => {} : selectUnit}
               onSelectTile={handleSelectTile}
             />
@@ -915,6 +916,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     </Box>
   );
 };
+
 
 
 

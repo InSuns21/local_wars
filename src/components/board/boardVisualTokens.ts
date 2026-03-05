@@ -26,6 +26,14 @@
     label: '攻撃範囲',
     overlay: 'rgba(252,165,165,0.5)',
   },
+  attackTarget: {
+    label: '攻撃対象',
+    overlay: 'rgba(244,63,94,0.28)',
+    outline: 'inset 0 0 0 3px #be123c',
+    badgeBg: '#ffe4e6',
+    badgeColor: '#9f1239',
+    borderColor: '#e11d48',
+  },
   friendlyUnit: {
     label: '味方ユニット',
     badgeBg: '#dcfce7',

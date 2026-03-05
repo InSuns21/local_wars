@@ -121,6 +121,15 @@ export const BoardLegend: React.FC = () => (
         overlay={BOARD_VISUAL_TOKENS.attackRange.overlay}
       />
       <LegendSwatch
+        label={BOARD_VISUAL_TOKENS.attackTarget.label}
+        overlay={BOARD_VISUAL_TOKENS.attackTarget.overlay}
+        outline={BOARD_VISUAL_TOKENS.attackTarget.outline}
+        badgeText="標的"
+        badgeBg={BOARD_VISUAL_TOKENS.attackTarget.badgeBg}
+        badgeColor={BOARD_VISUAL_TOKENS.attackTarget.badgeColor}
+        borderColor={BOARD_VISUAL_TOKENS.attackTarget.borderColor}
+      />
+      <LegendSwatch
         label={BOARD_VISUAL_TOKENS.friendlyUnit.label}
         badgeText="味"
         badgeBg={BOARD_VISUAL_TOKENS.friendlyUnit.badgeBg}

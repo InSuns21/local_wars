@@ -28,6 +28,7 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     expect(within(legend).getByText('経路プレビュー')).toBeInTheDocument();
     expect(within(legend).getByText('移動可能')).toBeInTheDocument();
     expect(within(legend).getByText('攻撃範囲')).toBeInTheDocument();
+    expect(within(legend).getByText('攻撃対象')).toBeInTheDocument();
     expect(within(legend).getByText('味方ユニット')).toBeInTheDocument();
     expect(within(legend).getByText('敵ユニット')).toBeInTheDocument();
     expect(within(legend).getByText('自軍拠点')).toBeInTheDocument();
@@ -136,6 +137,18 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     expect(screen.getByRole('button', { name: 'タイル 2,1' })).toHaveAttribute('data-move-reachable', 'true');
   });
 
+  it('攻撃対象を選ぶと対象の敵ユニットだけ強調表示される', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.change(screen.getByLabelText('攻撃対象'), { target: { value: 'p2_tank' } });
+
+    expect(screen.getByRole('button', { name: 'タイル 3,2' })).toHaveAttribute('data-attack-target', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 2,2' })).toHaveAttribute('data-attack-target', 'false');
+  });
+
   it('移動可能マスは破線枠で表示される', () => {
     const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
     render(<BattleScreen useStore={store} />);
@@ -157,4 +170,3 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     expect(screen.getByRole('button', { name: 'タイル 2,3' })).toHaveAttribute('data-move-reachable', 'false');
   });
 });
-

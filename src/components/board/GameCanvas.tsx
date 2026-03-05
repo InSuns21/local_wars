@@ -18,6 +18,7 @@ type GameCanvasProps = {
   previewPath: Coord[];
   moveRangeTiles: Coord[];
   attackRangeTiles: Coord[];
+  highlightedTargetUnitId?: string | null;
   onSelectUnit: (unitId: string | null) => void;
   onSelectTile: (coord: Coord) => void;
 };
@@ -251,6 +252,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   previewPath,
   moveRangeTiles,
   attackRangeTiles,
+  highlightedTargetUnitId,
   onSelectUnit,
   onSelectTile,
 }) => {
@@ -316,6 +318,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const isPreview = previewKeys.has(key);
               const isMoveReachable = moveKeys.has(key);
               const isAttackRange = attackKeys.has(key);
+              const isAttackTarget = Boolean(unit && highlightedTargetUnitId === unit.id);
 
               const isClickable = Boolean(unit) || (!selectedUnit ? false : isMoveReachable);
 
@@ -327,13 +330,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 ? BOARD_VISUAL_TOKENS.selectedUnit.overlay
                 : isSelectedTile
                   ? BOARD_VISUAL_TOKENS.selectedTile.overlay
-                  : isPreview
-                    ? BOARD_VISUAL_TOKENS.previewPath.overlay
-                    : isMoveReachable
-                      ? BOARD_VISUAL_TOKENS.moveReachable.overlay
-                      : isAttackRange
-                        ? BOARD_VISUAL_TOKENS.attackRange.overlay
-                        : 'rgba(255,255,255,0.06)';
+                  : isAttackTarget
+                    ? BOARD_VISUAL_TOKENS.attackTarget.overlay
+                    : isPreview
+                      ? BOARD_VISUAL_TOKENS.previewPath.overlay
+                      : isMoveReachable
+                        ? BOARD_VISUAL_TOKENS.moveReachable.overlay
+                        : isAttackRange
+                          ? BOARD_VISUAL_TOKENS.attackRange.overlay
+                          : 'rgba(255,255,255,0.06)';
               const ownerBadge = unit
                 ? unit.owner === gameState.currentPlayerId
                   ? '味'
@@ -349,11 +354,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 ? BOARD_VISUAL_TOKENS.selectedUnit.outline
                 : isSelectedTile
                   ? BOARD_VISUAL_TOKENS.selectedTile.outline
-                  : isPreview
-                    ? BOARD_VISUAL_TOKENS.previewPath.outline
-                    : isMoveReachable
-                      ? BOARD_VISUAL_TOKENS.moveReachable.outline
-                      : undefined;
+                  : isAttackTarget
+                    ? BOARD_VISUAL_TOKENS.attackTarget.outline
+                    : isPreview
+                      ? BOARD_VISUAL_TOKENS.previewPath.outline
+                      : isMoveReachable
+                        ? BOARD_VISUAL_TOKENS.moveReachable.outline
+                        : undefined;
 
               const tooltipText = buildTileTooltip(terrainType, isVisible ? unit : undefined, coord, tile?.capturePoints);
               const ownerBadgeToken = ownerBadge === '味'
@@ -386,6 +393,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   }}
                   disabled={!isClickable}
                   data-attack-range={isAttackRange ? 'true' : 'false'}
+                  data-attack-target={isAttackTarget ? 'true' : 'false'}
                   data-move-reachable={isMoveReachable ? 'true' : 'false'}
                   data-preview-path={isPreview ? 'true' : 'false'}
                   data-property-owner={propertyVisual ? propertyVisual.tag : 'NONE'}
@@ -463,6 +471,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                       }}
                     >
                       {propertyDurabilityLabel}
+                    </span>
+                  ) : null}
+                  {isAttackTarget ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 3,
+                        left: 3,
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: '1px 3px',
+                        borderRadius: 3,
+                        background: BOARD_VISUAL_TOKENS.attackTarget.badgeBg,
+                        color: BOARD_VISUAL_TOKENS.attackTarget.badgeColor,
+                        border: `1px solid ${BOARD_VISUAL_TOKENS.attackTarget.borderColor}`,
+                      }}
+                    >
+                      標的
                     </span>
                   ) : null}
                   {ownerBadge && isVisible ? (
