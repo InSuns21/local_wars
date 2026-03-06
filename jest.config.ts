@@ -1,4 +1,4 @@
-﻿import type { Config } from 'jest';
+import type { Config } from 'jest';
 
 const config: Config = {
   preset: 'ts-jest',
@@ -6,7 +6,12 @@ const config: Config = {
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/__tests__/**/*.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        diagnostics: false,
+      },
+    ],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -22,7 +27,7 @@ const config: Config = {
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   maxWorkers: 7,
-  // testSequencer: '<rootDir>/tests/jest.sequencer.js',
+  cacheDirectory: '<rootDir>/.jest-cache',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.tsx'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
