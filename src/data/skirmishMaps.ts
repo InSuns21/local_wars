@@ -1,4 +1,5 @@
-﻿import type { PlayerId } from '@core/types/game';
+﻿import type { MapMeta } from '@/app/types';
+import type { PlayerId } from '@core/types/game';
 import type { CommandHqByPlayer, MapState, TerrainType, TileState } from '@core/types/map';
 import type { UnitState, UnitType } from '@core/types/unit';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
@@ -464,6 +465,90 @@ const TEMPLATES: SkirmishTemplate[] = [
   },
 ];
 
+const MAP_METADATA: Record<string, Omit<MapMeta, 'id' | 'name' | 'width' | 'height'>> = {
+  'plains-clash': {
+    difficulty: 'beginner',
+    estimatedMinutes: 20,
+    victoryHint: '中央工場を先に確保して物量差を作る展開になりやすい。',
+    featureTags: ['中央工場', '平地多め', '基本戦術向け'],
+    summary: '遮蔽物が少なく、基本的な移動と正面戦闘を学びやすい標準マップ。',
+    recommendedForFirstPlay: true,
+    recommendedFor: '初回プレイ / 基本操作確認',
+  },
+  'river-crossing': {
+    difficulty: 'standard',
+    estimatedMinutes: 25,
+    victoryHint: '橋の制圧に失敗すると前線が停滞しやすい。砲撃支援が重要。',
+    featureTags: ['橋', '河川', '砲兵戦'],
+    summary: '橋と川で進軍ルートが絞られ、突破の順番が勝敗を左右する。',
+    recommendedFor: '中盤の押し引きを学びたい人',
+  },
+  'forest-line': {
+    difficulty: 'standard',
+    estimatedMinutes: 28,
+    victoryHint: '森越しの索敵差と待ち伏せを活かした消耗戦になりやすい。',
+    featureTags: ['森林地帯', '遮蔽', '待ち伏せ'],
+    summary: '視界と地形防御を使った前線維持が問われるマップ。',
+    recommendedFor: '索敵と地形の相性を試したい人',
+  },
+  'bridge-head': {
+    difficulty: 'standard',
+    estimatedMinutes: 24,
+    victoryHint: '単一の橋を押さえつつ、渡河後の着地地点を確保できるかが鍵。',
+    featureTags: ['単一路線', '橋頭堡', '正面突破'],
+    summary: '橋を巡る衝突が濃く、短いターンで戦線の優劣が動く。',
+    recommendedFor: '短めの緊張感ある対局',
+  },
+  'iron-route': {
+    difficulty: 'challenging',
+    estimatedMinutes: 32,
+    victoryHint: '中央工場群を取れても山地の詰まりで逆襲されやすい。進軍路の整理が必要。',
+    featureTags: ['複数工場', '山地', '主力戦'],
+    summary: '中盤以降の生産力差と進軍路管理が重要になる重めの会戦。',
+    recommendedFor: '物量戦と主力運用を楽しみたい人',
+  },
+  'capital-fall': {
+    difficulty: 'challenging',
+    estimatedMinutes: 35,
+    victoryHint: '中央都市と司令部周辺の取り合いから一気に決着しやすい。',
+    featureTags: ['大規模', '複数都市', '長期戦'],
+    summary: '戦線が広く、補給と増援の回し方で差が出る上級者向けマップ。',
+    recommendedFor: '長めの本格対局',
+  },
+  'twin-ridges': {
+    difficulty: 'standard',
+    estimatedMinutes: 26,
+    victoryHint: '山越しの射線と中央工場の確保タイミングが勝負を分ける。',
+    featureTags: ['山岳', '中央工場', '対戦車戦'],
+    summary: '狭い通路をどう抜くかで、戦車と対戦車の価値が変わる。',
+    recommendedFor: '地形差のある対面戦',
+  },
+  'urban-grid': {
+    difficulty: 'beginner',
+    estimatedMinutes: 22,
+    victoryHint: '都市帯の取り合いで資金差が付きやすく、拠点確保の練習に向く。',
+    featureTags: ['市街地', '都市密集', '拠点争奪'],
+    summary: '都市が多く、占領と前線維持の基本をテンポよく学べる。',
+    recommendedFor: '拠点占領の練習',
+  },
+  'canyon-push': {
+    difficulty: 'challenging',
+    estimatedMinutes: 30,
+    victoryHint: '峡谷出口で渋滞すると反撃を受けやすい。主力投入の順番が重要。',
+    featureTags: ['峡谷', '進軍路限定', '突破戦'],
+    summary: '通れる場所が限られ、配置の小さな差がそのまま戦況差になる。',
+    recommendedFor: '押し込みと詰まりの判断を試したい人',
+  },
+  'highland-ring': {
+    difficulty: 'challenging',
+    estimatedMinutes: 33,
+    victoryHint: '高地外周を取るか、中央工場を急ぐかでゲームプランが大きく分かれる。',
+    featureTags: ['高地', '包囲', '中央争奪'],
+    summary: '高地の圧力と中央制圧の両立が難しい、判断量の多いマップ。',
+    recommendedFor: '複数戦線を同時管理したい人',
+  },
+};
+
 const SCENARIOS = TEMPLATES.map((template): SkirmishScenario => ({
   id: template.id,
   name: template.name,
@@ -475,11 +560,12 @@ export const SKIRMISH_SCENARIOS: Record<string, SkirmishScenario> = Object.fromE
   SCENARIOS.map((scenario) => [scenario.id, scenario]),
 );
 
-export const SKIRMISH_MAP_METAS = SCENARIOS.map((scenario) => ({
+export const SKIRMISH_MAP_METAS: MapMeta[] = SCENARIOS.map((scenario) => ({
   id: scenario.id,
   name: scenario.name,
   width: scenario.map.width,
   height: scenario.map.height,
+  ...MAP_METADATA[scenario.id],
 }));
 
 export const getSkirmishScenario = (mapId: string): SkirmishScenario | null => {

@@ -63,9 +63,18 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
   custom: DEFAULT_SETTINGS,
 };
 
+export type MapDifficulty = 'beginner' | 'standard' | 'challenging';
+
 export type MapMeta = {
   id: string;
   name: string;
   width: number;
   height: number;
+  difficulty: MapDifficulty;
+  estimatedMinutes: number;
+  victoryHint: string;
+  featureTags: string[];
+  summary: string;
+  recommendedForFirstPlay?: boolean;
+  recommendedFor?: string;
 };

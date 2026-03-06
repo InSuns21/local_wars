@@ -259,12 +259,37 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
     [saveSlots],
   );
 
+  const latestSaveSummary = useMemo(() => {
+    const latest = saveSlotSummary
+      .filter((entry) => Boolean(entry.slot))
+      .sort((left, right) => Date.parse(right.slot?.updatedAt ?? '') - Date.parse(left.slot?.updatedAt ?? ''))[0];
+
+    if (!latest?.slot) {
+      return null;
+    }
+
+    const mapName = MAP_CATALOG.find((map) => map.id === latest.slot?.mapId)?.name ?? latest.slot.mapId;
+    return {
+      slotId: latest.slotId,
+      mapName,
+      updatedAt: latest.slot.updatedAt,
+      turn: latest.slot.state.turn,
+    };
+  }, [saveSlotSummary]);
+
+  const hasAnySaveData = useMemo(
+    () => saveSlotSummary.some((entry) => Boolean(entry.slot)),
+    [saveSlotSummary],
+  );
+
   return (
     <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <Box sx={{ minHeight: '100vh', px: 0, py: 0 }}>
         {screen === 'title' && (
           <TitleScreen
+            latestSaveSummary={latestSaveSummary}
+            hasAnySaveData={hasAnySaveData}
             onStart={() => setScreen('map-select')}
             onContinue={() => {
               refreshSlots();
