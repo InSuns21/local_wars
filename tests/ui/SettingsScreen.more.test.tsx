@@ -1,5 +1,5 @@
-﻿import '@testing-library/jest-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 
 describe('SettingsScreen 追加UIカバレッジ', () => {
@@ -8,9 +8,10 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
 
     render(<SettingsScreen onConfirm={onConfirm} onBack={() => {}} />);
 
-    fireEvent.change(screen.getByLabelText(/AI/), { target: { value: 'hard' } });
+    fireEvent.change(screen.getByLabelText('AIの強さ'), { target: { value: 'hard' } });
     fireEvent.change(screen.getByLabelText('人間が担当する陣営'), { target: { value: 'P2' } });
     fireEvent.click(screen.getByLabelText('索敵あり'));
+    fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
     fireEvent.change(screen.getByLabelText('初期資金'), { target: { value: '12345' } });
     fireEvent.change(screen.getByLabelText('1ターン収入（都市/工場/司令部）'), { target: { value: '777' } });
     fireEvent.change(screen.getByLabelText('都市のHP回復量（ターン開始時）'), { target: { value: '2' } });
@@ -38,9 +39,52 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(submitted.showEnemyActionLogs).toBe(false);
   });
 
+  it('詳細設定が初期状態で閉じている', () => {
+    render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
+
+    expect(screen.getByRole('button', { name: /詳細設定/ })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('プリセット変更で複数フィールドが更新される', () => {
+    render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
+
+    fireEvent.change(screen.getByLabelText('プリセット'), { target: { value: 'beginner' } });
+    fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
+
+    expect(screen.getByLabelText('AIの強さ')).toHaveValue('easy');
+    expect(screen.getByLabelText('索敵あり')).not.toBeChecked();
+    expect(screen.getByLabelText('初期資金')).toHaveValue(15000);
+    expect(screen.getByLabelText('燃料消費あり')).not.toBeChecked();
+    expect(screen.getByText('現在の状態: 初心者向け')).toBeInTheDocument();
+  });
+
+  it('リセットで標準値に戻る', () => {
+    render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
+
+    fireEvent.change(screen.getByLabelText('プリセット'), { target: { value: 'advanced' } });
+    fireEvent.click(screen.getByRole('button', { name: '標準にリセット' }));
+    fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
+
+    expect(screen.getByLabelText('AIの強さ')).toHaveValue('normal');
+    expect(screen.getByLabelText('初期資金')).toHaveValue(10000);
+    expect(screen.getByLabelText('燃料消費あり')).toBeChecked();
+    expect(screen.getByText('現在の状態: 標準')).toBeInTheDocument();
+  });
+
+  it('個別変更するとカスタム表示に切り替わる', () => {
+    render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
+
+    fireEvent.change(screen.getByLabelText('AIの強さ'), { target: { value: 'hard' } });
+
+    expect(screen.getByText('現在の状態: カスタム')).toBeInTheDocument();
+    const preset = screen.getByLabelText('プリセット');
+    expect(within(preset).getByRole('option', { name: 'カスタム' })).toBeDisabled();
+  });
+
   it('初期資金が負数のとき開始ボタンが無効になる', () => {
     render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
     fireEvent.change(screen.getByLabelText('初期資金'), { target: { value: '-1' } });
 
     expect(screen.getByRole('button', { name: 'この設定で開始' })).toBeDisabled();
@@ -49,6 +93,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
   it('拠点HP回復量が負数のとき開始ボタンが無効になる', () => {
     render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
     fireEvent.change(screen.getByLabelText('都市のHP回復量（ターン開始時）'), { target: { value: '-1' } });
 
     expect(screen.getByRole('button', { name: 'この設定で開始' })).toBeDisabled();

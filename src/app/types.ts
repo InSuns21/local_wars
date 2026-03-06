@@ -1,5 +1,6 @@
-﻿export type AiDifficulty = 'easy' | 'normal' | 'hard';
+export type AiDifficulty = 'easy' | 'normal' | 'hard';
 export type HumanPlayerSide = 'P1' | 'P2';
+export type GameSettingsPreset = 'standard' | 'beginner' | 'advanced' | 'custom';
 
 export type GameSettings = {
   aiDifficulty: AiDifficulty;
@@ -33,10 +34,38 @@ export const DEFAULT_SETTINGS: GameSettings = {
   showEnemyActionLogs: false,
 };
 
+export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
+  standard: DEFAULT_SETTINGS,
+  beginner: {
+    ...DEFAULT_SETTINGS,
+    aiDifficulty: 'easy',
+    fogOfWar: false,
+    initialFunds: 15000,
+    hpRecoveryCity: 2,
+    hpRecoveryFactory: 3,
+    hpRecoveryHq: 4,
+    enableFuelSupply: false,
+    enableAmmoSupply: false,
+    showEnemyActionLogs: true,
+  },
+  advanced: {
+    ...DEFAULT_SETTINGS,
+    aiDifficulty: 'hard',
+    fogOfWar: true,
+    initialFunds: 8000,
+    incomePerProperty: 900,
+    hpRecoveryFactory: 1,
+    hpRecoveryHq: 2,
+    enableFuelSupply: true,
+    enableAmmoSupply: true,
+    showEnemyActionLogs: false,
+  },
+  custom: DEFAULT_SETTINGS,
+};
+
 export type MapMeta = {
   id: string;
   name: string;
   width: number;
   height: number;
 };
-
