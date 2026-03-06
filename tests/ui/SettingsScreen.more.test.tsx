@@ -81,13 +81,26 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(within(preset).getByRole('option', { name: 'カスタム' })).toBeDisabled();
   });
 
-  it('初期資金が負数のとき開始ボタンが無効になる', () => {
+  it('数値項目に許容範囲と推奨レンジが表示される', () => {
     render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
 
     fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
-    fireEvent.change(screen.getByLabelText('初期資金'), { target: { value: '-1' } });
+
+    expect(screen.getByLabelText('初期資金')).toHaveAttribute('min', '0');
+    expect(screen.getByLabelText('初期資金')).toHaveAttribute('max', '50000');
+    expect(screen.getByText(/標準値: 10000/)).toBeInTheDocument();
+    expect(screen.getByText(/推奨: 8000-15000/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '詳細設定を標準へ戻す' })).toBeInTheDocument();
+  });
+
+  it('許容範囲外の数値を入れると開始ボタンが無効になり、警告が出る', () => {
+    render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
+    fireEvent.change(screen.getByLabelText('初期資金'), { target: { value: '60000' } });
 
     expect(screen.getByRole('button', { name: 'この設定で開始' })).toBeDisabled();
+    expect(screen.getByText(/許容範囲は 0-50000/)).toBeInTheDocument();
   });
 
   it('拠点HP回復量が負数のとき開始ボタンが無効になる', () => {

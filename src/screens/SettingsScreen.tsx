@@ -3,6 +3,7 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -44,6 +45,58 @@ const PRESET_DESCRIPTIONS: Record<GameSettingsPreset, string> = {
   custom: '個別変更中です。必要な項目だけ調整できます。',
 };
 
+const NUMERIC_FIELD_META: {
+  [K in 'initialFunds' | 'incomePerProperty' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq']: {
+    min: number;
+    max: number;
+    step: number;
+    recommendedRangeText: string;
+    defaultValue: number;
+    description: string;
+  };
+} = {
+  initialFunds: {
+    min: 0,
+    max: 50000,
+    step: 1000,
+    recommendedRangeText: '推奨: 8000-15000',
+    defaultValue: DEFAULT_SETTINGS.initialFunds,
+    description: '開始時の所持金です。高いほど序盤から高コストユニットを出しやすくなります。',
+  },
+  incomePerProperty: {
+    min: 0,
+    max: 5000,
+    step: 100,
+    recommendedRangeText: '推奨: 800-1500',
+    defaultValue: DEFAULT_SETTINGS.incomePerProperty,
+    description: '毎ターン得られる資金です。高いほど大型ユニットを継続生産しやすくなります。',
+  },
+  hpRecoveryCity: {
+    min: 0,
+    max: 10,
+    step: 1,
+    recommendedRangeText: '推奨: 1-3',
+    defaultValue: DEFAULT_SETTINGS.hpRecoveryCity,
+    description: '前線の都市での継戦能力に影響します。',
+  },
+  hpRecoveryFactory: {
+    min: 0,
+    max: 10,
+    step: 1,
+    recommendedRangeText: '推奨: 1-4',
+    defaultValue: DEFAULT_SETTINGS.hpRecoveryFactory,
+    description: '生産拠点の立て直し速度に影響します。',
+  },
+  hpRecoveryHq: {
+    min: 0,
+    max: 10,
+    step: 1,
+    recommendedRangeText: '推奨: 2-5',
+    defaultValue: DEFAULT_SETTINGS.hpRecoveryHq,
+    description: '司令部の粘り強さに影響します。高すぎると決着が長引きます。',
+  },
+};
+
 const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
   left.aiDifficulty === right.aiDifficulty
   && left.humanPlayerSide === right.humanPlayerSide
@@ -79,19 +132,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
 
   const isValid = useMemo(
-    () =>
-      settings.initialFunds >= 0 &&
-      settings.incomePerProperty >= 0 &&
-      settings.hpRecoveryCity >= 0 &&
-      settings.hpRecoveryFactory >= 0 &&
-      settings.hpRecoveryHq >= 0,
-    [
-      settings.initialFunds,
-      settings.incomePerProperty,
-      settings.hpRecoveryCity,
-      settings.hpRecoveryFactory,
-      settings.hpRecoveryHq,
-    ],
+    () => Object.entries(NUMERIC_FIELD_META).every(([key, meta]) => {
+      const value = settings[key as keyof typeof NUMERIC_FIELD_META];
+      return typeof value === 'number' && !Number.isNaN(value) && value >= meta.min && value <= meta.max;
+    }),
+    [settings],
   );
 
   const applyPreset = (preset: GameSettingsPreset): void => {
@@ -106,6 +151,29 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
       setSelectedPreset(detectPreset(next));
       return next;
     });
+  };
+
+  const getNumericFieldStatus = (
+    key: keyof typeof NUMERIC_FIELD_META,
+  ): { error: boolean; helperText: string } => {
+    const meta = NUMERIC_FIELD_META[key];
+    const value = settings[key];
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return {
+        error: true,
+        helperText: `${meta.description} 入力可能範囲は ${meta.min}-${meta.max} です。`,
+      };
+    }
+    if (value < meta.min || value > meta.max) {
+      return {
+        error: true,
+        helperText: `${meta.description} 許容範囲は ${meta.min}-${meta.max} です。${meta.recommendedRangeText}。`,
+      };
+    }
+    return {
+      error: false,
+      helperText: `${meta.description} 標準値: ${meta.defaultValue} / ${meta.recommendedRangeText}`,
+    };
   };
 
   return (
@@ -213,14 +281,28 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
             </AccordionSummary>
             <AccordionDetails id="advanced-settings-content">
               <Stack spacing={2}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between">
+                  <Alert severity="info" sx={{ flex: 1 }}>
+                    数値は許容範囲を超えると開始できません。推奨レンジ内なら標準バランスを保ちやすくなります。
+                  </Alert>
+                  <Button type="button" variant="outlined" onClick={() => applyPreset('standard')}>
+                    詳細設定を標準へ戻す
+                  </Button>
+                </Stack>
+
                 <TextField
                   id="initial-funds"
                   label="初期資金"
                   type="number"
                   value={settings.initialFunds}
                   onChange={(e) => update('initialFunds', Number(e.target.value))}
-                  helperText="開始時の所持金です。迷ったら 10000 のままで問題ありません。"
-                  inputProps={{ min: 0, step: 1000 }}
+                  error={getNumericFieldStatus('initialFunds').error}
+                  helperText={getNumericFieldStatus('initialFunds').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.initialFunds.min,
+                    max: NUMERIC_FIELD_META.initialFunds.max,
+                    step: NUMERIC_FIELD_META.initialFunds.step,
+                  }}
                 />
 
                 <TextField
@@ -229,8 +311,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                   type="number"
                   value={settings.incomePerProperty}
                   onChange={(e) => update('incomePerProperty', Number(e.target.value))}
-                  helperText="毎ターン得られる資金です。高いほど大型ユニットを出しやすくなります。"
-                  inputProps={{ min: 0, step: 100 }}
+                  error={getNumericFieldStatus('incomePerProperty').error}
+                  helperText={getNumericFieldStatus('incomePerProperty').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.incomePerProperty.min,
+                    max: NUMERIC_FIELD_META.incomePerProperty.max,
+                    step: NUMERIC_FIELD_META.incomePerProperty.step,
+                  }}
                 />
 
                 <TextField
@@ -239,8 +326,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                   type="number"
                   value={settings.hpRecoveryCity}
                   onChange={(e) => update('hpRecoveryCity', Number(e.target.value))}
-                  helperText="前線の継戦能力に影響します。標準は 1 です。"
-                  inputProps={{ min: 0, step: 1 }}
+                  error={getNumericFieldStatus('hpRecoveryCity').error}
+                  helperText={getNumericFieldStatus('hpRecoveryCity').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.hpRecoveryCity.min,
+                    max: NUMERIC_FIELD_META.hpRecoveryCity.max,
+                    step: NUMERIC_FIELD_META.hpRecoveryCity.step,
+                  }}
                 />
 
                 <TextField
@@ -249,8 +341,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                   type="number"
                   value={settings.hpRecoveryFactory}
                   onChange={(e) => update('hpRecoveryFactory', Number(e.target.value))}
-                  helperText="生産拠点の回復量です。耐久戦を長くしたいときに調整します。"
-                  inputProps={{ min: 0, step: 1 }}
+                  error={getNumericFieldStatus('hpRecoveryFactory').error}
+                  helperText={getNumericFieldStatus('hpRecoveryFactory').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.hpRecoveryFactory.min,
+                    max: NUMERIC_FIELD_META.hpRecoveryFactory.max,
+                    step: NUMERIC_FIELD_META.hpRecoveryFactory.step,
+                  }}
                 />
 
                 <TextField
@@ -259,8 +356,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                   type="number"
                   value={settings.hpRecoveryHq}
                   onChange={(e) => update('hpRecoveryHq', Number(e.target.value))}
-                  helperText="司令部の粘り強さに影響します。高すぎると決着が伸びます。"
-                  inputProps={{ min: 0, step: 1 }}
+                  error={getNumericFieldStatus('hpRecoveryHq').error}
+                  helperText={getNumericFieldStatus('hpRecoveryHq').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.hpRecoveryHq.min,
+                    max: NUMERIC_FIELD_META.hpRecoveryHq.max,
+                    step: NUMERIC_FIELD_META.hpRecoveryHq.step,
+                  }}
                 />
 
                 <FormControlLabel
