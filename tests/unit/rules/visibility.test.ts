@@ -1,4 +1,4 @@
-﻿import { applyCommand } from '@core/engine/commandApplier';
+import { applyCommand } from '@core/engine/commandApplier';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { getVisibleEnemyCoordKeys, getVisibleEnemyUnitIds, getVisibleTileCoordKeys } from '@core/rules/visibility';
 
@@ -17,7 +17,6 @@ describe('visibility ルール', () => {
     const state = createInitialGameState();
     state.fogOfWar = true;
 
-    // P1から十分遠ざけて視界外にする
     state.units.p2_inf.position = { x: 4, y: 4 };
     state.units.p2_tank.position = { x: 4, y: 3 };
 
@@ -77,6 +76,7 @@ describe('visibility ルール', () => {
     const visibleAfter = getVisibleEnemyUnitIds(attacked.state, 'P1');
     expect(visibleAfter.has('p2_tank')).toBe(false);
   });
+
   it('索敵OFF時の可視座標キーは全敵ユニット位置を返す', () => {
     const state = createInitialGameState();
     state.fogOfWar = false;
@@ -90,13 +90,14 @@ describe('visibility ルール', () => {
     const state = createInitialGameState();
     state.fogOfWar = true;
 
-    state.units.p2_inf.position = { x: 2, y: 1 }; // p1_inf(1,1)の視界2内
-    state.units.p2_tank.position = { x: 4, y: 4 }; // 視界外
+    state.units.p2_inf.position = { x: 2, y: 1 };
+    state.units.p2_tank.position = { x: 4, y: 4 };
 
     const keys = getVisibleEnemyCoordKeys(state, 'P1');
     expect(keys.has('2,1')).toBe(true);
     expect(keys.has('4,4')).toBe(false);
   });
+
   it('FoW時でも自軍の都市・工場・HQは常に可視になる', () => {
     const state = createInitialGameState();
     state.fogOfWar = true;
@@ -106,9 +107,39 @@ describe('visibility ルール', () => {
 
     const visibleTiles = getVisibleTileCoordKeys(state, 'P1');
 
-    expect(visibleTiles.has('0,0')).toBe(true); // P1 HQ
-    expect(visibleTiles.has('0,1')).toBe(true); // P1 FACTORY
-    expect(visibleTiles.has('1,1')).toBe(true); // P1 CITY
+    expect(visibleTiles.has('0,0')).toBe(true);
+    expect(visibleTiles.has('0,1')).toBe(true);
+    expect(visibleTiles.has('1,1')).toBe(true);
+  });
+
+  it('FoW時、森タイル自体も非隣接だと不可視になる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+
+    state.map.tiles['3,1'] = {
+      ...state.map.tiles['3,1'],
+      terrainType: 'FOREST',
+    };
+    state.units.p1_inf.position = { x: 1, y: 1 };
+    state.units.p1_tank.position = { x: 0, y: 4 };
+
+    const visibleTiles = getVisibleTileCoordKeys(state, 'P1');
+
+    expect(visibleTiles.has('3,1')).toBe(false);
+  });
+
+  it('FoW時、森タイルは隣接時のみ可視になる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+
+    state.map.tiles['3,1'] = {
+      ...state.map.tiles['3,1'],
+      terrainType: 'FOREST',
+    };
+    state.units.p1_tank.position = { x: 2, y: 1 };
+
+    const visibleTiles = getVisibleTileCoordKeys(state, 'P1');
+    expect(visibleTiles.has('3,1')).toBe(true);
   });
 
   it('FoW時、森タイル上の敵は非隣接だと不可視になる', () => {
@@ -119,7 +150,7 @@ describe('visibility ルール', () => {
       ...state.map.tiles['3,1'],
       terrainType: 'FOREST',
     };
-    state.units.p2_inf.position = { x: 3, y: 1 }; // p1_inf(1,1)の視界2内だが非隣接
+    state.units.p2_inf.position = { x: 3, y: 1 };
     state.units.p1_tank.position = { x: 0, y: 4 };
 
     const visible = getVisibleEnemyUnitIds(state, 'P1');
@@ -135,11 +166,9 @@ describe('visibility ルール', () => {
       terrainType: 'FOREST',
     };
     state.units.p2_inf.position = { x: 3, y: 1 };
-    state.units.p1_tank.position = { x: 2, y: 1 }; // 隣接
+    state.units.p1_tank.position = { x: 2, y: 1 };
 
     const visible = getVisibleEnemyUnitIds(state, 'P1');
     expect(visible.has('p2_inf')).toBe(true);
   });
 });
-
-

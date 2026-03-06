@@ -1,4 +1,4 @@
-﻿import type { GameState } from '@core/types/state';
+import type { GameState } from '@core/types/state';
 import type { PlayerId } from '@core/types/game';
 import { manhattanDistance, toCoordKey } from '@/utils/coord';
 
@@ -29,6 +29,26 @@ const getVisionRange = (state: GameState, unitType: string, coordKey: string): n
 const isAlwaysVisibleFriendlyProperty = (terrainType: string): boolean =>
   terrainType === 'CITY' || terrainType === 'FACTORY' || terrainType === 'HQ';
 
+const isAdjacentToFriendlyUnit = (state: GameState, viewer: PlayerId, coordKey: string): boolean => {
+  const tile = state.map.tiles[coordKey];
+  if (!tile) {
+    return false;
+  }
+
+  return Object.values(state.units)
+    .filter((u) => u.owner === viewer && u.hp > 0)
+    .some((u) => manhattanDistance(u.position, tile.coord) <= 1);
+};
+
+const isConcealedForestTileVisible = (state: GameState, viewer: PlayerId, coordKey: string): boolean => {
+  const tile = state.map.tiles[coordKey];
+  if (!tile || tile.terrainType !== 'FOREST') {
+    return true;
+  }
+
+  return isAdjacentToFriendlyUnit(state, viewer, coordKey);
+};
+
 export const getVisibleTileCoordKeys = (state: GameState, viewer: PlayerId): Set<string> => {
   if (!state.fogOfWar) {
     return new Set(Object.keys(state.map.tiles));
@@ -54,7 +74,7 @@ export const getVisibleTileCoordKeys = (state: GameState, viewer: PlayerId): Set
         const coord = { x, y };
         const coordKey = toCoordKey(coord);
         if (!state.map.tiles[coordKey]) continue;
-        if (manhattanDistance(ally.position, coord) <= range) {
+        if (manhattanDistance(ally.position, coord) <= range && isConcealedForestTileVisible(state, viewer, coordKey)) {
           visible.add(coordKey);
         }
       }
@@ -70,9 +90,7 @@ const isForestConcealedEnemyVisible = (state: GameState, viewer: PlayerId, enemy
     return true;
   }
 
-  return Object.values(state.units)
-    .filter((u) => u.owner === viewer && u.hp > 0)
-    .some((u) => manhattanDistance(u.position, tile.coord) <= 1);
+  return isAdjacentToFriendlyUnit(state, viewer, enemyCoordKey);
 };
 
 export const getVisibleEnemyUnitIds = (state: GameState, viewer: PlayerId): Set<string> => {
@@ -109,4 +127,3 @@ export const getVisibleEnemyCoordKeys = (state: GameState, viewer: PlayerId): Se
 
   return keys;
 };
-

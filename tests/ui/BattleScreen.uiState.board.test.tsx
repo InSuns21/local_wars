@@ -1,4 +1,4 @@
-﻿import '@testing-library/jest-dom';
+import '@testing-library/jest-dom';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { BattleScreen } from '@/screens/BattleScreen';
 import { createGameStore } from '@store/gameStore';
@@ -45,6 +45,22 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     render(<BattleScreen useStore={store} />);
 
     expect(screen.getByRole('button', { name: 'タイル 4,4' })).toHaveAttribute('data-fog-hidden', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 0,1' })).toHaveAttribute('data-fog-hidden', 'false');
+  });
+
+  it('FoW時は非隣接の森タイルが不可視表示になる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+    state.units.p1_inf.position = { x: 0, y: 0 };
+    state.units.p1_tank.position = { x: 0, y: 1 };
+    state.map.tiles['3,1'] = { ...state.map.tiles['3,1'], terrainType: 'FOREST' };
+    state.map.tiles['4,2'] = { ...state.map.tiles['4,2'], terrainType: 'FOREST' };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    expect(screen.getByRole('button', { name: 'タイル 3,1' })).toHaveAttribute('data-fog-hidden', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 4,2' })).toHaveAttribute('data-fog-hidden', 'true');
     expect(screen.getByRole('button', { name: 'タイル 0,1' })).toHaveAttribute('data-fog-hidden', 'false');
   });
 
