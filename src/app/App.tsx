@@ -1,6 +1,5 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Box,
   Button,
   CssBaseline,
@@ -67,6 +66,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
   const [selectedMapId, setSelectedMapId] = useState<string>(MAP_CATALOG[0]?.id ?? 'plains-clash');
   const [saveSlots, setSaveSlots] = useState<SaveSlotsRecord>(getAllSaveSlots(saveSlotsStorageKey));
   const [selectedSaveSlotId, setSelectedSaveSlotId] = useState<1 | 2 | 3>(1);
+  const [saveSelectFeedback, setSaveSelectFeedback] = useState<string>('');
   const [activeStore, setActiveStore] = useState<ReturnType<typeof createGameStore> | null>(null);
   const [activeSlotId, setActiveSlotId] = useState<1 | 2 | 3 | null>(null);
   const [activeMapId, setActiveMapId] = useState<string>('plains-clash');
@@ -75,7 +75,6 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
   const [showExitWithoutSaveConfirm, setShowExitWithoutSaveConfirm] = useState<boolean>(false);
   const [overwriteState, setOverwriteState] = useState<OverwriteState | null>(null);
   const [overwriteTargetSlotId, setOverwriteTargetSlotId] = useState<1 | 2 | 3>(1);
-  const [notice, setNotice] = useState<string>('');
   const [bgmVolume, setBgmVolume] = useState<number>(loadBgmVolume());
   const [isBgmBlocked, setIsBgmBlocked] = useState<boolean>(false);
   const [battleWinner, setBattleWinner] = useState<GameState['winner']>(null);
@@ -195,13 +194,13 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
     setActiveMapId(mapId);
     setActiveSettings(gameSettings);
     setScreen('battle');
-    setNotice('');
+    setSaveSelectFeedback('');
   };
 
   const loadGameFromSlot = (slotId: 1 | 2 | 3): void => {
     const slot = getSaveSlot(slotId, saveSlotsStorageKey);
     if (!slot) {
-      setNotice('選択したスロットにセーブデータがありません。');
+      setSaveSelectFeedback('選択したスロットにセーブデータがありません。');
       return;
     }
 
@@ -211,7 +210,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
     setActiveMapId(slot.mapId);
     setActiveSettings(slot.settings);
     setScreen('battle');
-    setNotice('');
+    setSaveSelectFeedback('');
   };
 
   const saveAndExit = (state: GameState): void => {
@@ -269,6 +268,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
             onStart={() => setScreen('map-select')}
             onContinue={() => {
               refreshSlots();
+              setSaveSelectFeedback('');
               setScreen('save-select');
             }}
             onCredits={() => setScreen('credits')}
@@ -304,7 +304,11 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
           <SaveSelectScreen
             slots={saveSlots}
             selectedSlotId={selectedSaveSlotId}
-            onSelectSlot={(slotId: 1 | 2 | 3) => setSelectedSaveSlotId(slotId)}
+            feedbackMessage={saveSelectFeedback}
+            onSelectSlot={(slotId: 1 | 2 | 3) => {
+              setSelectedSaveSlotId(slotId);
+              setSaveSelectFeedback('');
+            }}
             onConfirmLoad={() => loadGameFromSlot(selectedSaveSlotId)}
             onDelete={(slotId: 1 | 2 | 3) => setDeleteConfirmSlotId(slotId)}
             onBack={() => setScreen('title')}
@@ -334,12 +338,6 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
               setScreen('tutorial');
             }}
           />
-        )}
-
-        {notice && (
-          <Box sx={{ maxWidth: 760, mx: 'auto', mt: 1.5 }}>
-            <Alert severity="warning">{notice}</Alert>
-          </Box>
         )}
 
         {deleteConfirmSlotId && (
@@ -409,10 +407,3 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
     </ThemeProvider>
   );
 };
-
-
-
-
-
-
-
