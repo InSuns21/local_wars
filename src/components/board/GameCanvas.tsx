@@ -19,22 +19,13 @@ type GameCanvasProps = {
   moveRangeTiles: Coord[];
   attackRangeTiles: Coord[];
   highlightedTargetUnitId?: string | null;
+  zoom?: number;
   onSelectUnit: (unitId: string | null) => void;
   onSelectTile: (coord: Coord) => void;
 };
 
-const TILE_WIDTH = 112;
-const TILE_HEIGHT = 96;
-
-const tileStyle: React.CSSProperties = {
-  width: TILE_WIDTH,
-  height: TILE_HEIGHT,
-  border: '1px solid #cbd5e1',
-  fontSize: 12,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
+const BASE_TILE_WIDTH = 112;
+const BASE_TILE_HEIGHT = 96;
 
 const getPropertyOwnerVisual = (owner?: 'P1' | 'P2'): { tag: string; color: string } => {
   if (owner === 'P1') return { tag: 'P1', color: BOARD_VISUAL_TOKENS.friendlyProperty.borderColor };
@@ -253,9 +244,29 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   moveRangeTiles,
   attackRangeTiles,
   highlightedTargetUnitId,
+  zoom = 1,
   onSelectUnit,
   onSelectTile,
 }) => {
+  const tileWidth = Math.round(BASE_TILE_WIDTH * zoom);
+  const tileHeight = Math.round(BASE_TILE_HEIGHT * zoom);
+  const tileFontSize = Math.max(10, Math.round(12 * zoom));
+  const badgeFontSize = Math.max(9, Math.round(10 * zoom));
+  const unitBadgeInset = Math.max(3, Math.round(4 * zoom));
+  const hpMinWidth = Math.max(30, Math.round(34 * zoom));
+  const propertyMinWidth = Math.max(40, Math.round(44 * zoom));
+  const previewMarkerSize = Math.max(10, Math.round(12 * zoom));
+  const previewMarkerBorderWidth = Math.max(1, Math.round(2 * zoom));
+
+  const tileStyle: React.CSSProperties = {
+    width: tileWidth,
+    height: tileHeight,
+    border: '1px solid #cbd5e1',
+    fontSize: tileFontSize,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
   const visibleEnemyCoordKeys = useMemo(
     () => getVisibleEnemyCoordKeys(gameState, gameState.currentPlayerId),
     [gameState],
@@ -301,7 +312,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   return (
     <section aria-label="ゲーム盤面">
       <p style={{ margin: '0 0 6px', color: '#334155', fontSize: 12, fontWeight: 700 }}>盤面</p>
-      <div style={{ display: 'inline-block', border: '1px solid #64748b', padding: 6, background: '#f8fafc' }}>
+      <div
+        data-testid="game-board-grid"
+        data-board-zoom={zoom.toFixed(2)}
+        style={{ display: 'inline-block', border: '1px solid #64748b', padding: 6, background: '#f8fafc' }}
+      >
         {rows.map((y) => (
           <div key={`row-${y}`} style={{ display: 'flex' }}>
             {cols.map((x) => {
@@ -423,12 +438,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         position: 'absolute',
                         top: '50%',
                         left: '50%',
-                        width: 12,
-                        height: 12,
+                        width: previewMarkerSize,
+                        height: previewMarkerSize,
                         borderRadius: '50%',
                         transform: 'translate(-50%, -50%)',
                         background: BOARD_VISUAL_TOKENS.previewPath.markerBg,
-                        border: `2px solid ${BOARD_VISUAL_TOKENS.previewPath.markerBorder}`,
+                        border: `${previewMarkerBorderWidth}px solid ${BOARD_VISUAL_TOKENS.previewPath.markerBorder}`,
                         boxShadow: '0 0 0 1px rgba(15,23,42,0.18)',
                       }}
                     />
@@ -437,13 +452,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     <span
                       style={{
                         position: 'absolute',
-                        bottom: 4,
-                        right: 4,
-                        minWidth: 34,
+                        bottom: unitBadgeInset,
+                        right: unitBadgeInset,
+                        minWidth: hpMinWidth,
                         textAlign: 'center',
-                        fontSize: 10,
+                        fontSize: badgeFontSize,
                         fontWeight: 800,
-                        padding: '1px 4px',
+                        padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(3, Math.round(4 * zoom))}px`,
                         borderRadius: 3,
                         background: '#0f172a',
                         color: '#f8fafc',
@@ -457,13 +472,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     <span
                       style={{
                         position: 'absolute',
-                        bottom: 4,
-                        left: 4,
-                        minWidth: 44,
+                        bottom: unitBadgeInset,
+                        left: unitBadgeInset,
+                        minWidth: propertyMinWidth,
                         textAlign: 'center',
-                        fontSize: 10,
+                        fontSize: badgeFontSize,
                         fontWeight: 800,
-                        padding: '1px 4px',
+                        padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(3, Math.round(4 * zoom))}px`,
                         borderRadius: 3,
                         background: '#f8fafc',
                         color: '#1f2937',
@@ -477,11 +492,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     <span
                       style={{
                         position: 'absolute',
-                        top: 3,
-                        left: 3,
-                        fontSize: 10,
+                        top: Math.max(3, Math.round(3 * zoom)),
+                        left: Math.max(3, Math.round(3 * zoom)),
+                        fontSize: badgeFontSize,
                         fontWeight: 800,
-                        padding: '1px 3px',
+                        padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(2, Math.round(3 * zoom))}px`,
                         borderRadius: 3,
                         background: BOARD_VISUAL_TOKENS.attackTarget.badgeBg,
                         color: BOARD_VISUAL_TOKENS.attackTarget.badgeColor,
@@ -495,11 +510,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     <span
                       style={{
                         position: 'absolute',
-                        top: 3,
-                        right: 3,
-                        fontSize: 10,
+                        top: Math.max(3, Math.round(3 * zoom)),
+                        right: Math.max(3, Math.round(3 * zoom)),
+                        fontSize: badgeFontSize,
                         fontWeight: 800,
-                        padding: '1px 3px',
+                        padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(2, Math.round(3 * zoom))}px`,
                         borderRadius: 3,
                         background: ownerBadgeToken.badgeBg,
                         color: ownerBadgeToken.badgeColor,

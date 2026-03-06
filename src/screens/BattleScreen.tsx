@@ -51,6 +51,12 @@ const PRODUCIBLE_UNITS: UnitType[] = [
   "ANTI_AIR",
 ];
 
+const BOARD_ZOOM_OPTIONS = [
+  { value: 1, label: "100%" },
+  { value: 0.85, label: "85%" },
+  { value: 0.7, label: "70%" },
+] as const;
+
 const isIncomeProperty = (terrainType: string): boolean =>
   terrainType === "CITY" || terrainType === "FACTORY" || terrainType === "HQ";
 
@@ -135,6 +141,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const [produceUnitType, setProduceUnitType] = useState<UnitType>("INFANTRY");
   const [selectedFactoryKey, setSelectedFactoryKey] = useState<string>("");
   const [lastResult, setLastResult] = useState<string>("未実行");
+  const [boardZoom, setBoardZoom] = useState<number>(1);
   const [showOtherMenu, setShowOtherMenu] = useState<boolean>(false);
   const [showGameExitMenu, setShowGameExitMenu] = useState<boolean>(false);
   const [showHelpMenu, setShowHelpMenu] = useState<boolean>(false);
@@ -834,18 +841,58 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
         <Box sx={{ overflowY: "auto", pr: 0.5, minHeight: 0, height: "100%" }}>
           <BoardLegend />
-          <Paper variant="outlined" sx={{ p: 1.5, minHeight: 640 }}>
-            <GameCanvas
-              gameState={gameState}
-              selectedUnitId={selectedUnitId}
-              selectedTile={selectedTile}
-              previewPath={previewPath}
-              moveRangeTiles={moveRangeTiles}
-              attackRangeTiles={attackRangeTiles}
-              highlightedTargetUnitId={canIssueAttack ? targetUnitId || null : null}
-              onSelectUnit={isGameOver ? () => {} : selectUnit}
-              onSelectTile={handleSelectTile}
-            />
+          <Paper variant="outlined" sx={{ p: 1.5, minHeight: 640, display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              justifyContent="space-between"
+            >
+              <Box>
+                <Typography variant="h6">盤面表示</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  縮小すると広く俯瞰できます。盤面はスクロールして移動できます。
+                </Typography>
+              </Box>
+              <FormControl sx={{ minWidth: 140 }}>
+                <InputLabel variant="standard" htmlFor="board-zoom">盤面ズーム</InputLabel>
+                <NativeSelect
+                  inputProps={{ id: "board-zoom" }}
+                  value={String(boardZoom)}
+                  onChange={(e) => setBoardZoom(Number(e.target.value))}
+                >
+                  {BOARD_ZOOM_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </NativeSelect>
+              </FormControl>
+            </Stack>
+            <Box
+              data-testid="battle-board-viewport"
+              sx={{
+                overflow: "auto",
+                minHeight: 0,
+                flex: 1,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                p: 1,
+                bgcolor: "grey.50",
+              }}
+            >
+              <GameCanvas
+                gameState={gameState}
+                selectedUnitId={selectedUnitId}
+                selectedTile={selectedTile}
+                previewPath={previewPath}
+                moveRangeTiles={moveRangeTiles}
+                attackRangeTiles={attackRangeTiles}
+                highlightedTargetUnitId={canIssueAttack ? targetUnitId || null : null}
+                zoom={boardZoom}
+                onSelectUnit={isGameOver ? () => {} : selectUnit}
+                onSelectTile={handleSelectTile}
+              />
+            </Box>
           </Paper>
 
           <Dialog
