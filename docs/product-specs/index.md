@@ -5,6 +5,7 @@
 ## 正式ドキュメント
 - [screen-flow.md](screen-flow.md): 現行画面遷移とモーダル仕様
 - [gameplay-flow.md](gameplay-flow.md): 開始、対局、保存、再開までの体験フロー
+- [air-units-and-airport.md](air-units-and-airport.md): 航空ユニット、空港、ステルス、施設爆撃の仕様草案
 
 ## 今後ここに集約するもの
 - 画面ごとの期待導線
