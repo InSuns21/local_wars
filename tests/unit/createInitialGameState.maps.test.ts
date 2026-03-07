@@ -39,8 +39,8 @@ describe('createInitialGameState マップ読み込み', () => {
 });
 
 describe('スカーミッシュマップ定義', () => {
-  it('MAP_CATALOGが10件あり、全IDが実マップ定義に存在する', () => {
-    expect(MAP_CATALOG).toHaveLength(10);
+  it('MAP_CATALOGが15件あり、全IDが実マップ定義に存在する', () => {
+    expect(MAP_CATALOG).toHaveLength(15);
 
     for (const meta of MAP_CATALOG) {
       const scenario = getSkirmishScenario(meta.id);

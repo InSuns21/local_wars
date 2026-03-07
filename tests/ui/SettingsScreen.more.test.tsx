@@ -14,6 +14,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
     fireEvent.change(screen.getByLabelText('初期資金'), { target: { value: '12345' } });
     fireEvent.change(screen.getByLabelText('1ターン収入（都市/工場/司令部）'), { target: { value: '777' } });
+    fireEvent.change(screen.getByLabelText('1ターン収入（空港）'), { target: { value: '888' } });
+    fireEvent.change(screen.getByLabelText('1ターン収入（港湾）'), { target: { value: '999' } });
     fireEvent.change(screen.getByLabelText('都市のHP回復量（ターン開始時）'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('工場のHP回復量（ターン開始時）'), { target: { value: '4' } });
     fireEvent.change(screen.getByLabelText('HQのHP回復量（ターン開始時）'), { target: { value: '6' } });
@@ -29,6 +31,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(submitted.fogOfWar).toBe(true);
     expect(submitted.initialFunds).toBe(12345);
     expect(submitted.incomePerProperty).toBe(777);
+    expect(submitted.incomeAirport).toBe(888);
+    expect(submitted.incomePort).toBe(999);
     expect(submitted.hpRecoveryCity).toBe(2);
     expect(submitted.hpRecoveryFactory).toBe(4);
     expect(submitted.hpRecoveryHq).toBe(6);
@@ -54,6 +58,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(screen.getByLabelText('AIの強さ')).toHaveValue('easy');
     expect(screen.getByLabelText('索敵あり')).not.toBeChecked();
     expect(screen.getByLabelText('初期資金')).toHaveValue(15000);
+    expect(screen.getByLabelText('1ターン収入（空港）')).toHaveValue(1200);
+    expect(screen.getByLabelText('1ターン収入（港湾）')).toHaveValue(1200);
     expect(screen.getByLabelText('燃料消費あり')).not.toBeChecked();
     expect(screen.getByText('現在の状態: 初心者向け')).toBeInTheDocument();
   });
@@ -67,6 +73,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
 
     expect(screen.getByLabelText('AIの強さ')).toHaveValue('normal');
     expect(screen.getByLabelText('初期資金')).toHaveValue(10000);
+    expect(screen.getByLabelText('1ターン収入（空港）')).toHaveValue(1000);
+    expect(screen.getByLabelText('1ターン収入（港湾）')).toHaveValue(1000);
     expect(screen.getByLabelText('燃料消費あり')).toBeChecked();
     expect(screen.getByText('現在の状態: 標準')).toBeInTheDocument();
   });

@@ -230,6 +230,87 @@ describe('commandApplier 統合テスト', () => {
     expect(Object.values(next.units).some((u) => u.id.startsWith('P1_INFANTRY_'))).toBe(true);
   });
 
+  it('空港では航空ユニットを生産できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 1, y: 1 };
+    state.players.P1.funds = 20000;
+
+    const { state: next, result } = applyCommand(
+      state,
+      {
+        type: 'PRODUCE_UNIT',
+        playerId: 'P1',
+        factoryCoord: { x: 0, y: 2 },
+        unitType: 'FIGHTER',
+      },
+      { rng: () => 0.5 },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(Object.values(next.units).some((u) => u.id.startsWith('P1_FIGHTER_'))).toBe(true);
+  });
+
+  it('攻撃機は施設爆撃できない', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'ATTACKER',
+      position: { x: 1, y: 1 },
+      ammo: 6,
+      moved: false,
+      acted: false,
+    };
+    state.map.tiles['2,1'] = {
+      coord: { x: 2, y: 1 },
+      terrainType: 'CITY',
+      owner: 'P2',
+      capturePoints: 10,
+      structureHp: 10,
+      operational: true,
+    };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK_TILE', attackerId: 'p1_tank', target: { x: 2, y: 1 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(false);
+    expect(attacked.result.reason).toBe('このユニットは施設爆撃できません。');
+  });
+
+  it('爆撃機は施設を爆撃して機能停止にできる', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 4, y: 4 };
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'BOMBER',
+      position: { x: 1, y: 1 },
+      ammo: 6,
+      moved: false,
+      acted: false,
+    };
+    state.map.tiles['2,1'] = {
+      coord: { x: 2, y: 1 },
+      terrainType: 'CITY',
+      owner: 'P2',
+      capturePoints: 10,
+      structureHp: 1,
+      operational: true,
+    };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK_TILE', attackerId: 'p1_tank', target: { x: 2, y: 1 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(true);
+    expect(attacked.state.map.tiles['2,1'].operational).toBe(false);
+    expect(attacked.state.map.tiles['2,1'].owner).toBeUndefined();
+    expect(attacked.state.map.tiles['2,1'].captureTargetOverride).toBeGreaterThan(10);
+  });
+
   it('防御補正が同じ同兵種の近接戦闘は双方の被害が同程度になる', () => {
     const state = createInitialGameState();
     state.units.p1_tank.position = { x: 2, y: 2 };
@@ -305,7 +386,7 @@ describe('commandApplier 統合テスト', () => {
     );
 
     expect(produced.result.ok).toBe(false);
-    expect(produced.result.reason).toBe('自軍工場でのみ生産できます。');
+    expect(produced.result.reason).toBe('自軍生産拠点でのみ生産できます。');
   });
 
   it('FoWで不可視敵に接触すると移動中断して遭遇戦になる（移動側は先制不可）', () => {

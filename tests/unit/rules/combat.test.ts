@@ -114,6 +114,23 @@ describe('戦闘ルール', () => {
     expect(canCounterAttack(attacker, defender)).toBe(true);
   });
 
+  it('戦闘機は地上ユニットを攻撃できない', () => {
+    expect(getBaseDamage('FIGHTER', 'TANK')).toBe(0);
+    expect(getBaseDamage('FIGHTER', 'INFANTRY')).toBe(0);
+  });
+
+  it('爆撃機と攻撃機は航空ユニットを攻撃できない', () => {
+    expect(getBaseDamage('BOMBER', 'FIGHTER')).toBe(0);
+    expect(getBaseDamage('BOMBER', 'ATTACKER')).toBe(0);
+    expect(getBaseDamage('ATTACKER', 'FIGHTER')).toBe(0);
+    expect(getBaseDamage('ATTACKER', 'BOMBER')).toBe(0);
+  });
+
+  it('自走砲は航空ユニットを攻撃できない', () => {
+    expect(getBaseDamage('ARTILLERY', 'FIGHTER')).toBe(0);
+    expect(getBaseDamage('ARTILLERY', 'BOMBER')).toBe(0);
+  });
+
   it('executeCombatでcanCounter=falseなら反撃ダメージは0になる', () => {
     const attacker = makeUnit({ type: 'TANK', position: { x: 0, y: 0 } });
     const defender = makeUnit({ owner: 'P2', type: 'TANK', position: { x: 1, y: 0 } });

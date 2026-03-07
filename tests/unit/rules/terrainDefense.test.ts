@@ -47,6 +47,15 @@ describe('terrainDefense 防御補正', () => {
     expect(getTerrainDefenseModifier('HQ', 'DESTROYER')).toBe(1);
   });
 
+  it.each(['FIGHTER', 'BOMBER', 'ATTACKER', 'STEALTH_BOMBER'] as const)(
+    '防御側の航空ユニット %s は有利地形でも防御補正を無視する',
+    (unitType) => {
+      expect(getTerrainDefenseModifier('FOREST', unitType)).toBe(1);
+      expect(getTerrainDefenseModifier('CITY', unitType)).toBe(1);
+      expect(getTerrainDefenseModifier('HQ', unitType)).toBe(1);
+    },
+  );
+
   it('地形不明時は標準補正', () => {
     expect(getTerrainDefenseModifier(undefined, 'TANK')).toBe(1);
   });

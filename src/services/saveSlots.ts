@@ -1,4 +1,4 @@
-﻿import type { GameState } from '@core/types/state';
+import type { GameState } from '@core/types/state';
 import { DEFAULT_SETTINGS, type GameSettings } from '@/app/types';
 
 export const DEFAULT_SAVE_SLOTS_STORAGE_KEY = 'local_wars_save_slots_v1';
@@ -44,6 +44,14 @@ const normalizeSettings = (value: unknown): GameSettings => {
       typeof value.incomePerProperty === 'number'
         ? value.incomePerProperty
         : DEFAULT_SETTINGS.incomePerProperty,
+    incomeAirport:
+      typeof value.incomeAirport === 'number'
+        ? value.incomeAirport
+        : DEFAULT_SETTINGS.incomeAirport,
+    incomePort:
+      typeof value.incomePort === 'number'
+        ? value.incomePort
+        : DEFAULT_SETTINGS.incomePort,
     hpRecoveryCity:
       typeof value.hpRecoveryCity === 'number'
         ? value.hpRecoveryCity
@@ -62,6 +70,10 @@ const normalizeSettings = (value: unknown): GameSettings => {
       typeof value.enableFuelSupply === 'boolean' ? value.enableFuelSupply : DEFAULT_SETTINGS.enableFuelSupply,
     enableAmmoSupply:
       typeof value.enableAmmoSupply === 'boolean' ? value.enableAmmoSupply : DEFAULT_SETTINGS.enableAmmoSupply,
+    facilityCaptureCostIncreasePercent:
+      typeof value.facilityCaptureCostIncreasePercent === 'number'
+        ? value.facilityCaptureCostIncreasePercent
+        : DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent,
     showEnemyActionLogs:
       typeof value.showEnemyActionLogs === 'boolean' ? value.showEnemyActionLogs : (DEFAULT_SETTINGS.showEnemyActionLogs ?? false),
   };
@@ -78,9 +90,13 @@ const normalizeState = (state: GameState, settings: GameSettings): GameState => 
   humanPlayerSide: state.humanPlayerSide ?? settings.humanPlayerSide,
   aiDifficulty: state.aiDifficulty ?? settings.aiDifficulty,
   incomePerProperty: state.incomePerProperty ?? settings.incomePerProperty,
+  incomeAirport: state.incomeAirport ?? settings.incomeAirport,
+  incomePort: state.incomePort ?? settings.incomePort,
   hpRecoveryCity: state.hpRecoveryCity ?? settings.hpRecoveryCity,
   hpRecoveryFactory: state.hpRecoveryFactory ?? settings.hpRecoveryFactory,
   hpRecoveryHq: state.hpRecoveryHq ?? settings.hpRecoveryHq,
+  facilityCaptureCostIncreasePercent:
+    state.facilityCaptureCostIncreasePercent ?? settings.facilityCaptureCostIncreasePercent ?? DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent,
   showEnemyActionLogs: state.showEnemyActionLogs ?? (settings.showEnemyActionLogs ?? false),
 });
 
@@ -153,10 +169,3 @@ export const findFirstEmptySlot = (storageKey?: string): SlotId | null => {
   if (!slots['3']) return 3;
   return null;
 };
-
-
-
-
-
-
-

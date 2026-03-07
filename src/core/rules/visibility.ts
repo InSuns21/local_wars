@@ -1,6 +1,7 @@
 import type { GameState } from '@core/types/state';
 import type { PlayerId } from '@core/types/game';
 import { manhattanDistance, toCoordKey } from '@/utils/coord';
+import { isStealthUnitType } from './facilities';
 
 const VISION_RANGE_BY_UNIT: Record<string, number> = {
   INFANTRY: 2,
@@ -11,6 +12,8 @@ const VISION_RANGE_BY_UNIT: Record<string, number> = {
   ANTI_AIR: 3,
   FIGHTER: 5,
   BOMBER: 4,
+  ATTACKER: 4,
+  STEALTH_BOMBER: 4,
   DESTROYER: 4,
   LANDER: 3,
 };
@@ -27,7 +30,7 @@ const getVisionRange = (state: GameState, unitType: string, coordKey: string): n
 };
 
 const isAlwaysVisibleFriendlyProperty = (terrainType: string): boolean =>
-  terrainType === 'CITY' || terrainType === 'FACTORY' || terrainType === 'HQ';
+  terrainType === 'CITY' || terrainType === 'FACTORY' || terrainType === 'HQ' || terrainType === 'AIRPORT' || terrainType === 'PORT';
 
 const isAdjacentToFriendlyUnit = (state: GameState, viewer: PlayerId, coordKey: string): boolean => {
   const tile = state.map.tiles[coordKey];
@@ -49,6 +52,13 @@ const isConcealedForestTileVisible = (state: GameState, viewer: PlayerId, coordK
   return isAdjacentToFriendlyUnit(state, viewer, coordKey);
 };
 
+const isStealthRevealConditionMet = (state: GameState, viewer: PlayerId, coordKey: string): boolean => {
+  const tile = state.map.tiles[coordKey];
+  if (!tile) return false;
+  if (tile.owner === viewer) return true;
+  return isAdjacentToFriendlyUnit(state, viewer, coordKey);
+};
+
 export const getVisibleTileCoordKeys = (state: GameState, viewer: PlayerId): Set<string> => {
   if (!state.fogOfWar) {
     return new Set(Object.keys(state.map.tiles));
@@ -56,7 +66,6 @@ export const getVisibleTileCoordKeys = (state: GameState, viewer: PlayerId): Set
 
   const visible = new Set<string>();
 
-  // 自軍都市・工場・HQは常に可視
   for (const tile of Object.values(state.map.tiles)) {
     if (tile.owner === viewer && isAlwaysVisibleFriendlyProperty(tile.terrainType)) {
       visible.add(toCoordKey(tile.coord));
@@ -94,20 +103,16 @@ const isForestConcealedEnemyVisible = (state: GameState, viewer: PlayerId, enemy
 };
 
 export const getVisibleEnemyUnitIds = (state: GameState, viewer: PlayerId): Set<string> => {
-  if (!state.fogOfWar) {
-    return new Set(
-      Object.values(state.units)
-        .filter((u) => u.owner !== viewer && u.hp > 0)
-        .map((u) => u.id),
-    );
-  }
-
   const visibleTiles = getVisibleTileCoordKeys(state, viewer);
   return new Set(
     Object.values(state.units)
       .filter((u) => u.owner !== viewer && u.hp > 0)
       .filter((u) => {
         const enemyCoordKey = toCoordKey(u.position);
+        if (isStealthUnitType(u.type)) {
+          return isStealthRevealConditionMet(state, viewer, enemyCoordKey);
+        }
+        if (!state.fogOfWar) return true;
         if (!visibleTiles.has(enemyCoordKey)) return false;
         return isForestConcealedEnemyVisible(state, viewer, enemyCoordKey);
       })

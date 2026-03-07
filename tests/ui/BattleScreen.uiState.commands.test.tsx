@@ -29,7 +29,7 @@ describe('BattleScreen UIテスト: コマンド操作', () => {
     const store = createGameStore(state, { rng: () => 0.5 });
     render(<BattleScreen useStore={store} />);
 
-    fireEvent.change(screen.getByLabelText('工場'), { target: { value: '0,1' } });
+    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,1' } });
     fireEvent.change(screen.getByLabelText('ユニット'), { target: { value: 'INFANTRY' } });
 
     expect(screen.getByRole('button', { name: '生産実行' })).toBeDisabled();
@@ -148,12 +148,13 @@ describe('BattleScreen UIテスト: コマンド操作', () => {
   it('生産可能な工場がないときは工場セレクトを表示せずメッセージを表示する', () => {
     const state = createInitialGameState();
     state.units.p1_inf.position = { x: 0, y: 1 };
+    state.units.p1_tank.position = { x: 0, y: 2 };
 
     const store = createGameStore(state, { rng: () => 0.5 });
     render(<BattleScreen useStore={store} />);
 
-    expect(screen.getByText('工場: 選択可能な工場なし')).toBeInTheDocument();
-    expect(screen.queryByLabelText('工場')).not.toBeInTheDocument();
+    expect(screen.getByText('生産拠点: 選択可能な拠点なし')).toBeInTheDocument();
+    expect(screen.queryByLabelText('生産拠点')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '生産実行' })).toBeDisabled();
   });
 });

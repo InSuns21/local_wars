@@ -1,4 +1,4 @@
-﻿import type { Coord, PlayerId, UnitId } from './game';
+import type { Coord, PlayerId, UnitId } from './game';
 
 export type UnitType =
   | 'INFANTRY'
@@ -9,6 +9,8 @@ export type UnitType =
   | 'ANTI_AIR'
   | 'FIGHTER'
   | 'BOMBER'
+  | 'ATTACKER'
+  | 'STEALTH_BOMBER'
   | 'DESTROYER'
   | 'LANDER';
 
@@ -24,9 +26,7 @@ export type UnitState = {
   position: Coord;
   moved: boolean;
   acted: boolean;
-  // 移動後に残っている移動余裕（同ターン中の追撃可否判定に利用）
   movePointsRemaining?: number;
-  // 直近の移動経路（開始マスを除いた通過座標列）
   lastMovePath?: Coord[];
 };
 
@@ -40,5 +40,7 @@ export type UnitDefinition = {
   canCapture: boolean;
   attackRangeMin: number;
   attackRangeMax: number;
+  canBombardProperties?: boolean;
+  isStealth?: boolean;
+  turnEndFuelCost?: number;
 };
-

@@ -4,11 +4,21 @@ import type { GameCommand, CommandResult } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 import { toCoordKey, manhattanDistance } from '@/utils/coord';
 import { applyCaptureStep } from '@core/rules/capture';
-import { canCounterAttack, executeCombat } from '@core/rules/combat';
+import { canCounterAttack, computeBombardDamage, executeCombat } from '@core/rules/combat';
 import { findMovePath, getEnemyUnits, getPathCost } from '@core/rules/movement';
 import { getVisibleEnemyUnitIds } from '@core/rules/visibility';
 import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
 import { checkVictory } from '@core/rules/victory';
+import {
+  applyFacilityDestruction,
+  canBombardProperties,
+  canUnitProduceAtTile,
+  getBaseStructureHp,
+  getFacilityHp,
+  isBombardableTerrain,
+  isFacilityTargetInRange,
+  isOperationalFacility,
+} from '@core/rules/facilities';
 import { nextTurnState } from './turnEngine';
 import { UNIT_DEFINITIONS } from './unitDefinitions';
 
@@ -147,7 +157,6 @@ const applyMoveCommand = (
       };
     }
 
-    // FoW遭遇戦: 不可視敵と接触した時点で移動を中断し、移動側は先制できない。
     const movedCost = getPathCost(moveInput, movedPath) ?? 0;
     const defender: UnitState = {
       ...unit,
@@ -301,6 +310,78 @@ const applyAttackCommand = (
   return { ok: true };
 };
 
+const applyAttackTileCommand = (
+  state: GameState,
+  command: Extract<GameCommand, { type: 'ATTACK_TILE' }>,
+): CommandResult => {
+  const attacker = state.units[command.attackerId];
+  if (!attacker) return { ok: false, reason: '攻撃ユニットが存在しません。' };
+  if (attacker.owner !== state.currentPlayerId) return { ok: false, reason: '自軍ユニットのみ攻撃できます。' };
+  if (attacker.acted) return { ok: false, reason: 'このユニットは既に行動済みです。' };
+  if (!canBombardProperties(attacker.type)) {
+    return { ok: false, reason: 'このユニットは施設爆撃できません。' };
+  }
+
+  const remainingMove = attacker.movePointsRemaining ?? (attacker.moved ? 0 : UNIT_DEFINITIONS[attacker.type].moveRange);
+  if (attacker.moved && remainingMove < 1) {
+    return { ok: false, reason: '移動余裕がないため攻撃できません。' };
+  }
+
+  const tileKey = toCoordKey(command.target);
+  const tile = state.map.tiles[tileKey];
+  if (!tile || !isBombardableTerrain(tile.terrainType)) {
+    return { ok: false, reason: '爆撃可能な施設がありません。' };
+  }
+  if (!isOperationalFacility(tile)) {
+    return { ok: false, reason: 'この施設は既に機能停止しています。' };
+  }
+  if (getUnitAt(state, command.target)) {
+    return { ok: false, reason: 'ユニットがいるタイルは施設爆撃できません。' };
+  }
+
+  const distance = manhattanDistance(attacker.position, command.target);
+  if (!isFacilityTargetInRange(UNIT_DEFINITIONS[attacker.type], distance)) {
+    return { ok: false, reason: '射程外です。' };
+  }
+
+  const shouldConsumeAmmo = state.enableAmmoSupply ?? true;
+  if (shouldConsumeAmmo && attacker.ammo <= 0) {
+    return { ok: false, reason: '弾薬が不足しています。' };
+  }
+
+  const structureHp = getFacilityHp(tile) ?? getBaseStructureHp(tile.terrainType);
+  if (structureHp === undefined) {
+    return { ok: false, reason: 'この施設は爆撃できません。' };
+  }
+
+  const damage = computeBombardDamage(attacker);
+  const nextHp = Math.max(0, structureHp - damage);
+
+  state.units[command.attackerId] = {
+    ...attacker,
+    acted: true,
+    ammo: shouldConsumeAmmo ? Math.max(0, attacker.ammo - 1) : attacker.ammo,
+  };
+
+  state.map.tiles[tileKey] = nextHp <= 0
+    ? applyFacilityDestruction(tile, state)
+    : {
+        ...tile,
+        structureHp: nextHp,
+        operational: true,
+      };
+
+  const nextTile = state.map.tiles[tileKey];
+  appendLog(
+    state,
+    state.currentPlayerId,
+    'ATTACK_TILE',
+    `${command.attackerId} -> ${tile.terrainType}@${tileKey} 施設HP:${structureHp}->${nextTile.structureHp ?? structureHp}`,
+  );
+  applyVictory(state);
+  return { ok: true };
+};
+
 const applyCaptureCommand = (state: GameState, command: Extract<GameCommand, { type: 'CAPTURE' }>): CommandResult => {
   const unit = state.units[command.unitId];
   if (!unit) return { ok: false, reason: 'ユニットが存在しません。' };
@@ -333,16 +414,20 @@ const applyProduceUnitCommand = (
 
   const tileKey = toCoordKey(command.factoryCoord);
   const tile = state.map.tiles[tileKey];
-  if (!tile || tile.terrainType !== 'FACTORY') {
-    return { ok: false, reason: '工場タイルでのみ生産できます。' };
+  if (!tile) {
+    return { ok: false, reason: '生産拠点タイルでのみ生産できます。' };
   }
 
   if (tile.owner !== command.playerId) {
-    return { ok: false, reason: '自軍工場でのみ生産できます。' };
+    return { ok: false, reason: '自軍生産拠点でのみ生産できます。' };
+  }
+
+  if (!canUnitProduceAtTile(command.unitType, tile)) {
+    return { ok: false, reason: 'この拠点ではそのユニットを生産できません。' };
   }
 
   if (getUnitAt(state, command.factoryCoord)) {
-    return { ok: false, reason: '工場にユニットがいるため生産できません。' };
+    return { ok: false, reason: '生産拠点にユニットがいるため生産できません。' };
   }
 
   const def = UNIT_DEFINITIONS[command.unitType];
@@ -399,6 +484,9 @@ export const applyCommand = (
     case 'ATTACK':
       result = applyAttackCommand(state, command, deps);
       break;
+    case 'ATTACK_TILE':
+      result = applyAttackTileCommand(state, command);
+      break;
     case 'CAPTURE':
       result = applyCaptureCommand(state, command);
       break;
@@ -419,16 +507,3 @@ export const applyCommand = (
 
   return { state, result };
 };
-
-
-
-
-
-
-
-
-
-
-
-
-

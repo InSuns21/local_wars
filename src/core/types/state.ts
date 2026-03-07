@@ -1,4 +1,4 @@
-﻿import type { ActionLogEntry, Coord, GamePhase, PlayerId } from './game';
+import type { ActionLogEntry, Coord, GamePhase, PlayerId } from './game';
 import type { MapState } from './map';
 import type { UnitState } from './unit';
 
@@ -17,6 +17,7 @@ export type GameState = {
   enableFuelSupply?: boolean;
   enableAmmoSupply?: boolean;
   showEnemyActionLogs?: boolean;
+  facilityCaptureCostIncreasePercent?: number;
   phase: GamePhase;
   map: MapState;
   units: Record<string, UnitState>;
@@ -25,8 +26,9 @@ export type GameState = {
   actionLog: ActionLogEntry[];
   winner: PlayerId | null;
   victoryReason?: 'HQ_CAPTURE' | 'ANNIHILATION' | 'VP_LIMIT' | null;
-  // ターン開始時の拠点収入（都市/工場/HQ）
   incomePerProperty?: number;
+  incomeAirport?: number;
+  incomePort?: number;
   hpRecoveryCity?: number;
   hpRecoveryFactory?: number;
   hpRecoveryHq?: number;
@@ -36,7 +38,6 @@ export type MoveUnitCommand = {
   type: 'MOVE_UNIT';
   unitId: string;
   to: Coord;
-  // UI で選択した実移動ルート（省略時はエンジンが算出）
   path?: Coord[];
 };
 
@@ -44,6 +45,12 @@ export type AttackCommand = {
   type: 'ATTACK';
   attackerId: string;
   defenderId: string;
+};
+
+export type AttackTileCommand = {
+  type: 'ATTACK_TILE';
+  attackerId: string;
+  target: Coord;
 };
 
 export type CaptureCommand = {
@@ -69,6 +76,7 @@ export type UndoCommand = {
 export type GameCommand =
   | MoveUnitCommand
   | AttackCommand
+  | AttackTileCommand
   | CaptureCommand
   | ProduceUnitCommand
   | EndTurnCommand
@@ -78,6 +86,3 @@ export type CommandResult = {
   ok: boolean;
   reason?: string;
 };
-
-
-

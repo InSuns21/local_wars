@@ -46,7 +46,7 @@ const PRESET_DESCRIPTIONS: Record<GameSettingsPreset, string> = {
 };
 
 const NUMERIC_FIELD_META: {
-  [K in 'initialFunds' | 'incomePerProperty' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq']: {
+  [K in 'initialFunds' | 'incomePerProperty' | 'incomeAirport' | 'incomePort' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq' | 'facilityCaptureCostIncreasePercent']: {
     min: number;
     max: number;
     step: number;
@@ -70,6 +70,22 @@ const NUMERIC_FIELD_META: {
     recommendedRangeText: '推奨: 800-1500',
     defaultValue: DEFAULT_SETTINGS.incomePerProperty,
     description: '毎ターン得られる資金です。高いほど大型ユニットを継続生産しやすくなります。',
+  },
+  incomeAirport: {
+    min: 0,
+    max: 5000,
+    step: 100,
+    recommendedRangeText: '推奨: 800-1500',
+    defaultValue: DEFAULT_SETTINGS.incomeAirport,
+    description: '空港の毎ターン収入です。航空戦力を継続投入しやすくなります。',
+  },
+  incomePort: {
+    min: 0,
+    max: 5000,
+    step: 100,
+    recommendedRangeText: '推奨: 800-1500',
+    defaultValue: DEFAULT_SETTINGS.incomePort,
+    description: '港湾の毎ターン収入です。海上戦力を維持しやすくなります。',
   },
   hpRecoveryCity: {
     min: 0,
@@ -95,6 +111,14 @@ const NUMERIC_FIELD_META: {
     defaultValue: DEFAULT_SETTINGS.hpRecoveryHq,
     description: '司令部の粘り強さに影響します。高すぎると決着が長引きます。',
   },
+  facilityCaptureCostIncreasePercent: {
+    min: 0,
+    max: 300,
+    step: 5,
+    recommendedRangeText: '推奨: 25-75',
+    defaultValue: DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent ?? 50,
+    description: '施設破壊後の再占領コスト増加率です。高いほど破壊済み拠点の奪還が重くなります。',
+  },
 };
 
 const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
@@ -103,6 +127,8 @@ const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
   && left.fogOfWar === right.fogOfWar
   && left.initialFunds === right.initialFunds
   && left.incomePerProperty === right.incomePerProperty
+  && left.incomeAirport === right.incomeAirport
+  && left.incomePort === right.incomePort
   && left.hpRecoveryCity === right.hpRecoveryCity
   && left.hpRecoveryFactory === right.hpRecoveryFactory
   && left.hpRecoveryHq === right.hpRecoveryHq
@@ -110,6 +136,7 @@ const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
   && left.enableNavalUnits === right.enableNavalUnits
   && left.enableFuelSupply === right.enableFuelSupply
   && left.enableAmmoSupply === right.enableAmmoSupply
+  && (left.facilityCaptureCostIncreasePercent ?? 50) === (right.facilityCaptureCostIncreasePercent ?? 50)
   && Boolean(left.showEnemyActionLogs) === Boolean(right.showEnemyActionLogs)
 );
 
@@ -321,6 +348,36 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                 />
 
                 <TextField
+                  id="income-airport"
+                  label="1ターン収入（空港）"
+                  type="number"
+                  value={settings.incomeAirport}
+                  onChange={(e) => update('incomeAirport', Number(e.target.value))}
+                  error={getNumericFieldStatus('incomeAirport').error}
+                  helperText={getNumericFieldStatus('incomeAirport').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.incomeAirport.min,
+                    max: NUMERIC_FIELD_META.incomeAirport.max,
+                    step: NUMERIC_FIELD_META.incomeAirport.step,
+                  }}
+                />
+
+                <TextField
+                  id="income-port"
+                  label="1ターン収入（港湾）"
+                  type="number"
+                  value={settings.incomePort}
+                  onChange={(e) => update('incomePort', Number(e.target.value))}
+                  error={getNumericFieldStatus('incomePort').error}
+                  helperText={getNumericFieldStatus('incomePort').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.incomePort.min,
+                    max: NUMERIC_FIELD_META.incomePort.max,
+                    step: NUMERIC_FIELD_META.incomePort.step,
+                  }}
+                />
+
+                <TextField
                   id="hp-recovery-city"
                   label="都市のHP回復量（ターン開始時）"
                   type="number"
@@ -362,6 +419,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                     min: NUMERIC_FIELD_META.hpRecoveryHq.min,
                     max: NUMERIC_FIELD_META.hpRecoveryHq.max,
                     step: NUMERIC_FIELD_META.hpRecoveryHq.step,
+                  }}
+                />
+
+                <TextField
+                  id="facility-capture-cost-increase-percent"
+                  label="施設破壊ごとの再占領コスト増加率（%）"
+                  type="number"
+                  value={settings.facilityCaptureCostIncreasePercent ?? 50}
+                  onChange={(e) => update('facilityCaptureCostIncreasePercent', Number(e.target.value))}
+                  error={getNumericFieldStatus('facilityCaptureCostIncreasePercent').error}
+                  helperText={getNumericFieldStatus('facilityCaptureCostIncreasePercent').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.min,
+                    max: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.max,
+                    step: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.step,
                   }}
                 />
 

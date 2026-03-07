@@ -1,4 +1,4 @@
-﻿import type { UnitDefinition, UnitType } from '@core/types/unit';
+import type { UnitDefinition, UnitType } from '@core/types/unit';
 
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   INFANTRY: {
@@ -77,6 +77,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
     canCapture: false,
     attackRangeMin: 1,
     attackRangeMax: 1,
+    turnEndFuelCost: 1,
   },
   BOMBER: {
     type: 'BOMBER',
@@ -88,6 +89,34 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
     canCapture: false,
     attackRangeMin: 1,
     attackRangeMax: 1,
+    canBombardProperties: true,
+    turnEndFuelCost: 1,
+  },
+  ATTACKER: {
+    type: 'ATTACKER',
+    cost: 14000,
+    movementType: 'AIR',
+    moveRange: 7,
+    maxFuel: 60,
+    maxAmmo: 6,
+    canCapture: false,
+    attackRangeMin: 1,
+    attackRangeMax: 1,
+    turnEndFuelCost: 1,
+  },
+  STEALTH_BOMBER: {
+    type: 'STEALTH_BOMBER',
+    cost: 22000,
+    movementType: 'AIR',
+    moveRange: 8,
+    maxFuel: 60,
+    maxAmmo: 5,
+    canCapture: false,
+    attackRangeMin: 1,
+    attackRangeMax: 1,
+    canBombardProperties: true,
+    isStealth: true,
+    turnEndFuelCost: 2,
   },
   DESTROYER: {
     type: 'DESTROYER',

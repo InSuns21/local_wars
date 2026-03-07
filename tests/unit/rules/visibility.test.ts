@@ -171,4 +171,34 @@ describe('visibility ルール', () => {
     const visible = getVisibleEnemyUnitIds(state, 'P1');
     expect(visible.has('p2_inf')).toBe(true);
   });
+
+  it('ステルス機は味方ユニットに隣接している時だけ可視になる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'STEALTH_BOMBER',
+      position: { x: 3, y: 2 },
+    };
+    state.units.p1_tank.position = { x: 0, y: 4 };
+
+    expect(getVisibleEnemyUnitIds(state, 'P1').has('p2_tank')).toBe(false);
+
+    state.units.p1_tank.position = { x: 2, y: 2 };
+    expect(getVisibleEnemyUnitIds(state, 'P1').has('p2_tank')).toBe(true);
+  });
+
+  it('ステルス機は味方所有施設の直上でも可視になる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'STEALTH_BOMBER',
+      position: { x: 1, y: 1 },
+    };
+    state.units.p1_inf.position = { x: 4, y: 4 };
+    state.units.p1_tank.position = { x: 4, y: 3 };
+
+    expect(getVisibleEnemyUnitIds(state, 'P1').has('p2_tank')).toBe(true);
+  });
 });

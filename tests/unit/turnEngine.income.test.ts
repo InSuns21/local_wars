@@ -10,6 +10,8 @@ describe('turnEngine 収入処理', () => {
         fogOfWar: false,
         initialFunds: 5000,
         incomePerProperty: 1500,
+        incomeAirport: 1200,
+        incomePort: 800,
         hpRecoveryCity: 1,
         hpRecoveryFactory: 2,
         hpRecoveryHq: 3,
@@ -20,20 +22,46 @@ describe('turnEngine 収入処理', () => {
       },
     });
 
-    const next = nextTurnState(state);
-    // P2所有: HQ + FACTORY + CITY = 3拠点
-    expect(next.players.P2.funds).toBe(5000 + 4500);
+    state.map.tiles['4,2'] = {
+      coord: { x: 4, y: 2 },
+      terrainType: 'AIRPORT',
+      owner: 'P2',
+      capturePoints: 20,
+    };
+    state.map.tiles['4,1'] = {
+      coord: { x: 4, y: 1 },
+      terrainType: 'PORT',
+      owner: 'P2',
+      capturePoints: 20,
+    };
+
+    const nextWithAirAndPort = nextTurnState(state);
+    // P2所有: HQ + FACTORY + CITY + AIRPORT + PORT
+    expect(nextWithAirAndPort.players.P2.funds).toBe(5000 + 1500 + 1500 + 1500 + 1200 + 800);
   });
 
-  it('収入対象は都市・工場・司令部', () => {
+  it('空港・港湾も収入対象になり、設定値ごとに加算される', () => {
     const state = createInitialGameState();
     state.incomePerProperty = 1000;
+    state.incomeAirport = 1400;
+    state.incomePort = 600;
+    state.map.tiles['4,2'] = {
+      coord: { x: 4, y: 2 },
+      terrainType: 'AIRPORT',
+      owner: 'P2',
+      capturePoints: 20,
+    };
+    state.map.tiles['4,1'] = {
+      coord: { x: 4, y: 1 },
+      terrainType: 'PORT',
+      owner: 'P2',
+      capturePoints: 20,
+    };
     const p2Before = state.players.P2.funds;
 
     const next = nextTurnState(state);
 
-    // P2所有は CITY もあるが、収入対象は CITY/HQ/FACTORY の3拠点
-    expect(next.players.P2.funds).toBe(p2Before + 3000);
+    expect(next.players.P2.funds).toBe(p2Before + 3000 + 1400 + 600);
   });
 });
 
@@ -53,6 +81,56 @@ describe('turnEngine 補給処理', () => {
     expect(next.units.p2_inf.ammo).toBe(9);
   });
 
+  it('空港上の航空ユニットは燃料と弾薬が補給される', () => {
+    const state = createInitialGameState();
+    state.map.tiles['4,2'] = {
+      coord: { x: 4, y: 2 },
+      terrainType: 'AIRPORT',
+      owner: 'P2',
+      capturePoints: 20,
+    };
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'FIGHTER',
+      position: { x: 4, y: 2 },
+      fuel: 3,
+      ammo: 1,
+      owner: 'P2',
+    };
+    state.enableFuelSupply = true;
+    state.enableAmmoSupply = true;
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p2_tank.fuel).toBe(80);
+    expect(next.units.p2_tank.ammo).toBe(6);
+  });
+
+  it('空港でターン終了した航空ユニットは工場準拠の回復量でHP回復する', () => {
+    const state = createInitialGameState();
+    state.hpRecoveryFactory = 4;
+    state.map.tiles['4,2'] = {
+      coord: { x: 4, y: 2 },
+      terrainType: 'AIRPORT',
+      owner: 'P2',
+      capturePoints: 20,
+      operational: true,
+    };
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'FIGHTER',
+      position: { x: 4, y: 2 },
+      hp: 5,
+      fuel: 10,
+      ammo: 2,
+      owner: 'P2',
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p2_tank.hp).toBe(9);
+  });
+
   it('補給OFF時は自軍拠点上でも燃料/弾薬が回復しない', () => {
     const state = createInitialGameState();
     state.units.p2_inf.position = { x: 4, y: 3 }; // P2 FACTORY
@@ -66,6 +144,88 @@ describe('turnEngine 補給処理', () => {
     expect(next.currentPlayerId).toBe('P2');
     expect(next.units.p2_inf.fuel).toBe(10);
     expect(next.units.p2_inf.ammo).toBe(1);
+  });
+});
+
+describe('turnEngine 航空燃料処理', () => {
+  it('空港上の航空ユニットは燃料1でもターン終了時補給で消滅せず満タンになる', () => {
+    const state = createInitialGameState();
+    state.map.tiles['0,2'] = {
+      coord: { x: 0, y: 2 },
+      terrainType: 'AIRPORT',
+      owner: 'P1',
+      capturePoints: 20,
+      operational: true,
+    };
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'FIGHTER',
+      position: { x: 0, y: 2 },
+      fuel: 1,
+      ammo: 0,
+      owner: 'P1',
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeDefined();
+    expect(next.units.p1_tank.fuel).toBe(80);
+    expect(next.units.p1_tank.ammo).toBe(6);
+  });
+
+  it('空港上の航空ユニットは燃料0でもターン終了時補給で消滅せず満タンになる', () => {
+    const state = createInitialGameState();
+    state.map.tiles['0,2'] = {
+      coord: { x: 0, y: 2 },
+      terrainType: 'AIRPORT',
+      owner: 'P1',
+      capturePoints: 20,
+      operational: true,
+    };
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'FIGHTER',
+      position: { x: 0, y: 2 },
+      fuel: 0,
+      ammo: 1,
+      owner: 'P1',
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeDefined();
+    expect(next.units.p1_tank.fuel).toBe(80);
+    expect(next.units.p1_tank.ammo).toBe(6);
+  });
+
+  it('航空ユニットは待機だけでもターン終了時に燃料を消費する', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'FIGHTER',
+      position: { x: 2, y: 2 },
+      fuel: 3,
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeDefined();
+    expect(next.units.p1_tank.fuel).toBe(2);
+  });
+
+  it('ステルス機は待機時に燃料を2消費する', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'STEALTH_BOMBER',
+      position: { x: 2, y: 2 },
+      fuel: 3,
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeDefined();
+    expect(next.units.p1_tank.fuel).toBe(1);
   });
 });
 

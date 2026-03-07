@@ -154,7 +154,7 @@ describe('BattleScreen UIテスト: 基本操作', () => {
 
     render(<BattleScreen useStore={store} />);
 
-    fireEvent.change(screen.getByLabelText('工場'), { target: { value: '0,1' } });
+    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,1' } });
     fireEvent.change(screen.getByLabelText('ユニット'), { target: { value: 'INFANTRY' } });
     fireEvent.click(screen.getByRole('button', { name: '生産実行' }));
 
@@ -164,6 +164,47 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     const afterCount = Object.keys(nextState.units).length;
     expect(afterCount).toBe(beforeCount + 1);
     expect(Object.values(nextState.units).some((u) => u.id.startsWith('P1_INFANTRY_'))).toBe(true);
+  });
+
+  it('空港選択時は航空ユニットを生産候補に表示する', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,2' } });
+
+    expect(screen.getByRole('option', { name: '戦闘機 (16000)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '攻撃機 (14000)' })).toBeInTheDocument();
+  });
+
+  it('施設爆撃ボタンで都市を機能停止にできる', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 4, y: 4 };
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'BOMBER',
+      position: { x: 1, y: 1 },
+      ammo: 6,
+      moved: false,
+      acted: false,
+    };
+    state.map.tiles['2,1'] = {
+      coord: { x: 2, y: 1 },
+      terrainType: 'CITY',
+      owner: 'P2',
+      capturePoints: 10,
+      structureHp: 1,
+      operational: true,
+    };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,1' }));
+    fireEvent.click(screen.getByRole('button', { name: '施設爆撃' }));
+
+    expect(store.getState().gameState.map.tiles['2,1'].operational).toBe(false);
+    expect(store.getState().gameState.units.p1_tank.acted).toBe(true);
   });
 
   it('攻撃射程マスに赤表示用属性が付く', () => {

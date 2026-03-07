@@ -1,4 +1,4 @@
-﻿import type { Coord, PlayerId } from './game';
+import type { Coord, PlayerId } from './game';
 
 export type TerrainType =
   | 'PLAIN'
@@ -22,6 +22,10 @@ export type TileState = {
   owner?: PlayerId;
   capturePoints?: number;
   productionType?: ProductionType;
+  operational?: boolean;
+  structureHp?: number;
+  captureTargetOverride?: number;
+  destructionCount?: number;
 };
 
 export type CommandHqByPlayer = Partial<Record<PlayerId, Coord>>;
@@ -30,6 +34,5 @@ export type MapState = {
   width: number;
   height: number;
   tiles: Record<string, TileState>;
-  // 勝敗判定に使う司令部座標。特殊/複数HQマップではこれを明示する。
   commandHqByPlayer?: CommandHqByPlayer;
 };

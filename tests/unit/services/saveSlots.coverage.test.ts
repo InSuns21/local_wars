@@ -55,6 +55,8 @@ describe('saveSlots 追加カバレッジ', () => {
       fogOfWar: false,
       initialFunds: 10000,
       incomePerProperty: 1000,
+      incomeAirport: 1000,
+      incomePort: 1000,
       hpRecoveryCity: 1,
       hpRecoveryFactory: 2,
       hpRecoveryHq: 3,

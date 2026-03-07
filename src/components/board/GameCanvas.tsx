@@ -2,6 +2,7 @@
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getVisibleEnemyCoordKeys, getVisibleTileCoordKeys } from '@core/rules/visibility';
 import { getCaptureTarget } from '@core/rules/capture';
+import { getFacilityHp, isBombardableTerrain, isOperationalFacility } from '@core/rules/facilities';
 import type { TerrainType } from '@core/types/map';
 import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
@@ -34,10 +35,10 @@ const getPropertyOwnerVisual = (owner?: 'P1' | 'P2'): { tag: string; color: stri
 };
 
 const isOwnerVisibleProperty = (terrainType?: TerrainType): boolean =>
-  terrainType === 'FACTORY' || terrainType === 'HQ' || terrainType === 'CITY';
+  terrainType === 'FACTORY' || terrainType === 'HQ' || terrainType === 'CITY' || terrainType === 'AIRPORT' || terrainType === 'PORT';
 
 const isCapturableProperty = (terrainType?: TerrainType | string): boolean =>
-  terrainType === 'FACTORY' || terrainType === 'HQ' || terrainType === 'CITY';
+  terrainType === 'FACTORY' || terrainType === 'HQ' || terrainType === 'CITY' || terrainType === 'AIRPORT' || terrainType === 'PORT';
 
 const getTerrainVisual = (terrain: TerrainType | string): { short: string; bg: string; fg: string } => {
   switch (terrain) {
@@ -111,6 +112,18 @@ const getTerrainTraits = (terrain: TerrainType | string): {
         supply: 'あり',
         mobility: '標準',
       };
+    case 'AIRPORT':
+      return {
+        defense: '標準',
+        supply: '航空補給あり',
+        mobility: '航空運用拠点',
+      };
+    case 'PORT':
+      return {
+        defense: '標準',
+        supply: '海上補給あり',
+        mobility: '海上運用拠点',
+      };
     case 'FOREST':
       return {
         defense: 'やや高い',
@@ -142,18 +155,6 @@ const getTerrainTraits = (terrain: TerrainType | string): {
         supply: 'なし',
         mobility: '海上ユニット向け',
       };
-    case 'AIRPORT':
-      return {
-        defense: '標準',
-        supply: 'なし',
-        mobility: '航空運用拠点',
-      };
-    case 'PORT':
-      return {
-        defense: '標準',
-        supply: 'なし',
-        mobility: '海上運用拠点',
-      };
     default:
       return {
         defense: '標準',
@@ -179,6 +180,8 @@ const buildTileTooltip = (
   unit: UnitState | undefined,
   coord: Coord,
   capturePoints?: number,
+  structureHp?: number,
+  operational = true,
 ): string => {
   const terrain = getTerrainTraits(terrainType);
   const lines = [
@@ -192,6 +195,12 @@ const buildTileTooltip = (
   if (isCapturableProperty(terrainType)) {
     const captureTarget = getCaptureTarget(terrainType as TerrainType);
     lines.push(`拠点耐久: ${capturePoints ?? captureTarget}/${captureTarget}`);
+  }
+
+  if (isBombardableTerrain(terrainType as TerrainType)) {
+    const facilityHp = structureHp ?? getCaptureTarget(terrainType as TerrainType);
+    lines.push(`施設状態: ${operational ? '稼働中' : '機能停止'}`);
+    lines.push(`施設HP: ${facilityHp}`);
   }
 
   if (unit) {
@@ -335,7 +344,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const isAttackRange = attackKeys.has(key);
               const isAttackTarget = Boolean(unit && highlightedTargetUnitId === unit.id);
 
-              const isClickable = Boolean(unit) || (!selectedUnit ? false : isMoveReachable);
+              const isClickable = Boolean(unit) || (!selectedUnit ? false : (isMoveReachable || isAttackRange || isSelectedTile));
 
               const propertyVisual = isVisible && isOwnerVisibleProperty(tile?.terrainType)
                 ? getPropertyOwnerVisual(tile?.owner)
@@ -364,6 +373,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 isVisible && isCapturableProperty(tile?.terrainType)
                   ? '耐久 ' + (tile?.capturePoints ?? getCaptureTarget(tile?.terrainType ?? 'CITY'))
                   : null;
+              const facilityStatusLabel =
+                isVisible && tile && isBombardableTerrain(tile.terrainType) && !isOperationalFacility(tile)
+                  ? '停止'
+                  : null;
 
               const routeOutline = isSelectedUnit
                 ? BOARD_VISUAL_TOKENS.selectedUnit.outline
@@ -377,7 +390,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         ? BOARD_VISUAL_TOKENS.moveReachable.outline
                         : undefined;
 
-              const tooltipText = buildTileTooltip(terrainType, isVisible ? unit : undefined, coord, tile?.capturePoints);
+              const tooltipText = buildTileTooltip(
+                terrainType,
+                isVisible ? unit : undefined,
+                coord,
+                tile?.capturePoints,
+                getFacilityHp(tile),
+                isOperationalFacility(tile),
+              );
               const ownerBadgeToken = ownerBadge === '味'
                 ? BOARD_VISUAL_TOKENS.friendlyUnit
                 : BOARD_VISUAL_TOKENS.enemyUnit;
@@ -504,6 +524,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                       }}
                     >
                       標的
+                    </span>
+                  ) : null}
+                  {facilityStatusLabel ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: Math.max(3, Math.round(3 * zoom)),
+                        left: Math.max(3, Math.round(3 * zoom)),
+                        fontSize: badgeFontSize,
+                        fontWeight: 800,
+                        padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(2, Math.round(3 * zoom))}px`,
+                        borderRadius: 3,
+                        background: '#fee2e2',
+                        color: '#991b1b',
+                        border: '1px solid #ef4444',
+                      }}
+                    >
+                      {facilityStatusLabel}
                     </span>
                   ) : null}
                   {ownerBadge && isVisible ? (

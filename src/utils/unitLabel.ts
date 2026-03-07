@@ -9,6 +9,8 @@ const UNIT_TYPE_LABELS: Record<UnitType, string> = {
   ANTI_AIR: '対空車',
   FIGHTER: '戦闘機',
   BOMBER: '爆撃機',
+  ATTACKER: '攻撃機',
+  STEALTH_BOMBER: 'ステルス爆撃機',
   DESTROYER: '駆逐艦',
   LANDER: '揚陸艦',
 };

@@ -1,4 +1,4 @@
-﻿import type { TerrainType } from '@core/types/map';
+import type { TerrainType } from '@core/types/map';
 import type { UnitType } from '@core/types/unit';
 
 const toDataUri = (svg: string): string => `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -32,6 +32,8 @@ export const UNIT_GLYPH_PATHS: Record<UnitType, string[]> = {
   ANTI_AIR: ['M6.5 13.5 L9.5 10.5 H14.5 L17.5 13.5 V17 H6.5 Z', 'M12 7 L16 12 H8 Z'],
   FIGHTER: ['M12 6 L16 18 L12.8 15.4 H11.2 L8 18 Z'],
   BOMBER: ['M7 10 H17 L15 15 H9 Z', 'M10.5 8.5 H13.5 V10 H10.5 Z'],
+  ATTACKER: ['M12 6 L17 14 L13.8 13.4 L12 18 L10.2 13.4 L7 14 Z'],
+  STEALTH_BOMBER: ['M6.5 11 L12 8 L17.5 11 L14.5 16 H9.5 Z', 'M8 12 L16 12'],
   DESTROYER: ['M6 15 H18 L15 9.5 H9 Z', 'M8 16.5 H16'],
   LANDER: ['M7 14.5 H17 L14 10 H10 Z', 'M9 16 H15'],
 };

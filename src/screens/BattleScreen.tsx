@@ -25,6 +25,13 @@ import { GameCanvas } from "@components/board/GameCanvas";
 import { createInitialGameState } from "@core/engine/createInitialGameState";
 import { UNIT_DEFINITIONS } from "@core/engine/unitDefinitions";
 import { getEnemyUnits, getPathCost } from "@core/rules/movement";
+import {
+  canBombardProperties,
+  canUnitProduceAtTile,
+  getProductionTypeForTerrain,
+  isBombardableTerrain,
+  isOperationalFacility,
+} from "@core/rules/facilities";
 import { getVisibleEnemyUnitIds } from "@core/rules/visibility";
 import type { Coord } from "@core/types/game";
 import type { GameState } from "@core/types/state";
@@ -42,14 +49,11 @@ type BattleScreenProps = {
   onOpenTutorial?: () => void;
 };
 
-const PRODUCIBLE_UNITS: UnitType[] = [
-  "INFANTRY",
-  "RECON",
-  "TANK",
-  "ANTI_TANK",
-  "ARTILLERY",
-  "ANTI_AIR",
-];
+const PRODUCIBLE_UNITS_BY_SITE: Record<"GROUND" | "AIR" | "NAVAL", UnitType[]> = {
+  GROUND: ["INFANTRY", "RECON", "TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR"],
+  AIR: ["FIGHTER", "BOMBER", "ATTACKER", "STEALTH_BOMBER"],
+  NAVAL: ["DESTROYER", "LANDER"],
+};
 
 const BOARD_ZOOM_OPTIONS = [
   { value: 1, label: "100%" },
@@ -57,16 +61,23 @@ const BOARD_ZOOM_OPTIONS = [
   { value: 0.7, label: "70%" },
 ] as const;
 
-const isIncomeProperty = (terrainType: string): boolean =>
-  terrainType === "CITY" || terrainType === "FACTORY" || terrainType === "HQ";
-
-const getTurnIncome = (state: GameState, playerId: "P1" | "P2"): number => {
-  const owned = Object.values(state.map.tiles).filter(
-    (tile) => tile.owner === playerId && isIncomeProperty(tile.terrainType),
-  ).length;
-  const incomePerProperty = state.incomePerProperty ?? 1000;
-  return owned * incomePerProperty;
+const getIncomeForTile = (state: GameState, terrainType: string): number => {
+  if (terrainType === "CITY" || terrainType === "FACTORY" || terrainType === "HQ") {
+    return state.incomePerProperty ?? 1000;
+  }
+  if (terrainType === "AIRPORT") {
+    return state.incomeAirport ?? 1000;
+  }
+  if (terrainType === "PORT") {
+    return state.incomePort ?? 1000;
+  }
+  return 0;
 };
+
+const getTurnIncome = (state: GameState, playerId: "P1" | "P2"): number =>
+  Object.values(state.map.tiles)
+    .filter((tile) => tile.owner === playerId && isOperationalFacility(tile))
+    .reduce((total, tile) => total + getIncomeForTile(state, tile.terrainType), 0);
 
 const getAttackRangeFrom = (
   state: GameState,
@@ -176,8 +187,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     return Object.values(gameState.map.tiles)
       .filter(
         (tile) =>
-          tile.terrainType === "FACTORY" &&
-          tile.owner === gameState.currentPlayerId,
+          (tile.terrainType === "FACTORY" || tile.terrainType === "AIRPORT" || tile.terrainType === "PORT") &&
+          tile.owner === gameState.currentPlayerId &&
+          isOperationalFacility(tile),
       )
       .filter((tile) => !aliveUnitByTile.has(toCoordKey(tile.coord)))
       .map((tile) => tile.coord);
@@ -294,8 +306,45 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       !selectedUnit.acted &&
       UNIT_DEFINITIONS[selectedUnit.type].canCapture,
   );
+  const selectedProductionTile = useMemo(
+    () => (selectedFactoryKey ? gameState.map.tiles[selectedFactoryKey] : undefined),
+    [gameState.map.tiles, selectedFactoryKey],
+  );
+
+  const producibleUnitTypes = useMemo(() => {
+    if (!selectedProductionTile) {
+      return PRODUCIBLE_UNITS_BY_SITE.GROUND;
+    }
+    const productionType = getProductionTypeForTerrain(selectedProductionTile.terrainType);
+    if (!productionType) {
+      return PRODUCIBLE_UNITS_BY_SITE.GROUND;
+    }
+    return PRODUCIBLE_UNITS_BY_SITE[productionType];
+  }, [selectedProductionTile]);
+
+  const canIssueBombard = Boolean(
+    canControlSelectedUnit &&
+      !isGameOver &&
+      selectedUnit &&
+      !selectedUnit.acted &&
+      selectedTile &&
+      canBombardProperties(selectedUnit.type) &&
+      (() => {
+        const distance = Math.abs(selectedUnit.position.x - selectedTile.x) + Math.abs(selectedUnit.position.y - selectedTile.y);
+        const definition = UNIT_DEFINITIONS[selectedUnit.type];
+        return distance >= definition.attackRangeMin && distance <= definition.attackRangeMax;
+      })() &&
+      isBombardableTerrain(gameState.map.tiles[toCoordKey(selectedTile)]?.terrainType ?? "PLAIN") &&
+      !gameState.units[aliveUnitByTile.get(toCoordKey(selectedTile)) ?? ""] &&
+      isOperationalFacility(gameState.map.tiles[toCoordKey(selectedTile)]),
+  );
+
   const canProduce = Boolean(
-    !isGameOver && selectedFactoryKey && currentPlayerFunds >= selectedUnitCost,
+    !isGameOver &&
+      selectedFactoryKey &&
+      selectedProductionTile &&
+      canUnitProduceAtTile(produceUnitType, selectedProductionTile) &&
+      currentPlayerFunds >= selectedUnitCost,
   );
 
   const attackForecast = useMemo(() => {
@@ -334,6 +383,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       setTargetUnitId(attackableEnemyUnits[0].id);
     }
   }, [attackableEnemyUnits, targetUnitId]);
+
+  useEffect(() => {
+    if (producibleUnitTypes.length === 0) {
+      return;
+    }
+    if (!producibleUnitTypes.includes(produceUnitType)) {
+      setProduceUnitType(producibleUnitTypes[0]);
+    }
+  }, [producibleUnitTypes, produceUnitType]);
 
   useEffect(() => {
     if (availableFactories.length === 0) {
@@ -560,6 +618,40 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     const result = dispatchCommand({ type: "CAPTURE", unitId: selectedUnitId });
     setCommandResult(result.ok, result.reason);
   };
+  const handleBombard = (): void => {
+    if (isGameOver) {
+      setLastResult(
+        "失敗: 既に勝敗が確定しています。",
+      );
+      return;
+    }
+    if (!selectedUnitId) {
+      setLastResult(
+        "失敗: 操作ユニットを選択してください。",
+      );
+      return;
+    }
+    if (!canControlSelectedUnit) {
+      setLastResult(
+        "失敗: 敵ユニットは操作できません。",
+      );
+      return;
+    }
+    if (!selectedTile) {
+      setLastResult(
+        "失敗: 爆撃対象の施設タイルを選択してください。",
+      );
+      return;
+    }
+
+    const result = dispatchCommand({
+      type: "ATTACK_TILE",
+      attackerId: selectedUnitId,
+      target: selectedTile,
+    });
+    setCommandResult(result.ok, result.reason);
+  };
+
   const handleProduce = (): void => {
     if (isGameOver) {
       setLastResult(
@@ -569,7 +661,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     }
     if (!selectedFactoryKey) {
       setLastResult(
-        "失敗: 生産可能な工場がありません。",
+        "失敗: 生産可能な拠点がありません。",
       );
       return;
     }
@@ -787,6 +879,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                   攻撃予測: {attackForecastText}
                 </Typography>
                 <Button type="button" variant="contained" color="secondary" onClick={handleAttack} disabled={!canIssueAttack}>攻撃実行</Button>
+                <Button type="button" variant="outlined" color="warning" onClick={handleBombard} disabled={!canIssueBombard}>施設爆撃</Button>
                 <Button type="button" variant="outlined" onClick={handleCapture} disabled={!canCaptureSelectedUnit}>占領実行</Button>
                 <Typography>最終コマンド: {lastResult}</Typography>
               </Stack>
@@ -801,11 +894,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
               <Stack spacing={1}>
                 {availableFactories.length === 0 ? (
                   <Box>
-                    <Typography variant="body2" color="text.secondary">工場: 選択可能な工場なし</Typography>
+                    <Typography variant="body2" color="text.secondary">生産拠点: 選択可能な拠点なし</Typography>
                   </Box>
                 ) : (
                   <FormControl>
-                    <InputLabel variant="standard" htmlFor="factory-select">工場</InputLabel>
+                    <InputLabel variant="standard" htmlFor="factory-select">生産拠点</InputLabel>
                     <NativeSelect
                       inputProps={{ id: "factory-select" }}
                       value={selectedFactoryKey}
@@ -814,7 +907,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     >
                       {availableFactories.map((coord) => {
                         const key = toCoordKey(coord);
-                        return <option key={key} value={key}>{coord.x},{coord.y}</option>;
+                        const tile = gameState.map.tiles[key];
+                        return <option key={key} value={key}>{`${coord.x},${coord.y} (${tile?.terrainType ?? "PLAIN"})`}</option>;
                       })}
                     </NativeSelect>
                   </FormControl>
@@ -828,12 +922,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     onChange={(e) => setProduceUnitType(e.target.value as UnitType)}
                     disabled={isGameOver}
                   >
-                    {PRODUCIBLE_UNITS.map((type) => (
+                    {producibleUnitTypes.map((type) => (
                       <option key={type} value={type}>{`${getUnitTypeLabel(type)} (${UNIT_DEFINITIONS[type].cost})`}</option>
                     ))}
                   </NativeSelect>
                 </FormControl>
 
+                <Typography variant="body2" color="text.secondary">
+                  {selectedProductionTile
+                    ? `拠点種別: ${selectedProductionTile.terrainType}${selectedProductionTile.terrainType === "AIRPORT" ? " / 航空ユニットを生産・補給" : ""}`
+                    : "拠点種別: 未選択"}
+                </Typography>
                 <Typography>必要資金: {selectedUnitCost}</Typography>
                 <Typography>現在手番の資金: {currentPlayerFunds}</Typography>
 

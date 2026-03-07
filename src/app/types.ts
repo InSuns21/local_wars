@@ -8,6 +8,8 @@ export type GameSettings = {
   fogOfWar: boolean;
   initialFunds: number;
   incomePerProperty: number;
+  incomeAirport: number;
+  incomePort: number;
   hpRecoveryCity: number;
   hpRecoveryFactory: number;
   hpRecoveryHq: number;
@@ -15,6 +17,7 @@ export type GameSettings = {
   enableNavalUnits: boolean;
   enableFuelSupply: boolean;
   enableAmmoSupply: boolean;
+  facilityCaptureCostIncreasePercent?: number;
   showEnemyActionLogs?: boolean;
 };
 
@@ -24,6 +27,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   fogOfWar: false,
   initialFunds: 10000,
   incomePerProperty: 1000,
+  incomeAirport: 1000,
+  incomePort: 1000,
   hpRecoveryCity: 1,
   hpRecoveryFactory: 2,
   hpRecoveryHq: 3,
@@ -31,6 +36,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   enableNavalUnits: true,
   enableFuelSupply: true,
   enableAmmoSupply: true,
+  facilityCaptureCostIncreasePercent: 50,
   showEnemyActionLogs: false,
 };
 
@@ -41,11 +47,14 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
     aiDifficulty: 'easy',
     fogOfWar: false,
     initialFunds: 15000,
+    incomeAirport: 1200,
+    incomePort: 1200,
     hpRecoveryCity: 2,
     hpRecoveryFactory: 3,
     hpRecoveryHq: 4,
     enableFuelSupply: false,
     enableAmmoSupply: false,
+    facilityCaptureCostIncreasePercent: 25,
     showEnemyActionLogs: true,
   },
   advanced: {
@@ -54,10 +63,13 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
     fogOfWar: true,
     initialFunds: 8000,
     incomePerProperty: 900,
+    incomeAirport: 900,
+    incomePort: 900,
     hpRecoveryFactory: 1,
     hpRecoveryHq: 2,
     enableFuelSupply: true,
     enableAmmoSupply: true,
+    facilityCaptureCostIncreasePercent: 75,
     showEnemyActionLogs: false,
   },
   custom: DEFAULT_SETTINGS,

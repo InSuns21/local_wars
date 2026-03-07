@@ -1,4 +1,4 @@
-﻿import type { GameSettings } from '@/app/types';
+import type { GameSettings } from '@/app/types';
 import { getSkirmishScenario } from '@data/skirmishMaps';
 import type { GameState } from '@core/types/state';
 
@@ -22,12 +22,15 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
     },
     units: { ...state.units },
     incomePerProperty: settings.incomePerProperty,
+    incomeAirport: settings.incomeAirport,
+    incomePort: settings.incomePort,
     hpRecoveryCity: settings.hpRecoveryCity,
     hpRecoveryFactory: settings.hpRecoveryFactory,
     hpRecoveryHq: settings.hpRecoveryHq,
     fogOfWar: settings.fogOfWar,
     enableFuelSupply: settings.enableFuelSupply,
     enableAmmoSupply: settings.enableAmmoSupply,
+    facilityCaptureCostIncreasePercent: settings.facilityCaptureCostIncreasePercent ?? 50,
     showEnemyActionLogs: settings.showEnemyActionLogs ?? false,
   };
 };
@@ -39,18 +42,19 @@ const buildFallbackMapState = (): Pick<GameState, 'map' | 'units'> => ({
     tiles: {
       '0,0': { coord: { x: 0, y: 0 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 },
       '4,4': { coord: { x: 4, y: 4 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 },
-      '1,1': { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P1', capturePoints: 10 },
-      '3,3': { coord: { x: 3, y: 3 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10 },
-      '0,1': { coord: { x: 0, y: 1 }, terrainType: 'FACTORY', owner: 'P1', capturePoints: 20 },
-      '4,3': { coord: { x: 4, y: 3 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 },
-      '0,2': { coord: { x: 0, y: 2 }, terrainType: 'PLAIN' },
+      '1,1': { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P1', capturePoints: 10, structureHp: 10, operational: true },
+      '3,3': { coord: { x: 3, y: 3 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10, structureHp: 10, operational: true },
+      '0,1': { coord: { x: 0, y: 1 }, terrainType: 'FACTORY', owner: 'P1', capturePoints: 20, structureHp: 20, operational: true },
+      '4,3': { coord: { x: 4, y: 3 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20, structureHp: 20, operational: true },
+      '0,2': { coord: { x: 0, y: 2 }, terrainType: 'AIRPORT', owner: 'P1', capturePoints: 20, structureHp: 20, operational: true },
+      '4,2': { coord: { x: 4, y: 2 }, terrainType: 'AIRPORT', owner: 'P2', capturePoints: 20, structureHp: 20, operational: true },
       '0,3': { coord: { x: 0, y: 3 }, terrainType: 'PLAIN' },
       '0,4': { coord: { x: 0, y: 4 }, terrainType: 'PLAIN' },
       '1,0': { coord: { x: 1, y: 0 }, terrainType: 'PLAIN' },
       '1,2': { coord: { x: 1, y: 2 }, terrainType: 'PLAIN' },
       '1,3': { coord: { x: 1, y: 3 }, terrainType: 'PLAIN' },
       '1,4': { coord: { x: 1, y: 4 }, terrainType: 'PLAIN' },
-      '2,0': { coord: { x: 2, y: 0 }, terrainType: 'FACTORY', capturePoints: 20 },
+      '2,0': { coord: { x: 2, y: 0 }, terrainType: 'FACTORY', capturePoints: 20, structureHp: 20, operational: true },
       '2,1': { coord: { x: 2, y: 1 }, terrainType: 'PLAIN' },
       '2,2': { coord: { x: 2, y: 2 }, terrainType: 'PLAIN' },
       '2,3': { coord: { x: 2, y: 3 }, terrainType: 'PLAIN' },
@@ -61,7 +65,6 @@ const buildFallbackMapState = (): Pick<GameState, 'map' | 'units'> => ({
       '3,4': { coord: { x: 3, y: 4 }, terrainType: 'PLAIN' },
       '4,0': { coord: { x: 4, y: 0 }, terrainType: 'PLAIN' },
       '4,1': { coord: { x: 4, y: 1 }, terrainType: 'PLAIN' },
-      '4,2': { coord: { x: 4, y: 2 }, terrainType: 'PLAIN' },
     },
   },
   units: {
@@ -145,6 +148,7 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
     enableFuelSupply: options.settings?.enableFuelSupply ?? true,
     enableAmmoSupply: options.settings?.enableAmmoSupply ?? true,
     showEnemyActionLogs: options.settings?.showEnemyActionLogs ?? false,
+    facilityCaptureCostIncreasePercent: options.settings?.facilityCaptureCostIncreasePercent ?? 50,
     phase: 'command',
     map: mapState.map,
     units: mapState.units,
@@ -159,6 +163,8 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
     winner: null,
     victoryReason: null,
     incomePerProperty: options.settings?.incomePerProperty ?? 1000,
+    incomeAirport: options.settings?.incomeAirport ?? 1000,
+    incomePort: options.settings?.incomePort ?? 1000,
     hpRecoveryCity: options.settings?.hpRecoveryCity ?? 1,
     hpRecoveryFactory: options.settings?.hpRecoveryFactory ?? 2,
     hpRecoveryHq: options.settings?.hpRecoveryHq ?? 3,
@@ -166,11 +172,3 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
 
   return applyFeatureToggles(base, options.settings);
 };
-
-
-
-
-
-
-
-

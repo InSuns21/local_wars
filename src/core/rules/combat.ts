@@ -9,9 +9,11 @@ const baseDamageTable: Record<UnitType, Partial<Record<UnitType, number>>> = {
   TANK: { INFANTRY: 75, RECON: 80, TANK: 55, ANTI_TANK: 45, ARTILLERY: 70, ANTI_AIR: 65 },
   ANTI_TANK: { INFANTRY: 65, RECON: 75, TANK: 85, ANTI_TANK: 50, ARTILLERY: 70, ANTI_AIR: 60 },
   ARTILLERY: { INFANTRY: 90, RECON: 85, TANK: 70, ANTI_TANK: 80, ARTILLERY: 75, ANTI_AIR: 80 },
-  ANTI_AIR: { INFANTRY: 95, RECON: 100, TANK: 25, ANTI_TANK: 45, ARTILLERY: 75, ANTI_AIR: 55 },
-  FIGHTER: { FIGHTER: 75, BOMBER: 95, INFANTRY: 20, RECON: 25, TANK: 15, ANTI_AIR: 10 },
-  BOMBER: { INFANTRY: 110, RECON: 105, TANK: 95, ANTI_TANK: 90, ARTILLERY: 100, ANTI_AIR: 85 },
+  ANTI_AIR: { INFANTRY: 95, RECON: 100, TANK: 25, ANTI_TANK: 45, ARTILLERY: 75, ANTI_AIR: 55, FIGHTER: 65, ATTACKER: 80, BOMBER: 65, STEALTH_BOMBER: 60 },
+  FIGHTER: { FIGHTER: 65, ATTACKER: 105, BOMBER: 85, STEALTH_BOMBER: 75 },
+  BOMBER: { INFANTRY: 110, RECON: 105, TANK: 80, ANTI_TANK: 80, ARTILLERY: 80, ANTI_AIR: 30 },
+  ATTACKER: { INFANTRY: 95, RECON: 95, TANK: 60, ANTI_TANK: 60, ARTILLERY: 60, ANTI_AIR: 20 },
+  STEALTH_BOMBER: { INFANTRY: 110, RECON: 90, TANK: 75, ANTI_TANK: 70, ARTILLERY: 80, ANTI_AIR: 40, FIGHTER: 30, ATTACKER: 80, BOMBER: 70, STEALTH_BOMBER: 55 },
   DESTROYER: { DESTROYER: 70, LANDER: 90, INFANTRY: 50, TANK: 45, ARTILLERY: 60 },
   LANDER: {},
 };
@@ -131,8 +133,16 @@ export const executeCombat = (
   };
 };
 
+const bombardPowerTable: Partial<Record<UnitType, number>> = {
+  BOMBER: 9,
+  ATTACKER: 6,
+  STEALTH_BOMBER: 10,
+};
 
-
-
-
-
+export const computeBombardDamage = (attacker: UnitState): number => {
+  const basePower = bombardPowerTable[attacker.type] ?? 0;
+  if (basePower <= 0) {
+    return 0;
+  }
+  return Math.max(1, Math.floor((basePower * Math.max(attacker.hp, 0)) / 10));
+};

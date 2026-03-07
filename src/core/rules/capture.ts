@@ -1,14 +1,11 @@
-﻿import type { TileState } from '@core/types/map';
+import type { TileState } from '@core/types/map';
 import type { UnitState } from '@core/types/unit';
+import { getBaseCaptureTarget, getBaseStructureHp, getTileCaptureTarget, isCapturableTerrain } from './facilities';
 
-export const getCaptureTarget = (terrainType: TileState['terrainType']): number => {
-  if (terrainType === 'CITY') return 10;
-  if (terrainType === 'FACTORY' || terrainType === 'HQ') return 20;
-  return 20;
-};
+export const getCaptureTarget = (terrainType: TileState['terrainType']): number => getBaseCaptureTarget(terrainType);
 
 export const canCapture = (unit: UnitState, tile: TileState): boolean =>
-  unit.type === 'INFANTRY' && ['CITY', 'FACTORY', 'HQ'].includes(tile.terrainType);
+  unit.type === 'INFANTRY' && isCapturableTerrain(tile.terrainType);
 
 export const getCapturePower = (unit: UnitState): number => Math.max(0, Math.floor(unit.hp));
 
@@ -22,7 +19,7 @@ export const applyCaptureStep = (unit: UnitState, tile: TileState): CaptureResul
     return { tile, completed: false };
   }
 
-  const captureTarget = getCaptureTarget(tile.terrainType);
+  const captureTarget = getTileCaptureTarget(tile);
   const current = tile.capturePoints ?? captureTarget;
   const next = Math.max(0, current - getCapturePower(unit));
 
@@ -32,6 +29,8 @@ export const applyCaptureStep = (unit: UnitState, tile: TileState): CaptureResul
         ...tile,
         owner: unit.owner,
         capturePoints: captureTarget,
+        operational: getBaseStructureHp(tile.terrainType) === undefined ? tile.operational : true,
+        structureHp: getBaseStructureHp(tile.terrainType),
       },
       completed: true,
     };

@@ -1,6 +1,7 @@
 import { applyCommand, type CommandDeps } from '@core/engine/commandApplier';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { forecastCombat } from '@core/rules/combat';
+import { canUnitProduceAtTile } from '@core/rules/facilities';
 import { findMovePath, getReachableTiles } from '@core/rules/movement';
 import type { Coord, PlayerId } from '@core/types/game';
 import type { GameState } from '@core/types/state';
@@ -14,7 +15,7 @@ export type AiTurnOptions = {
   deps: CommandDeps;
 };
 
-const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ']);
+const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
 const getEnemyPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 
 const getAliveUnits = (state: GameState, owner: PlayerId): UnitState[] =>
@@ -318,6 +319,8 @@ const emptyUnitCountMap = (): Record<UnitType, number> => ({
   ANTI_AIR: 0,
   FIGHTER: 0,
   BOMBER: 0,
+  ATTACKER: 0,
+  STEALTH_BOMBER: 0,
   DESTROYER: 0,
   LANDER: 0,
 });
@@ -348,7 +351,7 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
     return 'INFANTRY';
   }
 
-  const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER;
+  const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER;
   const antiAirTarget = Math.max(1, Math.ceil(enemyAirCount / 2));
   if (enemyAirCount > 0 && canAfford('ANTI_AIR') && ownCounts.ANTI_AIR < antiAirTarget) {
     return 'ANTI_AIR';
@@ -374,29 +377,60 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
   return null;
 };
 
+const selectAiProductionUnitForTile = (
+  state: GameState,
+  aiPlayer: PlayerId,
+  difficulty: AiDifficulty,
+  coord: Coord,
+): UnitType | null => {
+  const tile = state.map.tiles[toCoordKey(coord)];
+  if (!tile) return null;
+
+  const easyPriorities: UnitType[] = tile.terrainType === 'AIRPORT'
+    ? ['FIGHTER', 'ATTACKER']
+    : ['INFANTRY', 'TANK', 'RECON'];
+
+  if (difficulty === 'easy') {
+    return easyPriorities.find(
+      (unitType) => canUnitProduceAtTile(unitType, tile) && state.players[aiPlayer].funds >= UNIT_DEFINITIONS[unitType].cost,
+    ) ?? null;
+  }
+
+  if (tile.terrainType === 'AIRPORT') {
+    const enemy = getAliveUnits(state, getEnemyPlayer(aiPlayer));
+    const enemyAir = enemy.filter((unit) => UNIT_DEFINITIONS[unit.type].movementType === 'AIR').length;
+    if (enemyAir > 0 && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.FIGHTER.cost) {
+      return 'FIGHTER';
+    }
+    if (state.players[aiPlayer].funds >= UNIT_DEFINITIONS.ATTACKER.cost) {
+      return 'ATTACKER';
+    }
+    if (state.players[aiPlayer].funds >= UNIT_DEFINITIONS.BOMBER.cost) {
+      return 'BOMBER';
+    }
+    return null;
+  }
+
+  return selectNormalProductionUnit(state, aiPlayer);
+};
+
 const produceForAi = (
   state: GameState,
   aiPlayer: PlayerId,
   difficulty: AiDifficulty,
   deps: CommandDeps,
 ): GameState => {
-  const easyPriorities: UnitType[] = ['INFANTRY', 'TANK', 'RECON'];
   let working = state;
 
-  const factories = Object.values(working.map.tiles)
-    .filter((tile) => tile.terrainType === 'FACTORY' && tile.owner === aiPlayer)
+  const productionSites = Object.values(working.map.tiles)
+    .filter((tile) => tile.owner === aiPlayer && (tile.terrainType === 'FACTORY' || tile.terrainType === 'AIRPORT'))
     .map((tile) => tile.coord)
     .filter((coord) => !isTileOccupied(working, coord));
 
-  for (const coord of factories) {
-    const affordable =
-      difficulty === 'easy'
-        ? easyPriorities.find(
-            (unitType) => working.players[aiPlayer].funds >= UNIT_DEFINITIONS[unitType].cost,
-          ) ?? null
-        : selectNormalProductionUnit(working, aiPlayer);
+  for (const coord of productionSites) {
+    const affordable = selectAiProductionUnitForTile(working, aiPlayer, difficulty, coord);
 
-    if (!affordable) break;
+    if (!affordable) continue;
 
     const applied = applyCommand(
       working,
