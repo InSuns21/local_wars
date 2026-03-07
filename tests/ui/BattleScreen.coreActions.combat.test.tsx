@@ -1,19 +1,34 @@
 ﻿import '@testing-library/jest-dom';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 
 jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
 jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
 
 import { createBattleState, renderBattleScreen } from './helpers/renderBattleScreen';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 
 describe('BattleScreen UIテスト: 基本操作(戦闘/施設)', () => {
-  it('空港選択時は航空ユニットを生産候補に表示する', () => {
-    renderBattleScreen();
+  it('空港選択時は航空ユニットを生産候補に表示する', async () => {
+    renderBattleScreen({
+      mutateState: (state) => {
+        state.map.tiles['0,2'] = {
+          coord: { x: 0, y: 2 },
+          terrainType: 'AIRPORT',
+          owner: 'P1',
+          capturePoints: 20,
+          structureHp: 20,
+          operational: true,
+        };
+        state.units.p1_inf.position = { x: 0, y: 1 };
+      },
+    });
 
-    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,2' } });
-
-    expect(screen.getByRole('option', { name: '戦闘機 (16000)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '攻撃機 (14000)' })).toBeInTheDocument();
+    const unitSelect = screen.getByLabelText('ユニット') as HTMLSelectElement;
+    await waitFor(() => {
+      const optionLabels = Array.from(unitSelect.options).map((option) => option.textContent);
+      expect(optionLabels).toContain(`戦闘機 (${UNIT_DEFINITIONS.FIGHTER.cost})`);
+      expect(optionLabels).toContain(`攻撃機 (${UNIT_DEFINITIONS.ATTACKER.cost})`);
+    });
   });
 
   it('施設爆撃ボタンで都市を機能停止にできる', () => {

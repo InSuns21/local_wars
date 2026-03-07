@@ -1,10 +1,11 @@
 ﻿import '@testing-library/jest-dom';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 
 jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
 jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
 
 import { createBattleState, renderBattleScreen } from './helpers/renderBattleScreen';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 
 describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
   it('資金不足時は生産実行ボタンが不活性になる', () => {
@@ -71,12 +72,26 @@ describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
     expect(screen.getByRole('button', { name: '生産実行' })).toBeDisabled();
   });
 
-  it('空港選択時は空中補給機を含む航空ユニットを生産候補に出す', () => {
-    renderBattleScreen();
+  it('空港選択時は空中補給機を含む航空ユニットを生産候補に出す', async () => {
+    renderBattleScreen({
+      mutateState: (state) => {
+        state.map.tiles['0,2'] = {
+          coord: { x: 0, y: 2 },
+          terrainType: 'AIRPORT',
+          owner: 'P1',
+          capturePoints: 20,
+          structureHp: 20,
+          operational: true,
+        };
+        state.units.p1_inf.position = { x: 0, y: 1 };
+      },
+    });
 
-    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,2' } });
-
-    expect(screen.getByRole('option', { name: '空中補給機 (11000)' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: '補給車 (3000)' })).not.toBeInTheDocument();
+    const unitSelect = screen.getByLabelText('ユニット') as HTMLSelectElement;
+    await waitFor(() => {
+      const optionLabels = Array.from(unitSelect.options).map((option) => option.textContent);
+      expect(optionLabels).toContain(`空中補給機 (${UNIT_DEFINITIONS.AIR_TANKER.cost})`);
+      expect(optionLabels).not.toContain(`補給車 (${UNIT_DEFINITIONS.SUPPLY_TRUCK.cost})`);
+    });
   });
 });

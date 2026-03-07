@@ -340,9 +340,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       !selectedUnit.acted &&
       UNIT_DEFINITIONS[selectedUnit.type].canCapture,
   );
+  const effectiveFactoryKey = useMemo(
+    () => selectedFactoryKey || (availableFactories[0] ? toCoordKey(availableFactories[0]) : ''),
+    [availableFactories, selectedFactoryKey],
+  );
   const selectedProductionTile = useMemo(
-    () => (selectedFactoryKey ? gameState.map.tiles[selectedFactoryKey] : undefined),
-    [gameState.map.tiles, selectedFactoryKey],
+    () => (effectiveFactoryKey ? gameState.map.tiles[effectiveFactoryKey] : undefined),
+    [effectiveFactoryKey, gameState.map.tiles],
   );
 
   const producibleUnitTypes = useMemo(() => {
@@ -385,7 +389,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const canProduce = Boolean(
     !isGameOver &&
-      selectedFactoryKey &&
+      effectiveFactoryKey &&
       selectedProductionTile &&
       canUnitProduceAtTile(produceUnitType, selectedProductionTile) &&
       currentPlayerFunds >= selectedUnitCost,
@@ -721,14 +725,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       );
       return;
     }
-    if (!selectedFactoryKey) {
+    if (!effectiveFactoryKey) {
       setLastResult(
         "失敗: 生産可能な拠点がありません。",
       );
       return;
     }
 
-    const [x, y] = selectedFactoryKey.split(",").map(Number);
+    const [x, y] = effectiveFactoryKey.split(",").map(Number);
     const result = dispatchCommand({
       type: "PRODUCE_UNIT",
       playerId: gameState.currentPlayerId,
@@ -975,7 +979,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     <InputLabel variant="standard" htmlFor="factory-select">生産拠点</InputLabel>
                     <NativeSelect
                       inputProps={{ id: "factory-select" }}
-                      value={selectedFactoryKey}
+                      value={effectiveFactoryKey}
                       onChange={(e) => setSelectedFactoryKey(e.target.value)}
                       disabled={isGameOver}
                     >

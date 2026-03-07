@@ -39,8 +39,8 @@ describe('createInitialGameState マップ読み込み', () => {
 });
 
 describe('スカーミッシュマップ定義', () => {
-  it('MAP_CATALOGが15件あり、全IDが実マップ定義に存在する', () => {
-    expect(MAP_CATALOG).toHaveLength(15);
+  it('MAP_CATALOGが18件あり、全IDが実マップ定義に存在する', () => {
+    expect(MAP_CATALOG).toHaveLength(18);
 
     for (const meta of MAP_CATALOG) {
       const scenario = getSkirmishScenario(meta.id);
@@ -64,6 +64,24 @@ describe('スカーミッシュマップ定義', () => {
       expect(scenario.map.height).toBeGreaterThanOrEqual(16);
       expect(cityCount).toBeGreaterThanOrEqual(6);
     }
+  });
+
+  it('補給線重視マップ3種が追加され、補給回廊だけ空港を持たない', () => {
+    const supplyGauntlet = getSkirmishScenario('supply-gauntlet');
+    const relaySkyway = getSkirmishScenario('relay-skyway');
+    const longMarchAirlift = getSkirmishScenario('long-march-airlift');
+
+    expect(supplyGauntlet).not.toBeNull();
+    expect(relaySkyway).not.toBeNull();
+    expect(longMarchAirlift).not.toBeNull();
+
+    const supplyAirports = Object.values(supplyGauntlet?.map.tiles ?? {}).filter((tile) => tile.terrainType === 'AIRPORT');
+    const relayAirports = Object.values(relaySkyway?.map.tiles ?? {}).filter((tile) => tile.terrainType === 'AIRPORT');
+    const longMarchAirports = Object.values(longMarchAirlift?.map.tiles ?? {}).filter((tile) => tile.terrainType === 'AIRPORT');
+
+    expect(supplyAirports).toHaveLength(0);
+    expect(relayAirports.length).toBeGreaterThanOrEqual(2);
+    expect(longMarchAirports.length).toBeGreaterThanOrEqual(2);
   });
 });
 
