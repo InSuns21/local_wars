@@ -2,6 +2,34 @@
 import { nextTurnState } from '@core/engine/turnEngine';
 
 describe('turnEngine 収入処理', () => {
+  it('収入設定が未指定でも都市/工場/HQ/空港/港湾は既定値1000で加算される', () => {
+    const state = createInitialGameState();
+    state.incomePerProperty = undefined;
+    state.incomeAirport = undefined;
+    state.incomePort = undefined;
+    state.map.tiles['4,2'] = {
+      coord: { x: 4, y: 2 },
+      terrainType: 'AIRPORT',
+      owner: 'P2',
+      capturePoints: 20,
+    };
+    state.map.tiles['4,1'] = {
+      coord: { x: 4, y: 1 },
+      terrainType: 'PORT',
+      owner: 'P2',
+      capturePoints: 20,
+    };
+    state.map.tiles['2,2'] = {
+      coord: { x: 2, y: 2 },
+      terrainType: 'PLAIN',
+      owner: 'P2',
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.players.P2.funds).toBe(10000 + 5000);
+  });
+
   it('incomePerProperty 設定値がターン収入に反映される', () => {
     const state = createInitialGameState({
       settings: {
@@ -148,6 +176,23 @@ describe('turnEngine 補給処理', () => {
 });
 
 describe('turnEngine 航空燃料処理', () => {
+  it('空港外で燃料切れした航空ユニットはターン終了時に消滅しログが残る', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'FIGHTER',
+      position: { x: 2, y: 2 },
+      fuel: 1,
+      ammo: 3,
+      owner: 'P1',
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeUndefined();
+    expect(next.actionLog.some((entry) => entry.action === 'AIR_FUEL_DEPLETION' && entry.detail?.includes('p1_tank'))).toBe(true);
+  });
+
   it('空港上の航空ユニットは燃料1でもターン終了時補給で消滅せず満タンになる', () => {
     const state = createInitialGameState();
     state.map.tiles['0,2'] = {

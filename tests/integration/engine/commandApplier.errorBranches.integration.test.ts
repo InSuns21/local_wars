@@ -87,7 +87,7 @@ describe('commandApplier 失敗分岐', () => {
     expect(res.result.ok).toBe(false);
   });
 
-  it('PRODUCE_UNITで手番不一致/工場外/工場占有を弾く', () => {
+  it('PRODUCE_UNITで手番不一致/工場外/工場占有/拠点不適合/資金不足を弾く', () => {
     const state = createInitialGameState();
 
     const wrongTurn = applyCommand(
@@ -111,6 +111,105 @@ describe('commandApplier 失敗分岐', () => {
       { rng: () => 0.5 },
     );
     expect(occupied.result.ok).toBe(false);
+
+    const wrongProductionSite = applyCommand(
+      createInitialGameState(),
+      { type: 'PRODUCE_UNIT', playerId: 'P1', factoryCoord: { x: 0, y: 1 }, unitType: 'FIGHTER' },
+      { rng: () => 0.5 },
+    );
+    expect(wrongProductionSite.result.ok).toBe(false);
+    expect(wrongProductionSite.result.reason).toBe('この拠点ではそのユニットを生産できません。');
+
+    const poorState = createInitialGameState();
+    poorState.players.P1.funds = 0;
+    const noFunds = applyCommand(
+      poorState,
+      { type: 'PRODUCE_UNIT', playerId: 'P1', factoryCoord: { x: 0, y: 1 }, unitType: 'INFANTRY' },
+      { rng: () => 0.5 },
+    );
+    expect(noFunds.result.ok).toBe(false);
+    expect(noFunds.result.reason).toBe('資金が不足しています。');
+  });
+
+  it('ATTACK_TILEで占有タイル/弾薬不足/射程外を弾く', () => {
+    const occupiedState = createInitialGameState();
+    occupiedState.units.p1_tank = {
+      ...occupiedState.units.p1_tank,
+      type: 'BOMBER',
+      position: { x: 1, y: 1 },
+      ammo: 6,
+      moved: false,
+      acted: false,
+    };
+    occupiedState.units.p1_inf.position = { x: 4, y: 4 };
+    occupiedState.units.p2_inf.position = { x: 2, y: 1 };
+    occupiedState.map.tiles['2,1'] = {
+      coord: { x: 2, y: 1 },
+      terrainType: 'CITY',
+      owner: 'P2',
+      capturePoints: 10,
+      structureHp: 10,
+      operational: true,
+    };
+    const occupied = applyCommand(
+      occupiedState,
+      { type: 'ATTACK_TILE', attackerId: 'p1_tank', target: { x: 2, y: 1 } },
+      { rng: () => 0.5 },
+    );
+    expect(occupied.result.ok).toBe(false);
+    expect(occupied.result.reason).toContain('ユニット');
+
+    const noAmmoState = createInitialGameState();
+    noAmmoState.units.p1_tank = {
+      ...noAmmoState.units.p1_tank,
+      type: 'BOMBER',
+      position: { x: 1, y: 1 },
+      ammo: 0,
+      moved: false,
+      acted: false,
+    };
+    noAmmoState.units.p1_inf.position = { x: 4, y: 4 };
+    noAmmoState.map.tiles['2,1'] = {
+      coord: { x: 2, y: 1 },
+      terrainType: 'CITY',
+      owner: 'P2',
+      capturePoints: 10,
+      structureHp: 10,
+      operational: true,
+    };
+    const noAmmo = applyCommand(
+      noAmmoState,
+      { type: 'ATTACK_TILE', attackerId: 'p1_tank', target: { x: 2, y: 1 } },
+      { rng: () => 0.5 },
+    );
+    expect(noAmmo.result.ok).toBe(false);
+    expect(noAmmo.result.reason).toBe('弾薬が不足しています。');
+
+    const outOfRangeState = createInitialGameState();
+    outOfRangeState.units.p1_tank = {
+      ...outOfRangeState.units.p1_tank,
+      type: 'BOMBER',
+      position: { x: 0, y: 0 },
+      ammo: 6,
+      moved: false,
+      acted: false,
+    };
+    outOfRangeState.units.p1_inf.position = { x: 4, y: 4 };
+    outOfRangeState.map.tiles['4,1'] = {
+      coord: { x: 4, y: 1 },
+      terrainType: 'CITY',
+      owner: 'P2',
+      capturePoints: 10,
+      structureHp: 10,
+      operational: true,
+    };
+    const outOfRange = applyCommand(
+      outOfRangeState,
+      { type: 'ATTACK_TILE', attackerId: 'p1_tank', target: { x: 4, y: 1 } },
+      { rng: () => 0.5 },
+    );
+    expect(outOfRange.result.ok).toBe(false);
+    expect(outOfRange.result.reason).toBe('射程外です。');
   });
 
   it('未知コマンドは未対応エラーを返す', () => {
