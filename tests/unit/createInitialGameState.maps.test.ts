@@ -83,5 +83,24 @@ describe('スカーミッシュマップ定義', () => {
     expect(relayAirports.length).toBeGreaterThanOrEqual(2);
     expect(longMarchAirports.length).toBeGreaterThanOrEqual(2);
   });
+
+  it('道路誘導マップの斜め道路にマンハッタン補間タイルが追加されている', () => {
+    const runwayRush = getSkirmishScenario('runway-rush');
+    const relaySkyway = getSkirmishScenario('relay-skyway');
+    const longMarchAirlift = getSkirmishScenario('long-march-airlift');
+
+    expect(runwayRush?.map.tiles['9,7']?.terrainType).toBe('ROAD');
+
+    expect(relaySkyway?.map.tiles['4,3']?.terrainType).toBe('ROAD');
+    expect(relaySkyway?.map.tiles['7,6']?.terrainType).toBe('ROAD');
+    expect(relaySkyway?.map.tiles['12,10']?.terrainType).toBe('ROAD');
+    expect(relaySkyway?.map.tiles['14,12']?.terrainType).toBe('ROAD');
+
+    expect(longMarchAirlift?.map.tiles['4,2']?.terrainType).toBe('ROAD');
+    expect(longMarchAirlift?.map.tiles['7,5']?.terrainType).toBe('ROAD');
+    expect(longMarchAirlift?.map.tiles['11,8']?.terrainType).toBe('ROAD');
+    expect(longMarchAirlift?.map.tiles['14,11']?.terrainType).toBe('ROAD');
+    expect(longMarchAirlift?.map.tiles['16,13']?.terrainType).toBe('ROAD');
+  });
 });
 
