@@ -28,6 +28,7 @@ describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
     });
 
     expect(screen.getByRole('option', { name: '歩兵 (1000)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '補給車 (5000)' })).toBeInTheDocument();
     expect(screen.getByText('必要資金: 1000')).toBeInTheDocument();
     expect(screen.getByText('現在手番の資金: 500')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '生産実行' })).toBeDisabled();
@@ -68,5 +69,14 @@ describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
     expect(screen.getByText('生産拠点: 選択可能な拠点なし')).toBeInTheDocument();
     expect(screen.queryByLabelText('生産拠点')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '生産実行' })).toBeDisabled();
+  });
+
+  it('空港選択時は空中補給機を含む航空ユニットを生産候補に出す', () => {
+    renderBattleScreen();
+
+    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,2' } });
+
+    expect(screen.getByRole('option', { name: '空中補給機 (14000)' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '補給車 (5000)' })).not.toBeInTheDocument();
   });
 });

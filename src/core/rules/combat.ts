@@ -33,10 +33,17 @@ export const computeDamage = (
   return Math.max(0, Math.min(10, normalized));
 };
 
+export const canDealDamage = (attackerType: UnitType, defenderType: UnitType): boolean =>
+  getBaseDamage(attackerType, defenderType) > 0;
+
 export const canCounterAttack = (attacker: UnitState, defender: UnitState): boolean => {
   const distance = manhattanDistance(attacker.position, defender.position);
   const defenderDef = UNIT_DEFINITIONS[defender.type];
-  return distance >= defenderDef.attackRangeMin && distance <= defenderDef.attackRangeMax;
+  return (
+    distance >= defenderDef.attackRangeMin
+    && distance <= defenderDef.attackRangeMax
+    && canDealDamage(defender.type, attacker.type)
+  );
 };
 
 export const forecastCombat = (
@@ -91,8 +98,9 @@ export const executeCombat = (
   const defenderDefenseModifier = resolveDefenderDefenseModifier(options);
   const attackerDefenseModifier = resolveAttackerDefenseModifier(options);
   const luckRoll = 0.95 + rng() * 0.1;
+  const baseDamage = getBaseDamage(attacker.type, defender.type);
   const damageToDefender = computeDamage(
-    getBaseDamage(attacker.type, defender.type),
+    baseDamage,
     attacker.hp,
     luckRoll,
     defenderDefenseModifier,

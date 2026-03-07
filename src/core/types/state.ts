@@ -32,6 +32,7 @@ export type GameState = {
   hpRecoveryCity?: number;
   hpRecoveryFactory?: number;
   hpRecoveryHq?: number;
+  maxSupplyCharges?: number;
 };
 
 export type MoveUnitCommand = {
@@ -58,6 +59,11 @@ export type CaptureCommand = {
   unitId: string;
 };
 
+export type SupplyCommand = {
+  type: 'SUPPLY';
+  unitId: string;
+};
+
 export type ProduceUnitCommand = {
   type: 'PRODUCE_UNIT';
   playerId: PlayerId;
@@ -78,6 +84,7 @@ export type GameCommand =
   | AttackCommand
   | AttackTileCommand
   | CaptureCommand
+  | SupplyCommand
   | ProduceUnitCommand
   | EndTurnCommand
   | UndoCommand;

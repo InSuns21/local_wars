@@ -13,6 +13,7 @@ export type GameSettings = {
   hpRecoveryCity: number;
   hpRecoveryFactory: number;
   hpRecoveryHq: number;
+  maxSupplyCharges: number;
   enableAirUnits: boolean;
   enableNavalUnits: boolean;
   enableFuelSupply: boolean;
@@ -32,6 +33,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   hpRecoveryCity: 1,
   hpRecoveryFactory: 2,
   hpRecoveryHq: 3,
+  maxSupplyCharges: 4,
   enableAirUnits: true,
   enableNavalUnits: true,
   enableFuelSupply: true,
@@ -52,6 +54,7 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
     hpRecoveryCity: 2,
     hpRecoveryFactory: 3,
     hpRecoveryHq: 4,
+    maxSupplyCharges: 5,
     enableFuelSupply: false,
     enableAmmoSupply: false,
     facilityCaptureCostIncreasePercent: 25,
@@ -67,6 +70,7 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
     incomePort: 900,
     hpRecoveryFactory: 1,
     hpRecoveryHq: 2,
+    maxSupplyCharges: 3,
     enableFuelSupply: true,
     enableAmmoSupply: true,
     facilityCaptureCostIncreasePercent: 75,

@@ -1,5 +1,6 @@
 import type { GameState } from '@core/types/state';
 import { DEFAULT_SETTINGS, type GameSettings } from '@/app/types';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 
 export const DEFAULT_SAVE_SLOTS_STORAGE_KEY = 'local_wars_save_slots_v1';
 
@@ -64,6 +65,10 @@ const normalizeSettings = (value: unknown): GameSettings => {
       typeof value.hpRecoveryHq === 'number'
         ? value.hpRecoveryHq
         : DEFAULT_SETTINGS.hpRecoveryHq,
+    maxSupplyCharges:
+      typeof value.maxSupplyCharges === 'number'
+        ? value.maxSupplyCharges
+        : DEFAULT_SETTINGS.maxSupplyCharges,
     enableAirUnits: true,
     enableNavalUnits: true,
     enableFuelSupply:
@@ -95,6 +100,21 @@ const normalizeState = (state: GameState, settings: GameSettings): GameState => 
   hpRecoveryCity: state.hpRecoveryCity ?? settings.hpRecoveryCity,
   hpRecoveryFactory: state.hpRecoveryFactory ?? settings.hpRecoveryFactory,
   hpRecoveryHq: state.hpRecoveryHq ?? settings.hpRecoveryHq,
+  maxSupplyCharges: state.maxSupplyCharges ?? settings.maxSupplyCharges,
+  units: Object.fromEntries(
+    Object.entries(state.units).map(([id, unit]) => {
+      if (!UNIT_DEFINITIONS[unit.type].resupplyTarget) {
+        return [id, unit];
+      }
+      return [
+        id,
+        {
+          ...unit,
+          supplyCharges: unit.supplyCharges ?? (state.maxSupplyCharges ?? settings.maxSupplyCharges),
+        },
+      ];
+    }),
+  ),
   facilityCaptureCostIncreasePercent:
     state.facilityCaptureCostIncreasePercent ?? settings.facilityCaptureCostIncreasePercent ?? DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent,
   showEnemyActionLogs: state.showEnemyActionLogs ?? (settings.showEnemyActionLogs ?? false),

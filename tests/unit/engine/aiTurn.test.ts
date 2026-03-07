@@ -16,6 +16,7 @@ const BASE_SETTINGS = {
   hpRecoveryCity: 1,
   hpRecoveryFactory: 2,
   hpRecoveryHq: 3,
+  maxSupplyCharges: 4,
   enableAirUnits: true,
   enableNavalUnits: true,
   enableFuelSupply: true,

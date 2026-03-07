@@ -1,6 +1,6 @@
 import { applyCommand, type CommandDeps } from '@core/engine/commandApplier';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
-import { forecastCombat } from '@core/rules/combat';
+import { canDealDamage, forecastCombat } from '@core/rules/combat';
 import { canUnitProduceAtTile } from '@core/rules/facilities';
 import { findMovePath, getReachableTiles } from '@core/rules/movement';
 import type { Coord, PlayerId } from '@core/types/game';
@@ -47,7 +47,7 @@ const getAttackableEnemies = (state: GameState, unit: UnitState): UnitState[] =>
   const enemies = getAliveUnits(state, getEnemyPlayer(unit.owner));
   return enemies.filter((enemy) => {
     const distance = manhattanDistance(unit.position, enemy.position);
-    return distance >= def.attackRangeMin && distance <= def.attackRangeMax;
+    return distance >= def.attackRangeMin && distance <= def.attackRangeMax && canDealDamage(unit.type, enemy.type);
   });
 };
 
@@ -325,10 +325,12 @@ const emptyUnitCountMap = (): Record<UnitType, number> => ({
   ANTI_AIR: 0,
   FLAK_TANK: 0,
   MISSILE_AA: 0,
+  SUPPLY_TRUCK: 0,
   FIGHTER: 0,
   BOMBER: 0,
   ATTACKER: 0,
   STEALTH_BOMBER: 0,
+  AIR_TANKER: 0,
   DESTROYER: 0,
   LANDER: 0,
 });

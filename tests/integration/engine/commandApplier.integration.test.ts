@@ -586,6 +586,129 @@ describe('commandApplier 統合テスト', () => {
     expect(moved.state.units.p1_tank.position).toEqual({ x: 2, y: 1 });
   });
 
+  it('工場で補給車を生産でき、初期補給回数が設定値で入る', () => {
+    const state = createInitialGameState();
+    state.maxSupplyCharges = 5;
+    state.players.P1.funds = 10000;
+    state.units.p1_inf.position = { x: 1, y: 1 };
+
+    const produced = applyCommand(
+      state,
+      {
+        type: 'PRODUCE_UNIT',
+        playerId: 'P1',
+        factoryCoord: { x: 0, y: 1 },
+        unitType: 'SUPPLY_TRUCK',
+      },
+      { rng: () => 0.5 },
+    );
+
+    expect(produced.result.ok).toBe(true);
+    const truck = Object.values(produced.state.units).find((unit) => unit.type === 'SUPPLY_TRUCK');
+    expect(truck?.supplyCharges).toBe(5);
+  });
+
+  it('空港で空中補給機を生産できる', () => {
+    const state = createInitialGameState();
+    state.players.P1.funds = 20000;
+    state.units.p1_inf.position = { x: 1, y: 1 };
+
+    const produced = applyCommand(
+      state,
+      {
+        type: 'PRODUCE_UNIT',
+        playerId: 'P1',
+        factoryCoord: { x: 0, y: 2 },
+        unitType: 'AIR_TANKER',
+      },
+      { rng: () => 0.5 },
+    );
+
+    expect(produced.result.ok).toBe(true);
+    expect(Object.values(produced.state.units).some((unit) => unit.type === 'AIR_TANKER')).toBe(true);
+  });
+
+  it('補給コマンドで周囲1マスの味方地上ユニットをまとめて補給する', () => {
+    const state = createInitialGameState();
+    state.maxSupplyCharges = 4;
+    state.units.p1_truck = {
+      id: 'p1_truck',
+      owner: 'P1',
+      type: 'SUPPLY_TRUCK',
+      hp: 10,
+      fuel: 20,
+      ammo: 0,
+      supplyCharges: 3,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p1_tank.position = { x: 2, y: 1 };
+    state.units.p1_tank.fuel = 10;
+    state.units.p1_tank.ammo = 1;
+    state.units.p1_inf.position = { x: 3, y: 2 };
+    state.units.p1_inf.fuel = 12;
+    state.units.p1_inf.ammo = 2;
+
+    const supplied = applyCommand(
+      state,
+      { type: 'SUPPLY', unitId: 'p1_truck' },
+      { rng: () => 0.5 },
+    );
+
+    expect(supplied.result.ok).toBe(true);
+    expect(supplied.state.units.p1_tank.fuel).toBe(70);
+    expect(supplied.state.units.p1_tank.ammo).toBe(6);
+    expect(supplied.state.units.p1_inf.fuel).toBe(99);
+    expect(supplied.state.units.p1_inf.ammo).toBe(9);
+    expect(supplied.state.units.p1_truck.supplyCharges).toBe(2);
+    expect(supplied.state.units.p1_truck.acted).toBe(true);
+  });
+
+  it('空中補給機は航空ユニットだけを補給する', () => {
+    const state = createInitialGameState();
+    state.units.p1_tanker = {
+      id: 'p1_tanker',
+      owner: 'P1',
+      type: 'AIR_TANKER',
+      hp: 10,
+      fuel: 30,
+      ammo: 0,
+      supplyCharges: 2,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p1_fighter = {
+      id: 'p1_fighter',
+      owner: 'P1',
+      type: 'FIGHTER',
+      hp: 10,
+      fuel: 5,
+      ammo: 1,
+      position: { x: 2, y: 1 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p1_tank.position = { x: 3, y: 2 };
+    state.units.p1_tank.fuel = 4;
+    state.units.p1_tank.ammo = 1;
+
+    const supplied = applyCommand(
+      state,
+      { type: 'SUPPLY', unitId: 'p1_tanker' },
+      { rng: () => 0.5 },
+    );
+
+    expect(supplied.result.ok).toBe(true);
+    expect(supplied.state.units.p1_fighter.fuel).toBe(80);
+    expect(supplied.state.units.p1_fighter.ammo).toBe(6);
+    expect(supplied.state.units.p1_tank.fuel).toBe(4);
+  });
+
 });
 
 

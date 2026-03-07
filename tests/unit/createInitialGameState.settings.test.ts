@@ -14,6 +14,7 @@ describe('createInitialGameState 設定反映', () => {
         hpRecoveryCity: 1,
         hpRecoveryFactory: 2,
         hpRecoveryHq: 3,
+        maxSupplyCharges: 4,
         enableAirUnits: true,
         enableNavalUnits: true,
         enableFuelSupply: true,
@@ -37,6 +38,7 @@ describe('createInitialGameState 設定反映', () => {
         hpRecoveryCity: 1,
         hpRecoveryFactory: 2,
         hpRecoveryHq: 3,
+        maxSupplyCharges: 4,
         enableAirUnits: true,
         enableNavalUnits: true,
         enableFuelSupply: true,
@@ -60,6 +62,7 @@ describe('createInitialGameState 設定反映', () => {
         hpRecoveryCity: 1,
         hpRecoveryFactory: 2,
         hpRecoveryHq: 3,
+        maxSupplyCharges: 6,
         enableAirUnits: true,
         enableNavalUnits: true,
         enableFuelSupply: false,
@@ -70,6 +73,7 @@ describe('createInitialGameState 設定反映', () => {
     expect(state.fogOfWar).toBe(true);
     expect(state.enableFuelSupply).toBe(false);
     expect(state.enableAmmoSupply).toBe(false);
+    expect(state.maxSupplyCharges).toBe(6);
   });
 });
 

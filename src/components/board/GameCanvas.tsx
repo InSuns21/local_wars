@@ -18,6 +18,7 @@ type GameCanvasProps = {
   previewPath: Coord[];
   moveRangeTiles: Coord[];
   attackRangeTiles: Coord[];
+  supplyRangeTiles?: Coord[];
   highlightedTargetUnitId?: string | null;
   zoom?: number;
   onSelectUnit: (unitId: string | null) => void;
@@ -251,6 +252,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   previewPath,
   moveRangeTiles,
   attackRangeTiles,
+  supplyRangeTiles = [],
   highlightedTargetUnitId,
   zoom = 1,
   onSelectUnit,
@@ -302,6 +304,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const previewKeys = new Set(previewPath.map((coord) => toCoordKey(coord)));
   const moveKeys = new Set(moveRangeTiles.map((coord) => toCoordKey(coord)));
   const attackKeys = new Set(attackRangeTiles.map((coord) => toCoordKey(coord)));
+  const supplyKeys = new Set(supplyRangeTiles.map((coord) => toCoordKey(coord)));
 
   const rows: number[] = [];
   for (let y = 0; y < gameState.map.height; y += 1) rows.push(y);
@@ -390,6 +393,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         ? BOARD_VISUAL_TOKENS.moveReachable.outline
                         : undefined;
 
+              const isSupplyRange = supplyKeys.has(key);
               const tooltipText = buildTileTooltip(
                 terrainType,
                 isVisible ? unit : undefined,
@@ -417,7 +421,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     borderColor: propertyVisual ? propertyVisual.color : '#64748b',
                     borderWidth: propertyVisual ? 3 : 1,
                     borderStyle: isMoveReachable && !isPreview && !isSelectedTile ? BOARD_VISUAL_TOKENS.moveReachable.borderStyle : 'solid',
-                    boxShadow: routeOutline,
+                    boxShadow: isSupplyRange && !routeOutline ? '0 0 0 2px rgba(22,163,74,0.45)' : routeOutline,
                     cursor: isClickable ? 'pointer' : 'not-allowed',
                     flexDirection: 'column',
                     gap: 3,
@@ -431,6 +435,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   data-attack-target={isAttackTarget ? 'true' : 'false'}
                   data-move-reachable={isMoveReachable ? 'true' : 'false'}
                   data-preview-path={isPreview ? 'true' : 'false'}
+                  data-supply-range={isSupplyRange ? 'true' : 'false'}
                   data-property-owner={propertyVisual ? propertyVisual.tag : 'NONE'}
                   data-fog-hidden={isVisible ? 'false' : 'true'}
                   data-unit-hp={unitHpLabel ?? 'NONE'}

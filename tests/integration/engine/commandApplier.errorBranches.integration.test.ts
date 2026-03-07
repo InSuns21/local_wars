@@ -212,6 +212,81 @@ describe('commandApplier 失敗分岐', () => {
     expect(outOfRange.result.reason).toBe('射程外です。');
   });
 
+  it('SUPPLYで補給回数0または対象なしを弾く', () => {
+    const noChargeState = createInitialGameState();
+    noChargeState.units.p1_truck = {
+      id: 'p1_truck',
+      owner: 'P1',
+      type: 'SUPPLY_TRUCK',
+      hp: 10,
+      fuel: 30,
+      ammo: 0,
+      supplyCharges: 0,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+
+    const noCharge = applyCommand(
+      noChargeState,
+      { type: 'SUPPLY', unitId: 'p1_truck' },
+      { rng: () => 0.5 },
+    );
+    expect(noCharge.result.ok).toBe(false);
+    expect(noCharge.result.reason).toBe('補給回数が残っていません。');
+
+    const noTargetState = createInitialGameState();
+    noTargetState.units.p1_truck = {
+      id: 'p1_truck',
+      owner: 'P1',
+      type: 'SUPPLY_TRUCK',
+      hp: 10,
+      fuel: 30,
+      ammo: 0,
+      supplyCharges: 1,
+      position: { x: 4, y: 0 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+
+    const noTarget = applyCommand(
+      noTargetState,
+      { type: 'SUPPLY', unitId: 'p1_truck' },
+      { rng: () => 0.5 },
+    );
+    expect(noTarget.result.ok).toBe(false);
+    expect(noTarget.result.reason).toBe('補給対象が隣接していません。');
+  });
+
+  it('補給ユニットは攻撃できない', () => {
+    const state = createInitialGameState();
+    state.units.p1_truck = {
+      id: 'p1_truck',
+      owner: 'P1',
+      type: 'SUPPLY_TRUCK',
+      hp: 10,
+      fuel: 30,
+      ammo: 0,
+      supplyCharges: 2,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p2_inf.position = { x: 2, y: 1 };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK', attackerId: 'p1_truck', defenderId: 'p2_inf' },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(false);
+    expect(attacked.result.reason).toBe('このユニットはその対象を攻撃できません。');
+  });
+
   it('未知コマンドは未対応エラーを返す', () => {
     const state = createInitialGameState();
 

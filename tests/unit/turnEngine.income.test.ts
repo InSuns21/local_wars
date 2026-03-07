@@ -43,6 +43,7 @@ describe('turnEngine 収入処理', () => {
         hpRecoveryCity: 1,
         hpRecoveryFactory: 2,
         hpRecoveryHq: 3,
+        maxSupplyCharges: 4,
         enableAirUnits: true,
         enableNavalUnits: true,
         enableFuelSupply: true,
@@ -256,6 +257,50 @@ describe('turnEngine 航空燃料処理', () => {
 
     expect(next.units.p1_tank).toBeDefined();
     expect(next.units.p1_tank.fuel).toBe(2);
+  });
+
+  it('補給車は味方工場でターン終了すると補給回数が全回復する', () => {
+    const state = createInitialGameState();
+    state.maxSupplyCharges = 5;
+    state.units.p1_truck = {
+      id: 'p1_truck',
+      owner: 'P1',
+      type: 'SUPPLY_TRUCK',
+      hp: 10,
+      fuel: 20,
+      ammo: 0,
+      supplyCharges: 1,
+      position: { x: 0, y: 1 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_truck.supplyCharges).toBe(5);
+  });
+
+  it('空中補給機は味方空港でターン終了すると補給回数が全回復する', () => {
+    const state = createInitialGameState();
+    state.maxSupplyCharges = 6;
+    state.units.p1_tanker = {
+      id: 'p1_tanker',
+      owner: 'P1',
+      type: 'AIR_TANKER',
+      hp: 10,
+      fuel: 10,
+      ammo: 0,
+      supplyCharges: 2,
+      position: { x: 0, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tanker.supplyCharges).toBe(6);
   });
 
   it('ステルス機は待機時に燃料を2消費する', () => {

@@ -46,7 +46,7 @@ const PRESET_DESCRIPTIONS: Record<GameSettingsPreset, string> = {
 };
 
 const NUMERIC_FIELD_META: {
-  [K in 'initialFunds' | 'incomePerProperty' | 'incomeAirport' | 'incomePort' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq' | 'facilityCaptureCostIncreasePercent']: {
+  [K in 'initialFunds' | 'incomePerProperty' | 'incomeAirport' | 'incomePort' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq' | 'maxSupplyCharges' | 'facilityCaptureCostIncreasePercent']: {
     min: number;
     max: number;
     step: number;
@@ -111,6 +111,14 @@ const NUMERIC_FIELD_META: {
     defaultValue: DEFAULT_SETTINGS.hpRecoveryHq,
     description: '司令部の粘り強さに影響します。高すぎると決着が長引きます。',
   },
+  maxSupplyCharges: {
+    min: 0,
+    max: 10,
+    step: 1,
+    recommendedRangeText: '推奨: 2-6',
+    defaultValue: DEFAULT_SETTINGS.maxSupplyCharges,
+    description: '補給ユニットが出撃中に実行できる補給回数です。低いほど帰投判断が重要になります。',
+  },
   facilityCaptureCostIncreasePercent: {
     min: 0,
     max: 300,
@@ -132,6 +140,7 @@ const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
   && left.hpRecoveryCity === right.hpRecoveryCity
   && left.hpRecoveryFactory === right.hpRecoveryFactory
   && left.hpRecoveryHq === right.hpRecoveryHq
+  && left.maxSupplyCharges === right.maxSupplyCharges
   && left.enableAirUnits === right.enableAirUnits
   && left.enableNavalUnits === right.enableNavalUnits
   && left.enableFuelSupply === right.enableFuelSupply
@@ -419,6 +428,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                     min: NUMERIC_FIELD_META.hpRecoveryHq.min,
                     max: NUMERIC_FIELD_META.hpRecoveryHq.max,
                     step: NUMERIC_FIELD_META.hpRecoveryHq.step,
+                  }}
+                />
+
+                <TextField
+                  id="max-supply-charges"
+                  label="補給ユニットの最大補給回数"
+                  type="number"
+                  value={settings.maxSupplyCharges}
+                  onChange={(e) => update('maxSupplyCharges', Number(e.target.value))}
+                  error={getNumericFieldStatus('maxSupplyCharges').error}
+                  helperText={getNumericFieldStatus('maxSupplyCharges').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.maxSupplyCharges.min,
+                    max: NUMERIC_FIELD_META.maxSupplyCharges.max,
+                    step: NUMERIC_FIELD_META.maxSupplyCharges.step,
                   }}
                 />
 

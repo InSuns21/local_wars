@@ -3,7 +3,13 @@ import type { GameState } from '@core/types/state';
 import type { PlayerId } from '@core/types/game';
 import { toCoordKey } from '@/utils/coord';
 import { getTileCaptureTarget } from '@core/rules/facilities';
-import { getTurnEndFuelCost, isAirUnitType, isOperationalFacility, isSupplyTileForUnit } from '@core/rules/facilities';
+import {
+  getTurnEndFuelCost,
+  isAirUnitType,
+  isOperationalFacility,
+  isSupplyChargeRefillTileForUnit,
+  isSupplyTileForUnit,
+} from '@core/rules/facilities';
 
 const nextPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 
@@ -69,16 +75,27 @@ const consumeTurnEndFuel = (
   enableAmmoSupply: boolean,
 ): Record<string, typeof state.units[string]> => {
   const nextUnits: Record<string, typeof state.units[string]> = {};
+  const maxSupplyCharges = state.maxSupplyCharges ?? 4;
 
   for (const [id, unit] of Object.entries(state.units)) {
-    if (unit.owner !== endedPlayerId || !isAirUnitType(unit.type)) {
+    if (unit.owner !== endedPlayerId) {
       nextUnits[id] = unit;
+      continue;
+    }
+
+    const tile = state.map.tiles[toCoordKey(unit.position)];
+    const shouldRefillSupplyCharges = isSupplyChargeRefillTileForUnit(tile, unit);
+
+    if (!isAirUnitType(unit.type)) {
+      nextUnits[id] = {
+        ...unit,
+        supplyCharges: shouldRefillSupplyCharges ? maxSupplyCharges : unit.supplyCharges,
+      };
       continue;
     }
 
     const fuelCost = getTurnEndFuelCost(unit.type);
     const consumedFuel = Math.max(0, unit.fuel - fuelCost);
-    const tile = state.map.tiles[toCoordKey(unit.position)];
     const canResupply = isSupplyTileForUnit(tile, unit);
 
     if (canResupply) {
@@ -87,6 +104,7 @@ const consumeTurnEndFuel = (
         fuel: enableFuelSupply ? UNIT_DEFINITIONS[unit.type].maxFuel : consumedFuel,
         ammo: enableAmmoSupply ? UNIT_DEFINITIONS[unit.type].maxAmmo : unit.ammo,
         hp: Math.min(10, unit.hp + getUnitRecoveryAmount(state, tile?.terrainType ?? 'PLAIN')),
+        supplyCharges: shouldRefillSupplyCharges ? maxSupplyCharges : unit.supplyCharges,
       };
       continue;
     }
@@ -95,7 +113,11 @@ const consumeTurnEndFuel = (
       continue;
     }
 
-    nextUnits[id] = { ...unit, fuel: consumedFuel };
+    nextUnits[id] = {
+      ...unit,
+      fuel: consumedFuel,
+      supplyCharges: shouldRefillSupplyCharges ? maxSupplyCharges : unit.supplyCharges,
+    };
   }
 
   return nextUnits;

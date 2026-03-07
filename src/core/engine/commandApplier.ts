@@ -4,7 +4,7 @@ import type { GameCommand, CommandResult } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 import { toCoordKey, manhattanDistance } from '@/utils/coord';
 import { applyCaptureStep } from '@core/rules/capture';
-import { canCounterAttack, computeBombardDamage, executeCombat } from '@core/rules/combat';
+import { canCounterAttack, canDealDamage, computeBombardDamage, executeCombat } from '@core/rules/combat';
 import { findMovePath, getEnemyUnits, getPathCost } from '@core/rules/movement';
 import { getVisibleEnemyUnitIds } from '@core/rules/visibility';
 import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
@@ -15,9 +15,13 @@ import {
   canUnitProduceAtTile,
   getBaseStructureHp,
   getFacilityHp,
+  getResupplyTarget,
+  isAirUnitType,
   isBombardableTerrain,
   isFacilityTargetInRange,
   isOperationalFacility,
+  isNavalUnitType,
+  isSupportUnitType,
 } from '@core/rules/facilities';
 import { nextTurnState } from './turnEngine';
 import { UNIT_DEFINITIONS } from './unitDefinitions';
@@ -76,6 +80,30 @@ const appendLog = (state: GameState, playerId: PlayerId, action: string, detail?
     action,
     detail,
   });
+};
+
+const getAdjacentCoords = (coord: Coord): Coord[] => [
+  { x: coord.x, y: coord.y - 1 },
+  { x: coord.x + 1, y: coord.y },
+  { x: coord.x, y: coord.y + 1 },
+  { x: coord.x - 1, y: coord.y },
+];
+
+const getSupplyTargets = (state: GameState, unit: UnitState): UnitState[] => {
+  const resupplyTarget = getResupplyTarget(unit.type);
+  if (!resupplyTarget) {
+    return [];
+  }
+
+  return getAdjacentCoords(unit.position)
+    .map((coord) => getUnitAt(state, coord))
+    .filter((target): target is UnitState => Boolean(target && target.owner === unit.owner && target.id !== unit.id))
+    .filter((target) => {
+      if (resupplyTarget === 'AIR') {
+        return isAirUnitType(target.type);
+      }
+      return !isAirUnitType(target.type) && !isNavalUnitType(target.type);
+    });
 };
 
 const getVisibleEnemyCoordKeys = (state: GameState, unit: UnitState): Set<string> => {
@@ -312,6 +340,9 @@ const applyAttackCommand = (
   }
 
   if (!canAttack(attacker, defender)) return { ok: false, reason: '射程外です。' };
+  if (!canDealDamage(attacker.type, defender.type)) {
+    return { ok: false, reason: 'このユニットはその対象を攻撃できません。' };
+  }
 
   const shouldConsumeAmmo = state.enableAmmoSupply ?? true;
   if (shouldConsumeAmmo && attacker.ammo <= 0) {
@@ -454,6 +485,44 @@ const applyCaptureCommand = (state: GameState, command: Extract<GameCommand, { t
   return { ok: true };
 };
 
+const applySupplyCommand = (
+  state: GameState,
+  command: Extract<GameCommand, { type: 'SUPPLY' }>,
+): CommandResult => {
+  const unit = state.units[command.unitId];
+  if (!unit) return { ok: false, reason: 'ユニットが存在しません。' };
+  if (unit.owner !== state.currentPlayerId) return { ok: false, reason: '自軍ユニットのみ補給できます。' };
+  if (unit.acted) return { ok: false, reason: 'このユニットは既に行動済みです。' };
+  if (!isSupportUnitType(unit.type)) return { ok: false, reason: 'このユニットは補給できません。' };
+  if ((unit.supplyCharges ?? 0) <= 0) return { ok: false, reason: '補給回数が残っていません。' };
+
+  const targets = getSupplyTargets(state, unit);
+  if (targets.length === 0) return { ok: false, reason: '補給対象が隣接していません。' };
+
+  for (const target of targets) {
+    state.units[target.id] = {
+      ...target,
+      fuel: UNIT_DEFINITIONS[target.type].maxFuel,
+      ammo: UNIT_DEFINITIONS[target.type].maxAmmo,
+    };
+  }
+
+  state.units[unit.id] = {
+    ...unit,
+    acted: true,
+    supplyCharges: Math.max(0, (unit.supplyCharges ?? 0) - 1),
+  };
+
+  appendLog(
+    state,
+    state.currentPlayerId,
+    'SUPPLY',
+    `${unit.id} -> ${targets.map((target) => target.id).join(', ')}`,
+  );
+  applyVictory(state);
+  return { ok: true };
+};
+
 const applyProduceUnitCommand = (
   state: GameState,
   command: Extract<GameCommand, { type: 'PRODUCE_UNIT' }>,
@@ -494,6 +563,7 @@ const applyProduceUnitCommand = (
     hp: 10,
     fuel: def.maxFuel,
     ammo: def.maxAmmo,
+    supplyCharges: def.resupplyTarget ? (state.maxSupplyCharges ?? 4) : undefined,
     position: { ...command.factoryCoord },
     moved: true,
     acted: true,
@@ -539,6 +609,9 @@ export const applyCommand = (
       break;
     case 'CAPTURE':
       result = applyCaptureCommand(state, command);
+      break;
+    case 'SUPPLY':
+      result = applySupplyCommand(state, command);
       break;
     case 'PRODUCE_UNIT':
       result = applyProduceUnitCommand(state, command);

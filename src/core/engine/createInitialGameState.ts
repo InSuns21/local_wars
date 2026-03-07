@@ -1,14 +1,36 @@
 import type { GameSettings } from '@/app/types';
 import { getSkirmishScenario } from '@data/skirmishMaps';
 import type { GameState } from '@core/types/state';
+import { UNIT_DEFINITIONS } from './unitDefinitions';
 
 export type GameInitializationOptions = {
   mapId?: string;
   settings?: GameSettings;
 };
 
+const applySupplyChargeDefaults = (state: GameState, maxSupplyCharges: number): GameState['units'] =>
+  Object.fromEntries(
+    Object.entries(state.units).map(([id, unit]) => {
+      if (!UNIT_DEFINITIONS[unit.type].resupplyTarget) {
+        return [id, unit];
+      }
+      return [
+        id,
+        {
+          ...unit,
+          supplyCharges: unit.supplyCharges ?? maxSupplyCharges,
+        },
+      ];
+    }),
+  );
+
 const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameState => {
-  if (!settings) return state;
+  if (!settings) {
+    return {
+      ...state,
+      units: applySupplyChargeDefaults(state, state.maxSupplyCharges ?? 4),
+    };
+  }
 
   return {
     ...state,
@@ -20,13 +42,14 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
       ...state.map,
       tiles: { ...state.map.tiles },
     },
-    units: { ...state.units },
+    units: applySupplyChargeDefaults({ ...state, units: { ...state.units } }, settings.maxSupplyCharges),
     incomePerProperty: settings.incomePerProperty,
     incomeAirport: settings.incomeAirport,
     incomePort: settings.incomePort,
     hpRecoveryCity: settings.hpRecoveryCity,
     hpRecoveryFactory: settings.hpRecoveryFactory,
     hpRecoveryHq: settings.hpRecoveryHq,
+    maxSupplyCharges: settings.maxSupplyCharges,
     fogOfWar: settings.fogOfWar,
     enableFuelSupply: settings.enableFuelSupply,
     enableAmmoSupply: settings.enableAmmoSupply,
@@ -168,6 +191,7 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
     hpRecoveryCity: options.settings?.hpRecoveryCity ?? 1,
     hpRecoveryFactory: options.settings?.hpRecoveryFactory ?? 2,
     hpRecoveryHq: options.settings?.hpRecoveryHq ?? 3,
+    maxSupplyCharges: options.settings?.maxSupplyCharges ?? 4,
   };
 
   return applyFeatureToggles(base, options.settings);

@@ -25,11 +25,14 @@ import { GameCanvas } from "@components/board/GameCanvas";
 import { createInitialGameState } from "@core/engine/createInitialGameState";
 import { UNIT_DEFINITIONS } from "@core/engine/unitDefinitions";
 import { getEnemyUnits, getPathCost } from "@core/rules/movement";
+import { canDealDamage } from "@core/rules/combat";
 import {
   canBombardProperties,
   canUnitProduceAtTile,
   getProductionTypeForTerrain,
+  isAirUnitType,
   isBombardableTerrain,
+  isNavalUnitType,
   isOperationalFacility,
 } from "@core/rules/facilities";
 import { getVisibleEnemyUnitIds } from "@core/rules/visibility";
@@ -49,8 +52,8 @@ type BattleScreenProps = {
 };
 
 const PRODUCIBLE_UNITS_BY_SITE: Record<"GROUND" | "AIR" | "NAVAL", UnitType[]> = {
-  GROUND: ["INFANTRY", "RECON", "TANK", "HEAVY_TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR", "FLAK_TANK", "MISSILE_AA"],
-  AIR: ["FIGHTER", "BOMBER", "ATTACKER", "STEALTH_BOMBER"],
+  GROUND: ["INFANTRY", "RECON", "TANK", "HEAVY_TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR", "FLAK_TANK", "MISSILE_AA", "SUPPLY_TRUCK"],
+  AIR: ["FIGHTER", "BOMBER", "ATTACKER", "STEALTH_BOMBER", "AIR_TANKER"],
   NAVAL: ["DESTROYER", "LANDER"],
 };
 
@@ -215,7 +218,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const attackRangeTiles = useMemo(() => {
     if (!selectedUnitId || !selectedUnit || !canControlSelectedUnit) return [];
-    if (selectedUnit.acted) return [];
+    if (selectedUnit.acted || UNIT_DEFINITIONS[selectedUnit.type].resupplyTarget) return [];
 
     const shouldConsumeFuel = gameState.enableFuelSupply ?? true;
     const maxMove = shouldConsumeFuel
@@ -279,11 +282,43 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const attackableEnemyUnits = useMemo(
     () =>
-      visibleEnemyUnits.filter((u) =>
-        attackRangeKeys.has(toCoordKey(u.position)),
+      visibleEnemyUnits.filter(
+        (u) => attackRangeKeys.has(toCoordKey(u.position)) && selectedUnit && canDealDamage(selectedUnit.type, u.type),
       ),
-    [attackRangeKeys, visibleEnemyUnits],
+    [attackRangeKeys, selectedUnit, visibleEnemyUnits],
   );
+
+  const supplyRangeTiles = useMemo(() => {
+    if (!selectedUnit || !canControlSelectedUnit || selectedUnit.acted) {
+      return [];
+    }
+
+    const resupplyTarget = UNIT_DEFINITIONS[selectedUnit.type].resupplyTarget;
+    if (!resupplyTarget) {
+      return [];
+    }
+
+    const adjacentOffsets = [
+      { x: 0, y: -1 },
+      { x: 1, y: 0 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+    ];
+
+    return adjacentOffsets
+      .map((offset) => ({ x: selectedUnit.position.x + offset.x, y: selectedUnit.position.y + offset.y }))
+      .filter((coord) => coord.x >= 0 && coord.x < gameState.map.width && coord.y >= 0 && coord.y < gameState.map.height)
+      .filter((coord) => {
+        const target = gameState.units[aliveUnitByTile.get(toCoordKey(coord)) ?? ''];
+        if (!target || target.owner !== selectedUnit.owner || target.id === selectedUnit.id) {
+          return false;
+        }
+        if (resupplyTarget === 'AIR') {
+          return isAirUnitType(target.type);
+        }
+        return !isAirUnitType(target.type) && !isNavalUnitType(target.type);
+      });
+  }, [aliveUnitByTile, canControlSelectedUnit, gameState.map.height, gameState.map.width, gameState.units, selectedUnit]);
 
   const canIssueAttack = Boolean(
     canControlSelectedUnit &&
@@ -320,6 +355,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     }
     return PRODUCIBLE_UNITS_BY_SITE[productionType];
   }, [selectedProductionTile]);
+
+  const canIssueSupply = Boolean(
+    canControlSelectedUnit &&
+      !isGameOver &&
+      selectedUnit &&
+      !selectedUnit.acted &&
+      UNIT_DEFINITIONS[selectedUnit.type].resupplyTarget &&
+      (selectedUnit.supplyCharges ?? 0) > 0 &&
+      supplyRangeTiles.length > 0,
+  );
 
   const canIssueBombard = Boolean(
     canControlSelectedUnit &&
@@ -617,6 +662,24 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     const result = dispatchCommand({ type: "CAPTURE", unitId: selectedUnitId });
     setCommandResult(result.ok, result.reason);
   };
+  const handleSupply = (): void => {
+    if (isGameOver) {
+      setLastResult("失敗: 既に勝敗が確定しています。");
+      return;
+    }
+    if (!selectedUnitId) {
+      setLastResult("失敗: 操作ユニットを選択してください。");
+      return;
+    }
+    if (!canControlSelectedUnit) {
+      setLastResult("失敗: 敵ユニットは操作できません。");
+      return;
+    }
+
+    const result = dispatchCommand({ type: "SUPPLY", unitId: selectedUnitId });
+    setCommandResult(result.ok, result.reason);
+  };
+
   const handleBombard = (): void => {
     if (isGameOver) {
       setLastResult(
@@ -843,6 +906,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     <Typography variant="caption" color="text.secondary">座標</Typography>
                     <Typography>{selectedUnit.position.x},{selectedUnit.position.y}</Typography>
                   </Paper>
+                  {UNIT_DEFINITIONS[selectedUnit.type].resupplyTarget && (
+                    <Paper variant="outlined" sx={{ p: 1 }}>
+                      <Typography variant="caption" color="text.secondary">補給回数</Typography>
+                      <Typography>{`${selectedUnit.supplyCharges ?? 0}/${gameState.maxSupplyCharges ?? 4}`}</Typography>
+                    </Paper>
+                  )}
                 </Box>
               )}
             </AccordionDetails>
@@ -877,7 +946,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 <Typography variant="body2">
                   攻撃予測: {attackForecastText}
                 </Typography>
+                {UNIT_DEFINITIONS[selectedUnit?.type ?? "INFANTRY"].resupplyTarget && (
+                  <Typography variant="body2">
+                    補給対象: {supplyRangeTiles.length > 0 ? supplyRangeTiles.map((coord) => `${coord.x},${coord.y}`).join(' / ') : 'なし'}
+                  </Typography>
+                )}
                 <Button type="button" variant="contained" color="secondary" onClick={handleAttack} disabled={!canIssueAttack}>攻撃実行</Button>
+                <Button type="button" variant="outlined" color="success" onClick={handleSupply} disabled={!canIssueSupply}>補給実行</Button>
                 <Button type="button" variant="outlined" color="warning" onClick={handleBombard} disabled={!canIssueBombard}>施設爆撃</Button>
                 <Button type="button" variant="outlined" onClick={handleCapture} disabled={!canCaptureSelectedUnit}>占領実行</Button>
                 <Typography>最終コマンド: {lastResult}</Typography>
@@ -989,6 +1064,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 previewPath={previewPath}
                 moveRangeTiles={moveRangeTiles}
                 attackRangeTiles={attackRangeTiles}
+                supplyRangeTiles={supplyRangeTiles}
                 highlightedTargetUnitId={canIssueAttack ? targetUnitId || null : null}
                 zoom={boardZoom}
                 onSelectUnit={isGameOver ? () => {} : selectUnit}

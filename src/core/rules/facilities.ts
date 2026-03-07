@@ -42,6 +42,8 @@ export const isAirUnitType = (unitType: UnitType): boolean => UNIT_DEFINITIONS[u
 export const isNavalUnitType = (unitType: UnitType): boolean => UNIT_DEFINITIONS[unitType].movementType === 'NAVAL';
 export const isStealthUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].isStealth);
 export const canBombardProperties = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].canBombardProperties);
+export const isSupportUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].resupplyTarget);
+export const getResupplyTarget = (unitType: UnitType): 'GROUND' | 'AIR' | null => UNIT_DEFINITIONS[unitType].resupplyTarget ?? null;
 
 export const getTurnEndFuelCost = (unitType: UnitType): number => UNIT_DEFINITIONS[unitType].turnEndFuelCost ?? 0;
 
@@ -61,6 +63,13 @@ export const isSupplyTileForUnit = (tile: TileState | undefined, unit: UnitState
     return tile.terrainType === 'AIRPORT';
   }
   return tile.terrainType === 'CITY' || tile.terrainType === 'FACTORY' || tile.terrainType === 'HQ';
+};
+
+export const isSupplyChargeRefillTileForUnit = (tile: TileState | undefined, unit: UnitState): boolean => {
+  if (!isSupportUnitType(unit.type)) {
+    return false;
+  }
+  return isSupplyTileForUnit(tile, unit);
 };
 
 export const applyFacilityDestruction = (tile: TileState, state: GameState): TileState => {

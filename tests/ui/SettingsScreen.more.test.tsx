@@ -19,6 +19,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     fireEvent.change(screen.getByLabelText('都市のHP回復量（ターン開始時）'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('工場のHP回復量（ターン開始時）'), { target: { value: '4' } });
     fireEvent.change(screen.getByLabelText('HQのHP回復量（ターン開始時）'), { target: { value: '6' } });
+    fireEvent.change(screen.getByLabelText('補給ユニットの最大補給回数'), { target: { value: '7' } });
     fireEvent.click(screen.getByLabelText('燃料消費あり'));
     fireEvent.click(screen.getByLabelText('弾薬消費あり'));
 
@@ -36,6 +37,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(submitted.hpRecoveryCity).toBe(2);
     expect(submitted.hpRecoveryFactory).toBe(4);
     expect(submitted.hpRecoveryHq).toBe(6);
+    expect(submitted.maxSupplyCharges).toBe(7);
     expect(submitted.enableAirUnits).toBe(true);
     expect(submitted.enableNavalUnits).toBe(true);
     expect(submitted.enableFuelSupply).toBe(false);
@@ -76,6 +78,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(screen.getByLabelText('1ターン収入（空港）')).toHaveValue(1000);
     expect(screen.getByLabelText('1ターン収入（港湾）')).toHaveValue(1000);
     expect(screen.getByLabelText('燃料消費あり')).toBeChecked();
+    expect(screen.getByLabelText('補給ユニットの最大補給回数')).toHaveValue(4);
     expect(screen.getByText('現在の状態: 標準')).toBeInTheDocument();
   });
 

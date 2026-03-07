@@ -101,4 +101,35 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     expect(nextState.map.tiles['4,2'].owner).toBe('P2');
     expect(nextState.actionLog.some((entry) => entry.action === 'CAPTURE')).toBe(false);
   });
+
+  it('補給車で補給実行すると隣接味方の燃料と弾薬が全回復する', () => {
+    const state = createBattleState();
+    state.maxSupplyCharges = 4;
+    state.units.p1_truck = {
+      id: 'p1_truck',
+      owner: 'P1',
+      type: 'SUPPLY_TRUCK',
+      hp: 10,
+      fuel: 30,
+      ammo: 0,
+      supplyCharges: 2,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p1_tank.position = { x: 2, y: 1 };
+    state.units.p1_tank.fuel = 8;
+    state.units.p1_tank.ammo = 1;
+
+    const { store } = renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.click(screen.getByRole('button', { name: '補給実行' }));
+
+    expect(screen.getByText('最終コマンド: 成功')).toBeInTheDocument();
+    expect(screen.getByText('1/4')).toBeInTheDocument();
+    expect(store.getState().gameState.units.p1_tank.fuel).toBe(70);
+    expect(store.getState().gameState.units.p1_tank.ammo).toBe(6);
+  });
 });

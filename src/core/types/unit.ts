@@ -10,10 +10,12 @@ export type UnitType =
   | 'ANTI_AIR'
   | 'FLAK_TANK'
   | 'MISSILE_AA'
+  | 'SUPPLY_TRUCK'
   | 'FIGHTER'
   | 'BOMBER'
   | 'ATTACKER'
   | 'STEALTH_BOMBER'
+  | 'AIR_TANKER'
   | 'DESTROYER'
   | 'LANDER';
 
@@ -26,6 +28,7 @@ export type UnitState = {
   hp: number;
   fuel: number;
   ammo: number;
+  supplyCharges?: number;
   position: Coord;
   moved: boolean;
   acted: boolean;
@@ -48,4 +51,5 @@ export type UnitDefinition = {
   canBombardProperties?: boolean;
   isStealth?: boolean;
   turnEndFuelCost?: number;
+  resupplyTarget?: 'GROUND' | 'AIR';
 };

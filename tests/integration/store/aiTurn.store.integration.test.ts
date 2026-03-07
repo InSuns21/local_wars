@@ -15,6 +15,7 @@ describe('store AI手番統合', () => {
         hpRecoveryCity: 1,
         hpRecoveryFactory: 2,
         hpRecoveryHq: 3,
+        maxSupplyCharges: 4,
         enableAirUnits: true,
         enableNavalUnits: true,
         enableFuelSupply: true,

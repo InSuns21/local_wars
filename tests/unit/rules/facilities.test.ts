@@ -115,14 +115,18 @@ describe('facilities rules', () => {
     expect(canUnitProduceAtTile('FIGHTER', makeTile({ terrainType: 'FACTORY' }))).toBe(false);
     expect(canUnitProduceAtTile('MISSILE_AA', makeTile({ terrainType: 'FACTORY', capturePoints: 20 }))).toBe(true);
     expect(canUnitProduceAtTile('FLAK_TANK', makeTile({ terrainType: 'FACTORY', capturePoints: 20 }))).toBe(true);
+    expect(canUnitProduceAtTile('SUPPLY_TRUCK', makeTile({ terrainType: 'FACTORY', capturePoints: 20 }))).toBe(true);
     expect(canUnitProduceAtTile('FIGHTER', makeTile({ terrainType: 'AIRPORT', capturePoints: 20 }))).toBe(true);
+    expect(canUnitProduceAtTile('AIR_TANKER', makeTile({ terrainType: 'AIRPORT', capturePoints: 20 }))).toBe(true);
     expect(canUnitProduceAtTile('INFANTRY', makeTile({ terrainType: 'AIRPORT', capturePoints: 20 }))).toBe(false);
     expect(canUnitProduceAtTile('DESTROYER', makeTile({ terrainType: 'PORT', capturePoints: 20 }))).toBe(true);
   });
 
   it('ユニットごとの補給可能タイルを判定できる', () => {
     const ground = makeUnit({ type: 'INFANTRY' });
+    const truck = makeUnit({ type: 'SUPPLY_TRUCK', supplyCharges: 1 });
     const air = makeUnit({ type: 'FIGHTER', fuel: 20, ammo: 1 });
+    const tanker = makeUnit({ type: 'AIR_TANKER', fuel: 20, ammo: 0, supplyCharges: 1 });
 
     expect(isSupplyTileForUnit(undefined, ground)).toBe(false);
     expect(isSupplyTileForUnit(makeTile({ owner: 'P2' }), ground)).toBe(false);
@@ -134,6 +138,8 @@ describe('facilities rules', () => {
 
     expect(isSupplyTileForUnit(makeTile({ terrainType: 'AIRPORT', capturePoints: 20 }), air)).toBe(true);
     expect(isSupplyTileForUnit(makeTile({ terrainType: 'CITY' }), air)).toBe(false);
+    expect(isSupplyTileForUnit(makeTile({ terrainType: 'CITY' }), truck)).toBe(true);
+    expect(isSupplyTileForUnit(makeTile({ terrainType: 'AIRPORT', capturePoints: 20 }), tanker)).toBe(true);
   });
 
   it('施設破壊で所有解除・機能停止・占領コスト増加が適用される', () => {

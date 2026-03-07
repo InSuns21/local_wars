@@ -16,6 +16,7 @@ type MockGameCanvasProps = {
   previewPath: Coord[];
   moveRangeTiles: Coord[];
   attackRangeTiles: Coord[];
+  supplyRangeTiles?: Coord[];
   highlightedTargetUnitId?: string | null;
   zoom?: number;
   onSelectUnit: (unitId: string | null) => void;
@@ -133,6 +134,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
   previewPath,
   moveRangeTiles,
   attackRangeTiles,
+  supplyRangeTiles = [],
   highlightedTargetUnitId,
   zoom = 1,
   onSelectUnit,
@@ -163,6 +165,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
   const previewKeys = new Set(previewPath.map((coord) => toCoordKey(coord)));
   const moveKeys = new Set(moveRangeTiles.map((coord) => toCoordKey(coord)));
   const attackKeys = new Set(attackRangeTiles.map((coord) => toCoordKey(coord)));
+  const supplyKeys = new Set(supplyRangeTiles.map((coord) => toCoordKey(coord)));
   const selectedUnit = selectedUnitId ? gameState.units[selectedUnitId] ?? null : null;
 
   const handleTileClick = (coord: Coord): void => {
@@ -195,6 +198,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
               const isMoveReachable = moveKeys.has(key);
               const isAttackRange = attackKeys.has(key);
               const isAttackTarget = Boolean(unit && highlightedTargetUnitId === unit.id);
+              const isSupplyRange = supplyKeys.has(key);
               const isClickable = Boolean(unit) || (!selectedUnit ? false : isMoveReachable || isAttackRange || isSelectedTile);
               const propertyOwner = isVisible && CAPTURABLE_TERRAINS.has(terrainType as TerrainType)
                 ? getPropertyOwnerVisual(tile?.owner)
@@ -224,6 +228,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
                   data-attack-target={isAttackTarget ? 'true' : 'false'}
                   data-move-reachable={isMoveReachable ? 'true' : 'false'}
                   data-preview-path={isPreview ? 'true' : 'false'}
+                  data-supply-range={isSupplyRange ? 'true' : 'false'}
                   data-property-owner={propertyOwner}
                   data-fog-hidden={isVisible ? 'false' : 'true'}
                   data-unit-hp={unitHpLabel}
@@ -233,7 +238,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
                     height: `${tileHeight}px`,
                     borderStyle: isMoveReachable && !isPreview && !isSelectedTile ? 'dashed' : 'solid',
                     borderWidth: '1px',
-                    borderColor: isSelectedUnit ? '#2563eb' : '#64748b',
+                    borderColor: isSelectedUnit ? '#2563eb' : isSupplyRange ? '#16a34a' : '#64748b',
                     position: 'relative',
                   }}
                 >
