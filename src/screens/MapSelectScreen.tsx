@@ -32,7 +32,7 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ maps, onConfir
     <Box
       component="main"
       sx={{
-        maxWidth: 1040,
+        maxWidth: 1360,
         mx: 'auto',
         px: 2,
         py: 2,
@@ -52,18 +52,26 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ maps, onConfir
           sx={{
             flex: 1,
             minHeight: 0,
-            overflowY: 'auto',
-            pr: 0.5,
+            overflow: 'hidden',
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' },
+            gridTemplateColumns: { xs: '1fr', xl: 'minmax(0, 1.7fr) 380px' },
             gap: 2,
             mb: 2,
           }}
         >
           <Box
+            data-testid="map-select-card-list"
             sx={{
+              minHeight: 0,
+              overflowY: 'auto',
+              pr: 0.5,
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(180px, 1fr))' },
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, minmax(180px, 1fr))',
+                lg: 'repeat(3, minmax(180px, 1fr))',
+                xl: 'repeat(4, minmax(180px, 1fr))',
+              },
               gap: 1.5,
               alignContent: 'start',
             }}
@@ -94,7 +102,12 @@ export const MapSelectScreen: React.FC<MapSelectScreenProps> = ({ maps, onConfir
           </Box>
 
           {selectedMap && (
-            <Paper variant="outlined" sx={{ p: 2 }} aria-label="選択中マップ詳細">
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, minHeight: 0, overflowY: 'auto' }}
+              aria-label="選択中マップ詳細"
+              data-testid="map-select-detail-panel"
+            >
               <Stack spacing={1.5}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                   <Typography variant="h2" sx={{ fontSize: 24 }}>{selectedMap.name}</Typography>

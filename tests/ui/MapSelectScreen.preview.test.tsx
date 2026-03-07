@@ -36,4 +36,12 @@ describe('MapSelectScreen UIテスト: 詳細プレビュー', () => {
     expect(screen.getAllByText('おすすめ').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/難易度:/).length).toBeGreaterThan(0);
   });
+
+  it('カード一覧と詳細プレビューのスクロール領域が分かれている', () => {
+    render(<MapSelectScreen maps={MAP_CATALOG} onConfirm={() => {}} onBack={() => {}} />);
+
+    expect(screen.getByTestId('map-select-card-list')).toHaveStyle({ overflowY: 'auto' });
+    expect(screen.getByTestId('map-select-detail-panel')).toHaveStyle({ overflowY: 'auto' });
+    expect(screen.getByTestId('map-select-scroll-content')).toHaveStyle({ overflow: 'hidden' });
+  });
 });

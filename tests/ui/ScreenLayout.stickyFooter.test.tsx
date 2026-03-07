@@ -7,9 +7,13 @@ import { CreditsScreen } from '@/screens/CreditsScreen';
 import { TutorialScreen } from '@/screens/TutorialScreen';
 import type { SaveSlotsRecord } from '@/services/saveSlots';
 
-const expectStickyLayout = (scrollContentTestId: string, footerTestId: string): void => {
+const expectStickyLayout = (
+  scrollContentTestId: string,
+  footerTestId: string,
+  scrollStyle: Record<string, string> = { overflowY: 'auto' },
+): void => {
   expect(screen.getByRole('main')).toHaveStyle({ height: '100vh', overflow: 'hidden' });
-  expect(screen.getByTestId(scrollContentTestId)).toHaveStyle({ overflowY: 'auto' });
+  expect(screen.getByTestId(scrollContentTestId)).toHaveStyle(scrollStyle);
   expect(screen.getByTestId(footerTestId)).toHaveStyle({ flexShrink: '0' });
 };
 
@@ -33,7 +37,9 @@ describe('Screen layout: 内容スクロール + 固定フッター', () => {
       />,
     );
 
-    expectStickyLayout('map-select-scroll-content', 'map-select-footer');
+    expectStickyLayout('map-select-scroll-content', 'map-select-footer', { overflow: 'hidden' });
+    expect(screen.getByTestId('map-select-card-list')).toHaveStyle({ overflowY: 'auto' });
+    expect(screen.getByTestId('map-select-detail-panel')).toHaveStyle({ overflowY: 'auto' });
   });
 
   it('設定画面', () => {
