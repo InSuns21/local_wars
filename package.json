@@ -8,7 +8,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "jest",
-    "test:ui": "jest tests/ui",
+    "test:changed": "jest -o",
+    "test:core": "jest --selectProjects core",
+    "test:ui": "jest --selectProjects ui",
+    "test:list": "jest --listTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts,.tsx",
@@ -25,6 +28,8 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.3",
+    "@swc/jest": "^0.2.39",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@types/jest": "^29.5.11",

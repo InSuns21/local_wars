@@ -1,15 +1,26 @@
 import type { Config } from 'jest';
 
-const config: Config = {
-  preset: 'ts-jest',
-  testEnvironment: 'jsdom',
+const sharedConfig = {
   roots: ['<rootDir>/src', '<rootDir>/tests'],
-  testMatch: ['**/__tests__/**/*.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   transform: {
-    '^.+\\.tsx?$': [
-      'ts-jest',
+    '^.+\\.[tj]sx?$': [
+      '@swc/jest',
       {
-        diagnostics: false,
+        jsc: {
+          target: 'es2020',
+          parser: {
+            syntax: 'typescript',
+            tsx: true,
+          },
+          transform: {
+            react: {
+              runtime: 'automatic',
+            },
+          },
+        },
+        module: {
+          type: 'commonjs',
+        },
       },
     ],
   },
@@ -25,13 +36,36 @@ const config: Config = {
     '^@types/(.*)$': '<rootDir>/src/types/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  maxWorkers: 8,
-  cacheDirectory: '<rootDir>/.jest-cache',
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/dist/', '<rootDir>/coverage/', '<rootDir>/.jest-cache/'],
+  watchPathIgnorePatterns: ['<rootDir>/dist/', '<rootDir>/coverage/', '<rootDir>/.jest-cache/'],
+} satisfies Partial<Config>;
+
+const config: Config = {
+  maxWorkers: process.env.JEST_MAX_WORKERS ?? '75%',
+  workerIdleMemoryLimit: '512MB',
+  coverageProvider: 'v8',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.tsx'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  projects: [
+    {
+      ...sharedConfig,
+      displayName: 'core',
+      testEnvironment: 'node',
+      testMatch: ['<rootDir>/tests/unit/**/*.test.ts?(x)', '<rootDir>/tests/integration/**/*.test.ts?(x)'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.node.ts'],
+      cacheDirectory: '<rootDir>/.jest-cache/core',
+    },
+    {
+      ...sharedConfig,
+      displayName: 'ui',
+      testEnvironment: 'jsdom',
+      testMatch: ['<rootDir>/tests/ui/**/*.test.ts?(x)'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+      cacheDirectory: '<rootDir>/.jest-cache/ui',
+    },
+  ],
 };
 
 export default config;
