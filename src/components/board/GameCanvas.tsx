@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getVisibleEnemyCoordKeys, getVisibleTileCoordKeys } from '@core/rules/visibility';
 import { getCaptureTarget } from '@core/rules/capture';
@@ -8,7 +8,7 @@ import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 import { toCoordKey } from '@/utils/coord';
-import { TERRAIN_TEXTURES, UNIT_GLYPH_PATHS } from './boardArt';
+import { TERRAIN_TEXTURES, UNIT_GLYPH_PATHS, UNIT_ICON_EXTERNAL_PATHS } from './boardArt';
 import { BOARD_VISUAL_TOKENS } from './boardVisualTokens';
 
 type GameCanvasProps = {
@@ -214,13 +214,17 @@ const buildTileTooltip = (
   return lines.join('\n');
 };
 
+const failedExternalUnitIcons = new Set<string>();
+
 const UnitIcon: React.FC<{ unit: UnitState; currentPlayerId: 'P1' | 'P2'; size: number }> = ({ unit, currentPlayerId, size }) => {
   const isFriendly = unit.owner === currentPlayerId;
   const ring = isFriendly ? BOARD_VISUAL_TOKENS.friendlyUnit.borderColor : BOARD_VISUAL_TOKENS.enemyUnit.borderColor;
   const fill = isFriendly ? '#1e40af' : '#9f1239';
   const paths = UNIT_GLYPH_PATHS[unit.type] ?? UNIT_GLYPH_PATHS.INFANTRY;
+  const externalIconPath = UNIT_ICON_EXTERNAL_PATHS[unit.type];
+  const [externalFailed, setExternalFailed] = useState<boolean>(() => failedExternalUnitIcons.has(unit.type));
 
-  return (
+  const fallbackSvg = (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" data-testid={`unit-icon-${unit.type}`}>
       <defs>
         <radialGradient id={`unit-core-${unit.id}`} cx="35%" cy="30%" r="70%">
@@ -236,12 +240,51 @@ const UnitIcon: React.FC<{ unit: UnitState; currentPlayerId: 'P1' | 'P2'; size: 
           d={d}
           fill="#ffffff"
           stroke="#ffffff"
-          strokeWidth="0.6"
+          strokeWidth="0.8"
           strokeLinejoin="round"
           strokeLinecap="round"
         />
       ))}
     </svg>
+  );
+
+  if (externalFailed) return fallbackSvg;
+
+  return (
+    <div
+      aria-hidden="true"
+      data-testid={`unit-icon-${unit.type}`}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        border: `2.5px solid ${ring}`,
+        background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 62%), ${fill}`,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxSizing: 'border-box',
+      }}
+    >
+      <img
+        src={externalIconPath}
+        alt=""
+        draggable={false}
+        onError={() => {
+          failedExternalUnitIcons.add(unit.type);
+          setExternalFailed(true);
+        }}
+        style={{
+          width: `${Math.max(60, Math.round(size * 0.7))}%`,
+          height: `${Math.max(60, Math.round(size * 0.7))}%`,
+          objectFit: 'contain',
+          filter: 'brightness(0) invert(1)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      />
+    </div>
   );
 };
 
@@ -267,7 +310,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const propertyMinWidth = Math.max(40, Math.round(44 * zoom));
   const previewMarkerSize = Math.max(10, Math.round(12 * zoom));
   const previewMarkerBorderWidth = Math.max(1, Math.round(2 * zoom));
-  const unitIconSize = Math.max(22, Math.round(29 * zoom));
+  const unitIconSize = Math.max(30, Math.round(42 * zoom));
+  const unitIconTopInset = Math.max(1, Math.round(2 * zoom));
+  const terrainLabelTopInset = Math.max(40, Math.round(46 * zoom));
 
   const tileStyle: React.CSSProperties = {
     width: tileWidth,
@@ -442,12 +487,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   data-property-durability={propertyDurabilityLabel ?? 'NONE'}
                   aria-label={'タイル ' + x + ',' + y}
                 >
-                  {isVisible && unit ? <UnitIcon unit={unit} currentPlayerId={gameState.currentPlayerId} size={unitIconSize} /> : null}
+                  {isVisible && unit ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: unitIconTopInset,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <UnitIcon unit={unit} currentPlayerId={gameState.currentPlayerId} size={unitIconSize} />
+                    </span>
+                  ) : null}
                   <span
                     style={{
+                      position: 'absolute',
+                      top: terrainLabelTopInset,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
                       padding: '1px 4px',
                       borderRadius: 4,
-                      background: 'rgba(248,250,252,0.72)',
+                      background: 'rgba(248,250,252,0.78)',
                       border: '1px solid rgba(15,23,42,0.35)',
                       lineHeight: 1.1,
                       textShadow:
