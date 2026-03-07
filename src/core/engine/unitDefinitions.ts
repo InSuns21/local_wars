@@ -164,11 +164,11 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   ATTACKER: {
     type: 'ATTACKER',
     label: '攻撃機',
-    cost: 12000,
+    cost: 11000,
     movementType: 'AIR',
     moveRange: 5,
     maxFuel: 60,
-    maxAmmo: 6,
+    maxAmmo: 4,
     visionRange: 2,
     canCapture: false,
     attackRangeMin: 1,
