@@ -1,3 +1,4 @@
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import type { TileState } from '@core/types/map';
 import type { UnitState } from '@core/types/unit';
 import { getBaseCaptureTarget, getBaseStructureHp, getTileCaptureTarget, isCapturableTerrain } from './facilities';
@@ -5,7 +6,7 @@ import { getBaseCaptureTarget, getBaseStructureHp, getTileCaptureTarget, isCaptu
 export const getCaptureTarget = (terrainType: TileState['terrainType']): number => getBaseCaptureTarget(terrainType);
 
 export const canCapture = (unit: UnitState, tile: TileState): boolean =>
-  unit.type === 'INFANTRY' && isCapturableTerrain(tile.terrainType);
+  UNIT_DEFINITIONS[unit.type].canCapture === true && isCapturableTerrain(tile.terrainType);
 
 export const getCapturePower = (unit: UnitState): number => Math.max(0, Math.floor(unit.hp));
 

@@ -24,6 +24,10 @@ const baseSettings = {
   enableNavalUnits: true,
   enableFuelSupply: true,
   enableAmmoSupply: true,
+  enableSuicideDrones: false,
+  droneInterceptionChancePercent: 70,
+  droneInterceptionMaxPerTurn: 2,
+  droneAiProductionRatioLimitPercent: 50,
 };
 
 const buildScenario = (): SkirmishScenario => ({

@@ -32,6 +32,7 @@ import {
   getProductionTypeForTerrain,
   isAirUnitType,
   isBombardableTerrain,
+  isDroneUnitType,
   isNavalUnitType,
   isOperationalFacility,
 } from "@core/rules/facilities";
@@ -52,7 +53,7 @@ type BattleScreenProps = {
 };
 
 const PRODUCIBLE_UNITS_BY_SITE: Record<"GROUND" | "AIR" | "NAVAL", UnitType[]> = {
-  GROUND: ["INFANTRY", "RECON", "TANK", "HEAVY_TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR", "FLAK_TANK", "MISSILE_AA", "SUPPLY_TRUCK", "TRANSPORT_TRUCK"],
+  GROUND: ["INFANTRY", "RECON", "TANK", "HEAVY_TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR", "FLAK_TANK", "MISSILE_AA", "SUPPLY_TRUCK", "TRANSPORT_TRUCK", "AIR_DEFENSE_INFANTRY", "COUNTER_DRONE_AA", "SUICIDE_DRONE"],
   AIR: ["FIGHTER", "BOMBER", "ATTACKER", "STEALTH_BOMBER", "AIR_TANKER", "TRANSPORT_HELI"],
   NAVAL: ["DESTROYER", "LANDER"],
 };
@@ -125,6 +126,8 @@ const getActionLabel = (action: GameState["actionLog"][number]["action"]): strin
       return "燃料切れ";
     case "FOG_ENCOUNTER":
       return "遭遇戦";
+    case "DRONE_INTERCEPT":
+      return "迎撃";
     default:
       return action;
   }
@@ -157,6 +160,8 @@ const shouldShowActionLogEntry = (
       return entry.detail?.includes(`owner=${humanSide}`) ?? false;
     case "ATTACK_TILE":
       return true;
+    case "DRONE_INTERCEPT":
+      return entry.detail?.includes(`${humanSide}_`) ?? false;
     default:
       return false;
   }
@@ -248,9 +253,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           tile.owner === gameState.currentPlayerId &&
           isOperationalFacility(tile),
       )
-      .filter((tile) => !aliveUnitByTile.has(toCoordKey(tile.coord)))
       .map((tile) => tile.coord);
-  }, [aliveUnitByTile, gameState.currentPlayerId, gameState.map.tiles]);
+  }, [gameState.currentPlayerId, gameState.map.tiles]);
 
   const moveRangeTiles = useMemo(() => {
     if (
@@ -437,7 +441,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           return false;
         }
         if (resupplyTarget === 'AIR') {
-          return isAirUnitType(target.type);
+          return isAirUnitType(target.type) && !isDroneUnitType(target.type);
         }
         return !isAirUnitType(target.type) && !isNavalUnitType(target.type);
       });
@@ -480,8 +484,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     if (!productionType) {
       return PRODUCIBLE_UNITS_BY_SITE.GROUND;
     }
-    return PRODUCIBLE_UNITS_BY_SITE[productionType];
-  }, [selectedProductionTile]);
+    return PRODUCIBLE_UNITS_BY_SITE[productionType].filter((type) => {
+      if ((type === "SUICIDE_DRONE" || type === "COUNTER_DRONE_AA") && !(gameState.enableSuicideDrones ?? false)) {
+        return false;
+      }
+      return true;
+    });
+  }, [gameState.enableSuicideDrones, selectedProductionTile]);
 
   const showLoadUnloadControls = Boolean(
     canControlSelectedUnit && selectedUnit && UNIT_DEFINITIONS[selectedUnit.type].transportMode,
@@ -543,6 +552,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const showCaptureControl = Boolean(
     canControlSelectedUnit && selectedUnit && UNIT_DEFINITIONS[selectedUnit.type].canCapture,
+  );
+
+  const selectedFactoryDroneCount = useMemo(() => {
+    if (!effectiveFactoryKey) {
+      return 0;
+    }
+    const [x, y] = effectiveFactoryKey.split(",").map(Number);
+    return Object.values(gameState.units).filter(
+      (unit) => unit.hp > 0 && isDroneUnitType(unit.type) && unit.originFactoryCoord?.x === x && unit.originFactoryCoord?.y === y,
+    ).length;
+  }, [effectiveFactoryKey, gameState.units]);
+
+  const factoryProductionRecord = useMemo(
+    () => (effectiveFactoryKey ? gameState.factoryProductionState?.[effectiveFactoryKey] ?? {} : {}),
+    [effectiveFactoryKey, gameState.factoryProductionState],
   );
 
   const canProduce = Boolean(
@@ -1280,13 +1304,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
                 <Typography variant="body2" color="text.secondary">
                   {selectedProductionTile
-                    ? `拠点種別: ${selectedProductionTile.terrainType}${selectedProductionTile.terrainType === "AIRPORT" ? " / 航空ユニットを生産・補給" : ""}`
+                    ? `拠点種別: ${selectedProductionTile.terrainType}${selectedProductionTile.terrainType === "AIRPORT" ? " / 航空ユニットを生産・補給" : ""}${selectedProductionTile.terrainType === "FACTORY" ? " / ドローンは工場周辺5マスへ自動配置" : ""}`
                     : "拠点種別: 未選択"}
                 </Typography>
                 <Typography>必要資金: {selectedUnitCost}</Typography>
                 <Typography>現在手番の資金: {currentPlayerFunds}</Typography>
+                {selectedProductionTile?.terrainType === "FACTORY" && (
+                  <Typography variant="body2" color="text.secondary">
+                    この工場のドローン数: {selectedFactoryDroneCount}/5
+                    {factoryProductionRecord.normalProduced ? ' / 通常生産済み' : ''}
+                    {(factoryProductionRecord.droneProducedCount ?? 0) > 0 ? ` / ドローン生産回数: ${factoryProductionRecord.droneProducedCount}` : ''}
+                  </Typography>
+                )}
 
-                <Button type="button" variant="contained" onClick={handleProduce} disabled={!canProduce}>生産実行</Button>
+                <Button type="button" variant="contained" onClick={handleProduce} disabled={!canProduce}>{produceUnitType === "SUICIDE_DRONE" ? "ドローン生産" : "生産実行"}</Button>
               </Stack>
             </AccordionDetails>
           </Accordion>

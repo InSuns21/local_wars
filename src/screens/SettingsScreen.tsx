@@ -35,6 +35,7 @@ const PRESET_LABELS: Record<GameSettingsPreset, string> = {
   standard: '標準',
   beginner: '初心者向け',
   advanced: '上級者向け',
+  drone: 'ドローン戦',
   custom: 'カスタム',
 };
 
@@ -42,11 +43,12 @@ const PRESET_DESCRIPTIONS: Record<GameSettingsPreset, string> = {
   standard: '迷ったらこれ。標準ルールで遊べます。',
   beginner: '資金と回復量を増やし、補給管理を簡略化します。',
   advanced: '索敵あり・強いAIで、判断量が増える設定です。',
+  drone: '自爆ドローンと迎撃防空を有効にした専用ルールです。',
   custom: '個別変更中です。必要な項目だけ調整できます。',
 };
 
 const NUMERIC_FIELD_META: {
-  [K in 'initialFunds' | 'incomePerProperty' | 'incomeAirport' | 'incomePort' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq' | 'maxSupplyCharges' | 'facilityCaptureCostIncreasePercent']: {
+  [K in 'initialFunds' | 'incomePerProperty' | 'incomeAirport' | 'incomePort' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq' | 'maxSupplyCharges' | 'facilityCaptureCostIncreasePercent' | 'droneInterceptionChancePercent' | 'droneInterceptionMaxPerTurn' | 'droneAiProductionRatioLimitPercent']: {
     min: number;
     max: number;
     step: number;
@@ -127,6 +129,30 @@ const NUMERIC_FIELD_META: {
     defaultValue: DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent ?? 50,
     description: '施設破壊後の再占領コスト増加率です。高いほど破壊済み拠点の奪還が重くなります。',
   },
+  droneInterceptionChancePercent: {
+    min: 0,
+    max: 100,
+    step: 5,
+    recommendedRangeText: '推奨: 60-80',
+    defaultValue: DEFAULT_SETTINGS.droneInterceptionChancePercent,
+    description: '対ドローン防空車の迎撃成功率です。高いほどドローン侵入を止めやすくなります。',
+  },
+  droneInterceptionMaxPerTurn: {
+    min: 0,
+    max: 6,
+    step: 1,
+    recommendedRangeText: '推奨: 1-3',
+    defaultValue: DEFAULT_SETTINGS.droneInterceptionMaxPerTurn,
+    description: '対ドローン防空車が1ターンに迎撃できる回数です。',
+  },
+  droneAiProductionRatioLimitPercent: {
+    min: 0,
+    max: 100,
+    step: 5,
+    recommendedRangeText: '推奨: 25-60',
+    defaultValue: DEFAULT_SETTINGS.droneAiProductionRatioLimitPercent,
+    description: 'AIがドローンを混ぜる比率の上限です。高いほどドローン偏重になります。',
+  },
 };
 
 const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
@@ -147,6 +173,10 @@ const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
   && left.enableAmmoSupply === right.enableAmmoSupply
   && (left.facilityCaptureCostIncreasePercent ?? 50) === (right.facilityCaptureCostIncreasePercent ?? 50)
   && Boolean(left.showEnemyActionLogs) === Boolean(right.showEnemyActionLogs)
+  && left.enableSuicideDrones === right.enableSuicideDrones
+  && left.droneInterceptionChancePercent === right.droneInterceptionChancePercent
+  && left.droneInterceptionMaxPerTurn === right.droneInterceptionMaxPerTurn
+  && left.droneAiProductionRatioLimitPercent === right.droneAiProductionRatioLimitPercent
 );
 
 const detectPreset = (settings: GameSettings): GameSettingsPreset => {
@@ -158,6 +188,9 @@ const detectPreset = (settings: GameSettings): GameSettingsPreset => {
   }
   if (matchesSettings(settings, GAME_SETTINGS_PRESETS.advanced)) {
     return 'advanced';
+  }
+  if (matchesSettings(settings, GAME_SETTINGS_PRESETS.drone)) {
+    return 'drone';
   }
   return 'custom';
 };
@@ -247,6 +280,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                   <option value="standard">標準</option>
                   <option value="beginner">初心者向け</option>
                   <option value="advanced">上級者向け</option>
+                  <option value="drone">ドローン戦</option>
                   <option value="custom" disabled>カスタム</option>
                 </NativeSelect>
               </FormControl>
@@ -296,6 +330,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
               <FormControlLabel
                 control={<Checkbox checked={settings.fogOfWar} onChange={(e) => update('fogOfWar', e.target.checked)} />}
                 label="索敵あり"
+              />
+              <FormControlLabel
+                control={<Checkbox checked={settings.enableSuicideDrones} onChange={(e) => update('enableSuicideDrones', e.target.checked)} />}
+                label="自爆ドローン有効"
               />
             </Stack>
           </Paper>
@@ -458,6 +496,51 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBac
                     min: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.min,
                     max: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.max,
                     step: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.step,
+                  }}
+                />
+
+                <TextField
+                  id="drone-interception-chance-percent"
+                  label="対ドローン迎撃確率（%）"
+                  type="number"
+                  value={settings.droneInterceptionChancePercent}
+                  onChange={(e) => update('droneInterceptionChancePercent', Number(e.target.value))}
+                  error={getNumericFieldStatus('droneInterceptionChancePercent').error}
+                  helperText={getNumericFieldStatus('droneInterceptionChancePercent').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.droneInterceptionChancePercent.min,
+                    max: NUMERIC_FIELD_META.droneInterceptionChancePercent.max,
+                    step: NUMERIC_FIELD_META.droneInterceptionChancePercent.step,
+                  }}
+                />
+
+                <TextField
+                  id="drone-interception-max-per-turn"
+                  label="対ドローン迎撃回数（1ターン）"
+                  type="number"
+                  value={settings.droneInterceptionMaxPerTurn}
+                  onChange={(e) => update('droneInterceptionMaxPerTurn', Number(e.target.value))}
+                  error={getNumericFieldStatus('droneInterceptionMaxPerTurn').error}
+                  helperText={getNumericFieldStatus('droneInterceptionMaxPerTurn').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.droneInterceptionMaxPerTurn.min,
+                    max: NUMERIC_FIELD_META.droneInterceptionMaxPerTurn.max,
+                    step: NUMERIC_FIELD_META.droneInterceptionMaxPerTurn.step,
+                  }}
+                />
+
+                <TextField
+                  id="drone-ai-production-ratio-limit-percent"
+                  label="AIのドローン生産比率上限（%）"
+                  type="number"
+                  value={settings.droneAiProductionRatioLimitPercent}
+                  onChange={(e) => update('droneAiProductionRatioLimitPercent', Number(e.target.value))}
+                  error={getNumericFieldStatus('droneAiProductionRatioLimitPercent').error}
+                  helperText={getNumericFieldStatus('droneAiProductionRatioLimitPercent').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.droneAiProductionRatioLimitPercent.min,
+                    max: NUMERIC_FIELD_META.droneAiProductionRatioLimitPercent.max,
+                    step: NUMERIC_FIELD_META.droneAiProductionRatioLimitPercent.step,
                   }}
                 />
 

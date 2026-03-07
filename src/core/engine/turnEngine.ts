@@ -79,7 +79,7 @@ const consumeTurnEndFuel = (
 
   for (const [id, unit] of Object.entries(state.units)) {
     if (unit.owner !== endedPlayerId) {
-      nextUnits[id] = unit;
+      nextUnits[id] = { ...unit, interceptsUsedThisTurn: 0 };
       continue;
     }
 
@@ -89,6 +89,7 @@ const consumeTurnEndFuel = (
     if (!isAirUnitType(unit.type)) {
       nextUnits[id] = {
         ...unit,
+        interceptsUsedThisTurn: 0,
         supplyCharges: shouldRefillSupplyCharges ? maxSupplyCharges : unit.supplyCharges,
       };
       continue;
@@ -101,6 +102,7 @@ const consumeTurnEndFuel = (
     if (canResupply) {
       nextUnits[id] = {
         ...unit,
+        interceptsUsedThisTurn: 0,
         fuel: enableFuelSupply ? UNIT_DEFINITIONS[unit.type].maxFuel : consumedFuel,
         ammo: enableAmmoSupply ? UNIT_DEFINITIONS[unit.type].maxAmmo : unit.ammo,
         hp: Math.min(10, unit.hp + getUnitRecoveryAmount(state, tile?.terrainType ?? 'PLAIN')),
@@ -115,6 +117,7 @@ const consumeTurnEndFuel = (
 
     nextUnits[id] = {
       ...unit,
+      interceptsUsedThisTurn: 0,
       fuel: consumedFuel,
       supplyCharges: shouldRefillSupplyCharges ? maxSupplyCharges : unit.supplyCharges,
     };
@@ -144,6 +147,7 @@ export const nextTurnState = (state: GameState): GameState => {
         acted: false,
         loadedThisTurn: false,
         unloadedThisTurn: false,
+        interceptsUsedThisTurn: 0,
         movePointsRemaining: undefined,
         lastMovePath: [],
       };
@@ -192,6 +196,7 @@ export const nextTurnState = (state: GameState): GameState => {
     },
     units: nextUnits,
     players: nextPlayers,
+    factoryProductionState: {},
     actionLog: destroyedAirIds.length > 0
       ? [
           ...state.actionLog,

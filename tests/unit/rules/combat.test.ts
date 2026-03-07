@@ -142,6 +142,10 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('MISSILE_AA', 'INFANTRY')).toBe(0);
   });
 
+  it('歩兵は自爆ドローンを攻撃できる', () => {
+    expect(getBaseDamage('INFANTRY', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+  });
+
   it('輸送ユニットは攻撃できない', () => {
     expect(getBaseDamage('TRANSPORT_TRUCK', 'INFANTRY')).toBe(0);
     expect(getBaseDamage('TRANSPORT_TRUCK', 'TANK')).toBe(0);

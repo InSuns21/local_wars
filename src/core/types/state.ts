@@ -33,6 +33,11 @@ export type GameState = {
   hpRecoveryFactory?: number;
   hpRecoveryHq?: number;
   maxSupplyCharges?: number;
+  enableSuicideDrones?: boolean;
+  droneInterceptionChancePercent?: number;
+  droneInterceptionMaxPerTurn?: number;
+  droneAiProductionRatioLimitPercent?: number;
+  factoryProductionState?: Record<string, { normalProduced?: boolean; droneProducedCount?: number }>;
 };
 
 export type MoveUnitCommand = {

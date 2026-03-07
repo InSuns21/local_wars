@@ -12,6 +12,9 @@ export type UnitType =
   | 'MISSILE_AA'
   | 'SUPPLY_TRUCK'
   | 'TRANSPORT_TRUCK'
+  | 'AIR_DEFENSE_INFANTRY'
+  | 'COUNTER_DRONE_AA'
+  | 'SUICIDE_DRONE'
   | 'FIGHTER'
   | 'BOMBER'
   | 'ATTACKER'
@@ -34,6 +37,8 @@ export type UnitState = {
   cargo?: UnitState[];
   loadedThisTurn?: boolean;
   unloadedThisTurn?: boolean;
+  interceptsUsedThisTurn?: number;
+  originFactoryCoord?: Coord;
   position: Coord;
   moved: boolean;
   acted: boolean;
@@ -46,6 +51,7 @@ export type UnitDefinition = {
   label: string;
   cost: number;
   movementType: MovementType;
+  unitCategory?: 'STANDARD' | 'DRONE';
   moveRange: number;
   maxFuel: number;
   maxAmmo: number;
@@ -61,4 +67,5 @@ export type UnitDefinition = {
   cargoCapacity?: number;
   cargoUnitTypes?: UnitType[];
   canUnloadAfterMove?: boolean;
+  interceptRange?: number;
 };

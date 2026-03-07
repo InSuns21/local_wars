@@ -1,6 +1,6 @@
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
 export type HumanPlayerSide = 'P1' | 'P2';
-export type GameSettingsPreset = 'standard' | 'beginner' | 'advanced' | 'custom';
+export type GameSettingsPreset = 'standard' | 'beginner' | 'advanced' | 'drone' | 'custom';
 
 export type GameSettings = {
   aiDifficulty: AiDifficulty;
@@ -20,6 +20,10 @@ export type GameSettings = {
   enableAmmoSupply: boolean;
   facilityCaptureCostIncreasePercent?: number;
   showEnemyActionLogs?: boolean;
+  enableSuicideDrones: boolean;
+  droneInterceptionChancePercent: number;
+  droneInterceptionMaxPerTurn: number;
+  droneAiProductionRatioLimitPercent: number;
 };
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -40,6 +44,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   enableAmmoSupply: true,
   facilityCaptureCostIncreasePercent: 50,
   showEnemyActionLogs: false,
+  enableSuicideDrones: false,
+  droneInterceptionChancePercent: 70,
+  droneInterceptionMaxPerTurn: 2,
+  droneAiProductionRatioLimitPercent: 50,
 };
 
 export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
@@ -75,6 +83,14 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
     enableAmmoSupply: true,
     facilityCaptureCostIncreasePercent: 75,
     showEnemyActionLogs: false,
+  },
+  drone: {
+    ...DEFAULT_SETTINGS,
+    fogOfWar: true,
+    enableSuicideDrones: true,
+    droneInterceptionChancePercent: 70,
+    droneInterceptionMaxPerTurn: 2,
+    droneAiProductionRatioLimitPercent: 50,
   },
   custom: DEFAULT_SETTINGS,
 };

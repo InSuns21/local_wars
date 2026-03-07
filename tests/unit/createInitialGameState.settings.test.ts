@@ -19,6 +19,10 @@ describe('createInitialGameState 設定反映', () => {
         enableNavalUnits: true,
         enableFuelSupply: true,
         enableAmmoSupply: true,
+        enableSuicideDrones: false,
+        droneInterceptionChancePercent: 70,
+        droneInterceptionMaxPerTurn: 2,
+        droneAiProductionRatioLimitPercent: 50,
       },
     });
 
@@ -43,6 +47,10 @@ describe('createInitialGameState 設定反映', () => {
         enableNavalUnits: true,
         enableFuelSupply: true,
         enableAmmoSupply: true,
+        enableSuicideDrones: false,
+        droneInterceptionChancePercent: 70,
+        droneInterceptionMaxPerTurn: 2,
+        droneAiProductionRatioLimitPercent: 50,
       },
     });
 
@@ -67,6 +75,10 @@ describe('createInitialGameState 設定反映', () => {
         enableNavalUnits: true,
         enableFuelSupply: false,
         enableAmmoSupply: false,
+        enableSuicideDrones: false,
+        droneInterceptionChancePercent: 70,
+        droneInterceptionMaxPerTurn: 2,
+        droneAiProductionRatioLimitPercent: 50,
       },
     });
 

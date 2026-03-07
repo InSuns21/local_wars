@@ -1117,6 +1117,104 @@ describe('commandApplier 統合テスト', () => {
     expect(attacked.state.units.p2_tank?.hp ?? 0).toBeLessThan(10);
   });
 
+  it('自爆ドローンは工場から複数生産され周辺5マスへ自動配置される', () => {
+    const state = createInitialGameState();
+    state.enableSuicideDrones = true;
+    state.players.P1.funds = 10000;
+
+    const produced1 = applyCommand(
+      state,
+      { type: 'PRODUCE_UNIT', playerId: 'P1', factoryCoord: { x: 0, y: 1 }, unitType: 'SUICIDE_DRONE' },
+      { rng: () => 0.5 },
+    );
+    const produced2 = applyCommand(
+      produced1.state,
+      { type: 'PRODUCE_UNIT', playerId: 'P1', factoryCoord: { x: 0, y: 1 }, unitType: 'SUICIDE_DRONE' },
+      { rng: () => 0.5 },
+    );
+
+    expect(produced1.result.ok).toBe(true);
+    expect(produced2.result.ok).toBe(true);
+    const drones = Object.values(produced2.state.units).filter((unit) => unit.type === 'SUICIDE_DRONE');
+    expect(drones).toHaveLength(2);
+    expect(drones.some((unit) => unit.position.x === 0 && unit.position.y === 1)).toBe(true);
+    expect(drones.every((unit) => unit.originFactoryCoord?.x === 0 && unit.originFactoryCoord?.y === 1)).toBe(true);
+    expect(produced2.state.factoryProductionState?.['0,1']?.droneProducedCount).toBe(2);
+  });
+
+  it('自爆ドローンは攻撃後に消滅する', () => {
+    const state = createInitialGameState();
+    state.enableSuicideDrones = true;
+    state.units.p1_drone = {
+      id: 'p1_drone',
+      owner: 'P1',
+      type: 'SUICIDE_DRONE',
+      hp: 10,
+      fuel: 50,
+      ammo: 1,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      originFactoryCoord: { x: 0, y: 1 },
+    };
+    state.units.p2_tank.position = { x: 3, y: 2 };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK', attackerId: 'p1_drone', defenderId: 'p2_tank' },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(true);
+    expect(attacked.state.units.p1_drone).toBeUndefined();
+    expect(attacked.state.units.p2_tank?.hp ?? 0).toBeLessThan(10);
+  });
+
+  it('対ドローン防空車は移動侵入した自爆ドローンを迎撃できる', () => {
+    const state = createInitialGameState({ mapId: 'river-crossing' });
+    state.enableSuicideDrones = true;
+    state.droneInterceptionChancePercent = 100;
+    state.droneInterceptionMaxPerTurn = 2;
+    state.units.p1_drone = {
+      id: 'p1_drone',
+      owner: 'P1',
+      type: 'SUICIDE_DRONE',
+      hp: 10,
+      fuel: 50,
+      ammo: 1,
+      position: { x: 4, y: 4 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      originFactoryCoord: { x: 0, y: 1 },
+    };
+    state.units.p2_counter = {
+      id: 'p2_counter',
+      owner: 'P2',
+      type: 'COUNTER_DRONE_AA',
+      hp: 10,
+      fuel: 60,
+      ammo: 6,
+      position: { x: 7, y: 4 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      interceptsUsedThisTurn: 0,
+    };
+
+    const moved = applyCommand(
+      state,
+      { type: 'MOVE_UNIT', unitId: 'p1_drone', to: { x: 6, y: 4 }, path: [{ x: 5, y: 4 }, { x: 6, y: 4 }] },
+      { rng: () => 0 },
+    );
+
+    expect(moved.result.ok).toBe(true);
+    expect(moved.state.units.p1_drone).toBeUndefined();
+    expect(moved.state.units.p2_counter.ammo).toBe(5);
+    expect(moved.state.actionLog.some((entry) => entry.action === 'DRONE_INTERCEPT' && entry.detail?.includes('迎撃成功'))).toBe(true);
+  });
+
 });
 
 

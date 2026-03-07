@@ -65,6 +65,10 @@ describe('saveSlots 追加カバレッジ', () => {
       enableNavalUnits: true,
       enableFuelSupply: true,
       enableAmmoSupply: true,
+      enableSuicideDrones: false,
+      droneInterceptionChancePercent: 70,
+      droneInterceptionMaxPerTurn: 2,
+      droneAiProductionRatioLimitPercent: 50,
     };
 
     upsertSaveSlot(1, { mapId: 'plains-clash', state, settings });

@@ -43,6 +43,7 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
       tiles: { ...state.map.tiles },
     },
     units: applySupplyChargeDefaults({ ...state, units: { ...state.units } }, settings.maxSupplyCharges),
+    factoryProductionState: {},
     incomePerProperty: settings.incomePerProperty,
     incomeAirport: settings.incomeAirport,
     incomePort: settings.incomePort,
@@ -53,6 +54,10 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
     fogOfWar: settings.fogOfWar,
     enableFuelSupply: settings.enableFuelSupply,
     enableAmmoSupply: settings.enableAmmoSupply,
+    enableSuicideDrones: settings.enableSuicideDrones,
+    droneInterceptionChancePercent: settings.droneInterceptionChancePercent,
+    droneInterceptionMaxPerTurn: settings.droneInterceptionMaxPerTurn,
+    droneAiProductionRatioLimitPercent: settings.droneAiProductionRatioLimitPercent,
     facilityCaptureCostIncreasePercent: settings.facilityCaptureCostIncreasePercent ?? 50,
     showEnemyActionLogs: settings.showEnemyActionLogs ?? false,
   };
@@ -192,6 +197,11 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
     hpRecoveryFactory: options.settings?.hpRecoveryFactory ?? 2,
     hpRecoveryHq: options.settings?.hpRecoveryHq ?? 3,
     maxSupplyCharges: options.settings?.maxSupplyCharges ?? 4,
+    enableSuicideDrones: options.settings?.enableSuicideDrones ?? false,
+    droneInterceptionChancePercent: options.settings?.droneInterceptionChancePercent ?? 70,
+    droneInterceptionMaxPerTurn: options.settings?.droneInterceptionMaxPerTurn ?? 2,
+    droneAiProductionRatioLimitPercent: options.settings?.droneAiProductionRatioLimitPercent ?? 50,
+    factoryProductionState: {},
   };
 
   return applyFeatureToggles(base, options.settings);

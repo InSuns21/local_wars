@@ -19,6 +19,7 @@ const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']
 const INDIRECT_SUPPORT_UNITS = new Set<UnitType>(['ARTILLERY', 'FLAK_TANK', 'MISSILE_AA']);
 const getEnemyPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 const LIGHT_TRANSPORTABLE_TYPES = new Set<UnitType>(['INFANTRY', 'RECON', 'ANTI_TANK', 'ARTILLERY', 'ANTI_AIR', 'SUPPLY_TRUCK', 'FLAK_TANK', 'MISSILE_AA']);
+const AIR_UNIT_TYPES = new Set<UnitType>(['FIGHTER', 'BOMBER', 'ATTACKER', 'STEALTH_BOMBER', 'AIR_TANKER', 'TRANSPORT_HELI']);
 
 const getAliveUnits = (state: GameState, owner: PlayerId): UnitState[] =>
   Object.values(state.units).filter((u) => u.owner === owner && u.hp > 0);
@@ -377,6 +378,9 @@ const emptyUnitCountMap = (): Record<UnitType, number> => ({
   MISSILE_AA: 0,
   SUPPLY_TRUCK: 0,
   TRANSPORT_TRUCK: 0,
+  AIR_DEFENSE_INFANTRY: 0,
+  COUNTER_DRONE_AA: 0,
+  SUICIDE_DRONE: 0,
   FIGHTER: 0,
   BOMBER: 0,
   ATTACKER: 0,
@@ -394,6 +398,26 @@ const countUnitsByType = (units: UnitState[]): Record<UnitType, number> => {
   }
   return counts;
 };
+
+const getDroneFactoryOpenSlots = (state: GameState, coord: Coord): number => {
+  const slots = [
+    { ...coord },
+    { x: coord.x, y: coord.y - 1 },
+    { x: coord.x + 1, y: coord.y },
+    { x: coord.x, y: coord.y + 1 },
+    { x: coord.x - 1, y: coord.y },
+  ];
+
+  return slots.filter((slot) => {
+    if (slot.x < 0 || slot.x >= state.map.width || slot.y < 0 || slot.y >= state.map.height) {
+      return false;
+    }
+    return !isTileOccupied(state, slot);
+  }).length;
+};
+
+const mapHasAirport = (state: GameState): boolean =>
+  Object.values(state.map.tiles).some((tile) => tile.terrainType === 'AIRPORT');
 
 const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitType | null => {
   const canAfford = (type: UnitType): boolean =>
@@ -413,9 +437,12 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
     return 'INFANTRY';
   }
 
-  const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER;
+  const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
   const antiAirTarget = Math.max(1, Math.ceil(enemyAirCount / 2));
   if (enemyAirCount > 0) {
+    if (state.enableSuicideDrones && canAfford('COUNTER_DRONE_AA') && ownCounts.COUNTER_DRONE_AA < Math.max(1, enemyCounts.SUICIDE_DRONE > 0 ? 2 : 1)) {
+      return 'COUNTER_DRONE_AA';
+    }
     if (canAfford('MISSILE_AA') && ownCounts.MISSILE_AA < Math.max(1, Math.floor(enemyAirCount / 2))) {
       return 'MISSILE_AA';
     }
@@ -425,6 +452,17 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
     if (canAfford('FLAK_TANK') && ownCounts.FLAK_TANK < 1) {
       return 'FLAK_TANK';
     }
+    if (canAfford('AIR_DEFENSE_INFANTRY') && ownCounts.AIR_DEFENSE_INFANTRY < 1) {
+      return 'AIR_DEFENSE_INFANTRY';
+    }
+  }
+
+  if ((state.enableSuicideDrones ?? false) && enemyCounts.SUICIDE_DRONE > 0 && canAfford('COUNTER_DRONE_AA') && ownCounts.COUNTER_DRONE_AA < 2) {
+    return 'COUNTER_DRONE_AA';
+  }
+
+  if (((state.enableSuicideDrones ?? false) || mapHasAirport(state)) && canAfford('AIR_DEFENSE_INFANTRY') && ownCounts.AIR_DEFENSE_INFANTRY < 1) {
+    return 'AIR_DEFENSE_INFANTRY';
   }
 
   const enemyArmorCount =
@@ -439,12 +477,43 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
     return 'ARTILLERY';
   }
 
-  const candidates: UnitType[] = ['HEAVY_TANK', 'TANK', 'ANTI_TANK', 'RECON', 'INFANTRY', 'ARTILLERY', 'FLAK_TANK', 'MISSILE_AA'];
+  const candidates: UnitType[] = ['HEAVY_TANK', 'TANK', 'ANTI_TANK', 'RECON', 'INFANTRY', 'ARTILLERY', 'FLAK_TANK', 'MISSILE_AA', 'AIR_DEFENSE_INFANTRY'];
   for (const type of candidates) {
     if (canAfford(type)) return type;
   }
 
   return null;
+};
+
+const selectDroneProductionUnitForTile = (
+  state: GameState,
+  aiPlayer: PlayerId,
+  coord: Coord,
+): UnitType | null => {
+  if (!(state.enableSuicideDrones ?? false)) {
+    return null;
+  }
+  const tile = state.map.tiles[toCoordKey(coord)];
+  if (!tile || tile.terrainType !== 'FACTORY') {
+    return null;
+  }
+  if (state.players[aiPlayer].funds < UNIT_DEFINITIONS.SUICIDE_DRONE.cost) {
+    return null;
+  }
+  if (getDroneFactoryOpenSlots(state, coord) < 2) {
+    return null;
+  }
+  const activeDrones = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'SUICIDE_DRONE').length;
+  const totalUnits = getAliveUnits(state, aiPlayer).length;
+  const ratioLimit = Math.max(0, Math.min(100, state.droneAiProductionRatioLimitPercent ?? 50));
+  if (totalUnits > 0 && (activeDrones / totalUnits) * 100 >= ratioLimit) {
+    return null;
+  }
+  const enemyHighValue = getAliveUnits(state, getEnemyPlayer(aiPlayer)).some((unit) => UNIT_DEFINITIONS[unit.type].cost >= 7000 || AIR_UNIT_TYPES.has(unit.type));
+  if (!enemyHighValue) {
+    return null;
+  }
+  return 'SUICIDE_DRONE';
 };
 
 const selectAiProductionUnitForTile = (
@@ -464,6 +533,11 @@ const selectAiProductionUnitForTile = (
     return easyPriorities.find(
       (unitType) => canUnitProduceAtTile(unitType, tile) && state.players[aiPlayer].funds >= UNIT_DEFINITIONS[unitType].cost,
     ) ?? null;
+  }
+
+  const droneCandidate = selectDroneProductionUnitForTile(state, aiPlayer, coord);
+  if (droneCandidate) {
+    return droneCandidate;
   }
 
   if (tile.terrainType === 'AIRPORT') {
@@ -498,8 +572,7 @@ const produceForAi = (
 
   const productionSites = Object.values(working.map.tiles)
     .filter((tile) => tile.owner === aiPlayer && (tile.terrainType === 'FACTORY' || tile.terrainType === 'AIRPORT'))
-    .map((tile) => tile.coord)
-    .filter((coord) => !isTileOccupied(working, coord));
+    .map((tile) => tile.coord);
 
   for (const coord of productionSites) {
     const affordable = selectAiProductionUnitForTile(working, aiPlayer, difficulty, coord);

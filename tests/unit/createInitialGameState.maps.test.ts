@@ -39,8 +39,8 @@ describe('createInitialGameState マップ読み込み', () => {
 });
 
 describe('スカーミッシュマップ定義', () => {
-  it('MAP_CATALOGが18件あり、全IDが実マップ定義に存在する', () => {
-    expect(MAP_CATALOG).toHaveLength(18);
+  it('MAP_CATALOGが21件あり、全IDが実マップ定義に存在する', () => {
+    expect(MAP_CATALOG).toHaveLength(21);
 
     for (const meta of MAP_CATALOG) {
       const scenario = getSkirmishScenario(meta.id);
@@ -82,6 +82,12 @@ describe('スカーミッシュマップ定義', () => {
     expect(supplyAirports).toHaveLength(0);
     expect(relayAirports.length).toBeGreaterThanOrEqual(2);
     expect(longMarchAirports.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('ドローン向けマップ3種が追加されている', () => {
+    expect(getSkirmishScenario('drone-factory-front')).not.toBeNull();
+    expect(getSkirmishScenario('interceptor-belt')).not.toBeNull();
+    expect(getSkirmishScenario('coastal-drone-raid')).not.toBeNull();
   });
 
   it('道路誘導マップの斜め道路にマンハッタン補間タイルが追加されている', () => {

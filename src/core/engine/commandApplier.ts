@@ -20,6 +20,7 @@ import {
   getTransportCapacity,
   isAirUnitType,
   isBombardableTerrain,
+  isDroneUnitType,
   isFacilityTargetInRange,
   isOperationalFacility,
   isNavalUnitType,
@@ -56,6 +57,9 @@ const cloneState = (state: GameState): GameState => ({
     P1: { ...state.players.P1 },
     P2: { ...state.players.P2 },
   },
+  factoryProductionState: Object.fromEntries(
+    Object.entries(state.factoryProductionState ?? {}).map(([key, value]) => [key, { ...value }]),
+  ),
   actionLog: [...state.actionLog],
 });
 
@@ -99,6 +103,50 @@ const getAdjacentCoords = (coord: Coord): Coord[] => [
   { x: coord.x - 1, y: coord.y },
 ];
 
+const getDroneProductionSlots = (factoryCoord: Coord): Coord[] => [
+  { ...factoryCoord },
+  { x: factoryCoord.x, y: factoryCoord.y - 1 },
+  { x: factoryCoord.x + 1, y: factoryCoord.y },
+  { x: factoryCoord.x, y: factoryCoord.y + 1 },
+  { x: factoryCoord.x - 1, y: factoryCoord.y },
+];
+
+const getFactoryProductionRecord = (state: GameState, factoryKey: string): { normalProduced?: boolean; droneProducedCount?: number } =>
+  state.factoryProductionState?.[factoryKey] ?? {};
+
+const countActiveFactoryDrones = (state: GameState, factoryCoord: Coord): number =>
+  Object.values(state.units).filter((unit) => unit.hp > 0 && isDroneUnitType(unit.type)
+    && unit.originFactoryCoord?.x === factoryCoord.x
+    && unit.originFactoryCoord?.y === factoryCoord.y).length;
+
+const getDroneAutoDeployCoord = (state: GameState, factoryCoord: Coord): Coord | null => {
+  const slots = getDroneProductionSlots(factoryCoord);
+  for (const coord of slots) {
+    if (coord.x < 0 || coord.x >= state.map.width || coord.y < 0 || coord.y >= state.map.height) {
+      continue;
+    }
+    const tile = state.map.tiles[toCoordKey(coord)];
+    if (!tile) {
+      continue;
+    }
+    if (getUnitAt(state, coord)) {
+      continue;
+    }
+    return coord;
+  }
+  return null;
+};
+
+const markFactoryProduction = (state: GameState, factoryKey: string, mode: 'normal' | 'drone'): void => {
+  const current = getFactoryProductionRecord(state, factoryKey);
+  state.factoryProductionState = {
+    ...(state.factoryProductionState ?? {}),
+    [factoryKey]: mode === 'normal'
+      ? { ...current, normalProduced: true }
+      : { ...current, droneProducedCount: (current.droneProducedCount ?? 0) + 1 },
+  };
+};
+
 const getSupplyTargets = (state: GameState, unit: UnitState): UnitState[] => {
   const resupplyTarget = getResupplyTarget(unit.type);
   if (!resupplyTarget) {
@@ -110,7 +158,7 @@ const getSupplyTargets = (state: GameState, unit: UnitState): UnitState[] => {
     .filter((target): target is UnitState => Boolean(target && target.owner === unit.owner && target.id !== unit.id))
     .filter((target) => {
       if (resupplyTarget === 'AIR') {
-        return isAirUnitType(target.type);
+        return isAirUnitType(target.type) && !isDroneUnitType(target.type);
       }
       return !isAirUnitType(target.type) && !isNavalUnitType(target.type);
     });
@@ -197,6 +245,73 @@ const applyVictory = (state: GameState): void => {
   state.victoryReason = verdict.reason;
 };
 
+const resolveDroneInterception = (
+  state: GameState,
+  movingUnitId: string,
+  previousCoord: Coord,
+  nextCoord: Coord,
+  deps: CommandDeps,
+): boolean => {
+  const movingUnit = state.units[movingUnitId];
+  if (!movingUnit || !isDroneUnitType(movingUnit.type)) {
+    return false;
+  }
+
+  const interceptionLimit = Math.max(0, state.droneInterceptionMaxPerTurn ?? 2);
+  const interceptionChance = Math.max(0, Math.min(100, state.droneInterceptionChancePercent ?? 70)) / 100;
+  const shouldConsumeAmmo = state.enableAmmoSupply ?? true;
+
+  const candidates = Object.values(state.units)
+    .filter((unit) => unit.hp > 0 && unit.owner !== movingUnit.owner && unit.type === 'COUNTER_DRONE_AA')
+    .filter((unit) => (unit.interceptsUsedThisTurn ?? 0) < interceptionLimit)
+    .filter((unit) => !shouldConsumeAmmo || unit.ammo > 0)
+    .filter((unit) => {
+      const range = UNIT_DEFINITIONS[unit.type].interceptRange ?? 0;
+      return manhattanDistance(previousCoord, unit.position) > range && manhattanDistance(nextCoord, unit.position) <= range;
+    })
+    .sort((left, right) => manhattanDistance(nextCoord, left.position) - manhattanDistance(nextCoord, right.position));
+
+  for (const interceptor of candidates) {
+    state.units[interceptor.id] = {
+      ...interceptor,
+      ammo: shouldConsumeAmmo ? Math.max(0, interceptor.ammo - 1) : interceptor.ammo,
+      interceptsUsedThisTurn: (interceptor.interceptsUsedThisTurn ?? 0) + 1,
+    };
+
+    const succeeded = deps.rng() < interceptionChance;
+    appendLog(
+      state,
+      interceptor.owner,
+      'DRONE_INTERCEPT',
+      `${interceptor.id} -> ${movingUnit.id} @ ${nextCoord.x},${nextCoord.y} ${succeeded ? '迎撃成功' : '迎撃失敗'} 残迎撃回数:${Math.max(0, interceptionLimit - ((interceptor.interceptsUsedThisTurn ?? 0) + 1))}`,
+    );
+
+    if (succeeded) {
+      deleteUnitWithCargo(state, movingUnit.id);
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const resolveDroneSelfDestructAfterCombat = (
+  state: GameState,
+  attackerId: string,
+  defenderId: string,
+  defenderCountered: boolean,
+): void => {
+  const attacker = state.units[attackerId];
+  const defender = state.units[defenderId];
+
+  if (attacker && isDroneUnitType(attacker.type)) {
+    deleteUnitWithCargo(state, attackerId);
+  }
+  if (defender && defenderCountered && isDroneUnitType(defender.type)) {
+    deleteUnitWithCargo(state, defenderId);
+  }
+};
+
 const applyMoveCommand = (
   state: GameState,
   command: Extract<GameCommand, { type: 'MOVE_UNIT' }>,
@@ -276,6 +391,17 @@ const applyMoveCommand = (
   let currentPosition: Coord = { ...unit.position };
 
   for (const step of resolvedPath) {
+    if (resolveDroneInterception(state, unit.id, currentPosition, step, deps)) {
+      appendLog(
+        state,
+        state.currentPlayerId,
+        'MOVE_UNIT',
+        `${unit.id} -> ${step.x},${step.y} route=${[...movedPath, { ...step }].map((c) => `${c.x},${c.y}`).join('>')} 迎撃で中断`,
+      );
+      applyVictory(state);
+      return { ok: true };
+    }
+
     const blockingUnit = getUnitAt(state, step);
     if (!blockingUnit) {
       movedPath.push({ ...step });
@@ -353,6 +479,8 @@ const applyMoveCommand = (
     if (shouldConsumeFuel && state.units[unit.id]) {
       state.units[unit.id].fuel = Math.max(0, state.units[unit.id].fuel - movedCost);
     }
+
+    resolveDroneSelfDestructAfterCombat(state, blockingUnit.id, unit.id, defenderCanCounter);
 
     if (state.units[unit.id] && state.units[unit.id].hp <= 0) {
       deleteUnitWithCargo(state, unit.id);
@@ -440,6 +568,8 @@ const applyAttackCommand = (
       state.units[command.defenderId].ammo = Math.max(0, state.units[command.defenderId].ammo - 1);
     }
   }
+
+  resolveDroneSelfDestructAfterCombat(state, command.attackerId, command.defenderId, defenderCanCounter);
 
   if (state.units[command.attackerId] && state.units[command.attackerId].hp <= 0) {
     deleteUnitWithCargo(state, command.attackerId);
@@ -696,8 +826,8 @@ const applyProduceUnitCommand = (
     return { ok: false, reason: 'この拠点ではそのユニットを生産できません。' };
   }
 
-  if (getUnitAt(state, command.factoryCoord)) {
-    return { ok: false, reason: '生産拠点にユニットがいるため生産できません。' };
+  if ((command.unitType === 'SUICIDE_DRONE' || command.unitType === 'COUNTER_DRONE_AA') && !(state.enableSuicideDrones ?? false)) {
+    return { ok: false, reason: 'ドローン戦設定が無効です。' };
   }
 
   const def = UNIT_DEFINITIONS[command.unitType];
@@ -705,26 +835,53 @@ const applyProduceUnitCommand = (
     return { ok: false, reason: '資金が不足しています。' };
   }
 
+  const factoryRecord = getFactoryProductionRecord(state, tileKey);
+  const isDroneProduction = isDroneUnitType(command.unitType);
+
+  if (isDroneProduction && factoryRecord.normalProduced) {
+    return { ok: false, reason: 'この工場では今ターン通常ユニットを生産済みです。' };
+  }
+  if (!isDroneProduction && (factoryRecord.droneProducedCount ?? 0) > 0) {
+    return { ok: false, reason: 'この工場では今ターン既にドローンを生産済みです。' };
+  }
+
+  let deployCoord = { ...command.factoryCoord };
+  if (isDroneProduction) {
+    if (countActiveFactoryDrones(state, command.factoryCoord) >= 5) {
+      return { ok: false, reason: 'この工場のドローン上限5機に達しています。' };
+    }
+    const autoDeployCoord = getDroneAutoDeployCoord(state, command.factoryCoord);
+    if (!autoDeployCoord) {
+      return { ok: false, reason: '工場周辺5マスが埋まっているため生産できません。' };
+    }
+    deployCoord = autoDeployCoord;
+  } else if (getUnitAt(state, command.factoryCoord)) {
+    return { ok: false, reason: '生産拠点にユニットがいるため生産できません。' };
+  }
+
   const unitId = `${command.playerId}_${command.unitType}_${state.turn}_${Object.keys(state.units).length + 1}`;
   state.players[command.playerId].funds -= def.cost;
   state.units[unitId] = {
-  id: unitId,
-  owner: command.playerId,
-  type: command.unitType,
-  hp: 10,
-  fuel: def.maxFuel,
-  ammo: def.maxAmmo,
-  supplyCharges: def.resupplyTarget ? (state.maxSupplyCharges ?? 4) : undefined,
-  cargo: undefined,
-  loadedThisTurn: false,
-  unloadedThisTurn: false,
-  position: { ...command.factoryCoord },
-  moved: true,
+    id: unitId,
+    owner: command.playerId,
+    type: command.unitType,
+    hp: 10,
+    fuel: def.maxFuel,
+    ammo: def.maxAmmo,
+    supplyCharges: def.resupplyTarget ? (state.maxSupplyCharges ?? 4) : undefined,
+    cargo: undefined,
+    loadedThisTurn: false,
+    unloadedThisTurn: false,
+    interceptsUsedThisTurn: 0,
+    originFactoryCoord: isDroneProduction ? { ...command.factoryCoord } : undefined,
+    position: deployCoord,
+    moved: true,
     acted: true,
-      lastMovePath: [],
-    };
+    lastMovePath: [],
+  };
+  markFactoryProduction(state, tileKey, isDroneProduction ? 'drone' : 'normal');
 
-  appendLog(state, state.currentPlayerId, 'PRODUCE_UNIT', `${command.unitType} @ ${tileKey}`);
+  appendLog(state, state.currentPlayerId, 'PRODUCE_UNIT', `${command.unitType} @ ${tileKey}${isDroneProduction ? ` -> ${deployCoord.x},${deployCoord.y}` : ''}`);
   applyVictory(state);
   return { ok: true };
 };

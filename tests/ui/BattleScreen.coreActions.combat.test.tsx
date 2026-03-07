@@ -23,6 +23,8 @@ describe('BattleScreen UIテスト: 基本操作(戦闘/施設)', () => {
       },
     });
 
+    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,2' } });
+
     const unitSelect = screen.getByLabelText('ユニット') as HTMLSelectElement;
     await waitFor(() => {
       const optionLabels = Array.from(unitSelect.options).map((option) => option.textContent);

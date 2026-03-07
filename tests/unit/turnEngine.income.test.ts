@@ -48,6 +48,10 @@ describe('turnEngine 収入処理', () => {
         enableNavalUnits: true,
         enableFuelSupply: true,
         enableAmmoSupply: true,
+        enableSuicideDrones: false,
+        droneInterceptionChancePercent: 70,
+        droneInterceptionMaxPerTurn: 2,
+        droneAiProductionRatioLimitPercent: 50,
       },
     });
 

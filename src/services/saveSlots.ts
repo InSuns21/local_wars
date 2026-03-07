@@ -81,6 +81,14 @@ const normalizeSettings = (value: unknown): GameSettings => {
         : DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent,
     showEnemyActionLogs:
       typeof value.showEnemyActionLogs === 'boolean' ? value.showEnemyActionLogs : (DEFAULT_SETTINGS.showEnemyActionLogs ?? false),
+    enableSuicideDrones:
+      typeof value.enableSuicideDrones === 'boolean' ? value.enableSuicideDrones : DEFAULT_SETTINGS.enableSuicideDrones,
+    droneInterceptionChancePercent:
+      typeof value.droneInterceptionChancePercent === 'number' ? value.droneInterceptionChancePercent : DEFAULT_SETTINGS.droneInterceptionChancePercent,
+    droneInterceptionMaxPerTurn:
+      typeof value.droneInterceptionMaxPerTurn === 'number' ? value.droneInterceptionMaxPerTurn : DEFAULT_SETTINGS.droneInterceptionMaxPerTurn,
+    droneAiProductionRatioLimitPercent:
+      typeof value.droneAiProductionRatioLimitPercent === 'number' ? value.droneAiProductionRatioLimitPercent : DEFAULT_SETTINGS.droneAiProductionRatioLimitPercent,
   };
 };
 
@@ -95,6 +103,7 @@ const normalizeUnit = (unit: GameState['units'][string], maxSupplyCharges: numbe
   supplyCharges: UNIT_DEFINITIONS[unit.type].resupplyTarget
     ? unit.supplyCharges ?? maxSupplyCharges
     : unit.supplyCharges,
+  interceptsUsedThisTurn: unit.interceptsUsedThisTurn ?? 0,
   cargo: unit.cargo?.map((cargoUnit) => normalizeUnit(cargoUnit, maxSupplyCharges)),
 });
 
@@ -115,6 +124,11 @@ const normalizeState = (state: GameState, settings: GameSettings): GameState => 
   facilityCaptureCostIncreasePercent:
     state.facilityCaptureCostIncreasePercent ?? settings.facilityCaptureCostIncreasePercent ?? DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent,
   showEnemyActionLogs: state.showEnemyActionLogs ?? (settings.showEnemyActionLogs ?? false),
+  enableSuicideDrones: state.enableSuicideDrones ?? settings.enableSuicideDrones,
+  droneInterceptionChancePercent: state.droneInterceptionChancePercent ?? settings.droneInterceptionChancePercent,
+  droneInterceptionMaxPerTurn: state.droneInterceptionMaxPerTurn ?? settings.droneInterceptionMaxPerTurn,
+  droneAiProductionRatioLimitPercent: state.droneAiProductionRatioLimitPercent ?? settings.droneAiProductionRatioLimitPercent,
+  factoryProductionState: state.factoryProductionState ?? {},
 });
 
 const normalizeSlot = (slotId: SlotId, value: unknown): SaveSlot | null => {

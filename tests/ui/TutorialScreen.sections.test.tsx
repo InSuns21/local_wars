@@ -30,6 +30,7 @@ describe('TutorialScreen UIテスト: セクション分割', () => {
     expect(screen.getByText('地形と拠点')).toBeInTheDocument();
     expect(screen.getByText('補給と索敵')).toBeInTheDocument();
     expect(screen.getByText('生産とユニット相性')).toBeInTheDocument();
+    expect(screen.getByText(/自爆ドローンは工場から最大5機まで周辺5マスへ展開/)).toBeInTheDocument();
     expect(screen.queryByText('基本操作の流れ')).not.toBeInTheDocument();
   });
 });

@@ -39,6 +39,7 @@ export const getProductionTypeForTerrain = (terrainType: TerrainType): 'GROUND' 
 };
 
 export const isAirUnitType = (unitType: UnitType): boolean => UNIT_DEFINITIONS[unitType].movementType === 'AIR';
+export const isDroneUnitType = (unitType: UnitType): boolean => UNIT_DEFINITIONS[unitType].unitCategory === 'DRONE';
 export const isNavalUnitType = (unitType: UnitType): boolean => UNIT_DEFINITIONS[unitType].movementType === 'NAVAL';
 export const isStealthUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].isStealth);
 export const canBombardProperties = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].canBombardProperties);
@@ -55,14 +56,17 @@ export const canUnitProduceAtTile = (unitType: UnitType, tile: TileState | undef
   if (!tile) return false;
   const productionType = getProductionTypeForTerrain(tile.terrainType);
   if (!productionType || !isOperationalFacility(tile)) return false;
-  if (productionType === 'GROUND') return !isAirUnitType(unitType) && !isNavalUnitType(unitType);
-  if (productionType === 'AIR') return isAirUnitType(unitType);
+  if (productionType === 'GROUND') return isDroneUnitType(unitType) || (!isAirUnitType(unitType) && !isNavalUnitType(unitType));
+  if (productionType === 'AIR') return isAirUnitType(unitType) && !isDroneUnitType(unitType);
   return isNavalUnitType(unitType);
 };
 
 export const isSupplyTileForUnit = (tile: TileState | undefined, unit: UnitState): boolean => {
   if (!tile || tile.owner !== unit.owner) return false;
   if (!isOperationalFacility(tile)) return false;
+  if (isDroneUnitType(unit.type)) {
+    return tile.terrainType === 'FACTORY';
+  }
   if (isAirUnitType(unit.type)) {
     return tile.terrainType === 'AIRPORT';
   }

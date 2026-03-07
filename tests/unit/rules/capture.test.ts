@@ -91,6 +91,14 @@ describe('占領ルール', () => {
     expect(result.tile).toBe(city);
   });
 
+  it('防空歩兵は拠点を占領できる', () => {
+    const airDefenseInfantry: UnitState = { ...infantry, id: 'ad1', type: 'AIR_DEFENSE_INFANTRY' };
+    const city: TileState = { coord: { x: 1, y: 1 }, terrainType: 'CITY', owner: 'P2', capturePoints: 10 };
+
+    expect(canCapture(airDefenseInfantry, city)).toBe(true);
+    expect(getCapturePower(airDefenseInfantry)).toBe(10);
+  });
+
   it('capturePoints未指定の都市は10から占領計算される', () => {
     const cityWithoutCp: TileState = { coord: { x: 2, y: 1 }, terrainType: 'CITY', owner: 'P2' };
     const step = applyCaptureStep(infantry, cityWithoutCp);
