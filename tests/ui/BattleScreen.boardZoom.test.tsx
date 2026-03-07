@@ -43,4 +43,12 @@ describe('BattleScreen UIテスト: 盤面ズーム', () => {
     expect(screen.getByText('p1_tank')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'タイル 2,2' })).toBeEnabled();
   });
+
+  it('盤面パネルは外側でスクロールせず、盤面ビューポートに縦横スクロールを集約する', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    expect(screen.getByTestId('battle-board-panel')).toHaveStyle({ overflow: 'hidden' });
+    expect(screen.getByTestId('battle-board-viewport')).toHaveStyle({ overflow: 'auto' });
+  });
 });

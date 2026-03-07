@@ -754,7 +754,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         flexDirection: "column",
       }}
     >
-      <AppBar position="static" color="inherit" elevation={1} sx={{ mb: 1.5 }}>
+      <AppBar position="static" color="inherit" elevation={1} sx={{ mb: 1 }}>
         <Toolbar sx={{ gap: 1.5, flexWrap: "wrap" }}>
           <Typography variant="h1" component="h1" sx={{ fontSize: 30, mr: 1 }}>
             LOCAL WARS
@@ -794,7 +794,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       </AppBar>
 
       {showOtherMenu && (
-        <Paper variant="outlined" sx={{ p: 1.25, mb: 1.5 }}>
+        <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
           <Stack spacing={0.5}>
             <Button
               type="button"
@@ -862,9 +862,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           gridTemplateColumns: { xs: "1fr", md: "360px minmax(0, 1fr)" },
           gridTemplateRows: {
             xs: "minmax(0, 1fr)",
-            md: "minmax(0, 1fr) 240px",
+            md: "minmax(0, 1fr) 176px",
           },
-          gap: 1.5,
+          gap: 1,
           flex: 1,
           minHeight: 0,
         }}
@@ -1020,19 +1020,32 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           </Accordion>
         </Box>
 
-        <Box sx={{ overflowY: "auto", pr: 0.5, minHeight: 0, height: "100%" }}>
-          <BoardLegend />
-          <Paper variant="outlined" sx={{ p: 1.5, minHeight: 640, display: "flex", flexDirection: "column", gap: 1.5 }}>
+        <Box
+          data-testid="battle-board-panel"
+          sx={{
+            overflow: "hidden",
+            pr: 0.5,
+            minHeight: 0,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+          }}
+        >
+          <Box sx={{ flexShrink: 0 }}>
+            <BoardLegend />
+          </Box>
+          <Paper variant="outlined" sx={{ p: 1, minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              spacing={1}
+              spacing={0.75}
               alignItems={{ xs: "stretch", sm: "center" }}
               justifyContent="space-between"
             >
               <Box>
                 <Typography variant="h6">盤面表示</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  縮小すると広く俯瞰できます。盤面はスクロールして移動できます。
+                <Typography variant="caption" color="text.secondary">
+                  ズーム切替とスクロールで盤面を確認できます。
                 </Typography>
               </Box>
               <FormControl sx={{ minWidth: 140 }}>
@@ -1057,7 +1070,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 border: "1px solid",
                 borderColor: "divider",
                 borderRadius: 1,
-                p: 1,
+                p: 0.75,
                 bgcolor: "grey.50",
               }}
             >
@@ -1112,9 +1125,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           component="section"
           aria-label={"経過ログ"}
           variant="outlined"
-          sx={{ p: 1.25, overflowY: "auto", minHeight: 0, height: "100%" }}
+          sx={{ p: 0.875, overflowY: "auto", minHeight: 0, height: "100%" }}
         >
-          <Typography component="h2" variant="h6" sx={{ mb: 1 }}>
+          <Typography component="h2" variant="subtitle1" sx={{ mb: 0.75 }}>
             {"経過ログ"}
           </Typography>
           {recentActionLogs.length === 0 && (
@@ -1123,12 +1136,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
             </Typography>
           )}
           {recentActionLogs.length > 0 && (
-            <Stack spacing={0.75}>
+            <Stack spacing={0.5}>
               {recentActionLogs.map((entry, idx) => (
                 <Paper
                   key={`log-${entry.turn}-${entry.playerId}-${entry.action}-${idx}`}
                   variant="outlined"
-                  sx={{ p: 0.75 }}
+                  sx={{ p: 0.5 }}
                 >
                   <Typography
                     variant="caption"

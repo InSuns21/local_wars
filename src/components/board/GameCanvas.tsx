@@ -31,7 +31,7 @@ const BASE_TILE_HEIGHT = 96;
 const getPropertyOwnerVisual = (owner?: 'P1' | 'P2'): { tag: string; color: string } => {
   if (owner === 'P1') return { tag: 'P1', color: BOARD_VISUAL_TOKENS.friendlyProperty.borderColor };
   if (owner === 'P2') return { tag: 'P2', color: BOARD_VISUAL_TOKENS.enemyProperty.borderColor };
-  return { tag: 'NEUTRAL', color: '#6b7280' };
+  return { tag: '中立', color: '#6b7280' };
 };
 
 const isOwnerVisibleProperty = (terrainType?: TerrainType): boolean =>
@@ -368,7 +368,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   return (
     <section aria-label="ゲーム盤面">
-      <p style={{ margin: '0 0 6px', color: '#334155', fontSize: 12, fontWeight: 700 }}>盤面</p>
       <div
         data-testid="game-board-grid"
         data-board-zoom={zoom.toFixed(2)}
@@ -514,6 +513,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                       background: 'rgba(248,250,252,0.78)',
                       border: '1px solid rgba(15,23,42,0.35)',
                       lineHeight: 1.1,
+                      whiteSpace: 'nowrap',
                       textShadow:
                         '-1px 0 rgba(248,250,252,0.9), 0 1px rgba(248,250,252,0.9), 1px 0 rgba(248,250,252,0.9), 0 -1px rgba(248,250,252,0.9)',
                     }}
