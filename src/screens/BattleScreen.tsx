@@ -37,7 +37,6 @@ import type { Coord } from "@core/types/game";
 import type { GameState } from "@core/types/state";
 import type { UnitState, UnitType } from "@core/types/unit";
 import { toCoordKey } from "@/utils/coord";
-import { getUnitTypeLabel } from "@/utils/unitLabel";
 
 export const battleStore = createGameStore(createInitialGameState());
 
@@ -826,7 +825,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                   </Paper>
                   <Paper variant="outlined" sx={{ p: 1 }}>
                     <Typography variant="caption" color="text.secondary">種類</Typography>
-                    <Typography>{getUnitTypeLabel(selectedUnit.type)}</Typography>
+                    <Typography>{UNIT_DEFINITIONS[selectedUnit.type].label}</Typography>
                   </Paper>
                   <Paper variant="outlined" sx={{ p: 1 }}>
                     <Typography variant="caption" color="text.secondary">HP</Typography>
@@ -923,7 +922,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     disabled={isGameOver}
                   >
                     {producibleUnitTypes.map((type) => (
-                      <option key={type} value={type}>{`${getUnitTypeLabel(type)} (${UNIT_DEFINITIONS[type].cost})`}</option>
+                      <option key={type} value={type}>{`${UNIT_DEFINITIONS[type].label} (${UNIT_DEFINITIONS[type].cost})`}</option>
                     ))}
                   </NativeSelect>
                 </FormControl>

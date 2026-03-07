@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import { Card, CardContent, Typography } from '@mui/material';
 import type { UnitState } from '@core/types/unit';
-import { getUnitTypeLabel } from '@/utils/unitLabel';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 
 type UnitPanelProps = {
   unit: UnitState | null;
@@ -17,7 +17,7 @@ export const UnitPanel: React.FC<UnitPanelProps> = ({ unit }) => (
           <dt>ID</dt>
           <dd>{unit.id}</dd>
           <dt>種類</dt>
-          <dd>{getUnitTypeLabel(unit.type)}</dd>
+          <dd>{UNIT_DEFINITIONS[unit.type].label}</dd>
           <dt>HP</dt>
           <dd>{unit.hp}</dd>
           <dt>座標</dt>

@@ -34,6 +34,7 @@ export type UnitState = {
 
 export type UnitDefinition = {
   type: UnitType;
+  label: string;
   cost: number;
   movementType: MovementType;
   moveRange: number;

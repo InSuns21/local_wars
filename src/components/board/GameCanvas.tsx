@@ -8,7 +8,6 @@ import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 import { toCoordKey } from '@/utils/coord';
-import { getUnitTypeLabel } from '@/utils/unitLabel';
 import { TERRAIN_TEXTURES, UNIT_GLYPH_PATHS } from './boardArt';
 import { BOARD_VISUAL_TOKENS } from './boardVisualTokens';
 
@@ -205,7 +204,7 @@ const buildTileTooltip = (
 
   if (unit) {
     lines.push('');
-    lines.push(`ユニット: ${getUnitTypeLabel(unit.type)}`);
+    lines.push(`ユニット: ${UNIT_DEFINITIONS[unit.type].label}`);
     lines.push(`ID: ${unit.id}`);
     lines.push(`HP: ${unit.hp}`);
     lines.push(`特性: ${getUnitTraitsText(unit)}`);

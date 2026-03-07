@@ -8,7 +8,6 @@ import type { TerrainType } from '@core/types/map';
 import type { GameState } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 import { toCoordKey } from '@/utils/coord';
-import { getUnitTypeLabel } from '@/utils/unitLabel';
 
 type MockGameCanvasProps = {
   gameState: GameState;
@@ -118,7 +117,7 @@ const buildTileTooltip = (
 
   if (unit) {
     lines.push('');
-    lines.push(`ユニット: ${getUnitTypeLabel(unit.type)}`);
+    lines.push(`ユニット: ${UNIT_DEFINITIONS[unit.type].label}`);
     lines.push(`ID: ${unit.id}`);
     lines.push(`HP: ${unit.hp}`);
     lines.push(`特性: ${getUnitTraitsText(unit)}`);

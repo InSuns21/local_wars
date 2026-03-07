@@ -3,6 +3,7 @@ import type { UnitDefinition, UnitType } from '@core/types/unit';
 export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   INFANTRY: {
     type: 'INFANTRY',
+    label: '歩兵',
     cost: 1000,
     movementType: 'FOOT',
     moveRange: 3,
@@ -15,6 +16,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   RECON: {
     type: 'RECON',
+    label: '偵察車',
     cost: 4000,
     movementType: 'WHEEL',
     moveRange: 6,
@@ -27,6 +29,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   TANK: {
     type: 'TANK',
+    label: '戦車',
     cost: 7000,
     movementType: 'TREAD',
     moveRange: 5,
@@ -39,6 +42,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   ANTI_TANK: {
     type: 'ANTI_TANK',
+    label: '対戦車',
     cost: 6000,
     movementType: 'TREAD',
     moveRange: 4,
@@ -51,6 +55,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   ARTILLERY: {
     type: 'ARTILLERY',
+    label: '自走砲',
     cost: 6000,
     movementType: 'TREAD',
     moveRange: 4,
@@ -63,6 +68,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   ANTI_AIR: {
     type: 'ANTI_AIR',
+    label: '対空車',
     cost: 8000,
     movementType: 'TREAD',
     moveRange: 5,
@@ -75,6 +81,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   FLAK_TANK: {
     type: 'FLAK_TANK',
+    label: '高射砲車',
     cost: 11000,
     movementType: 'TREAD',
     moveRange: 3,
@@ -87,6 +94,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   MISSILE_AA: {
     type: 'MISSILE_AA',
+    label: '地対空ミサイル車',
     cost: 9000,
     movementType: 'WHEEL',
     moveRange: 3,
@@ -99,6 +107,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   FIGHTER: {
     type: 'FIGHTER',
+    label: '戦闘機',
     cost: 16000,
     movementType: 'AIR',
     moveRange: 8,
@@ -112,6 +121,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   BOMBER: {
     type: 'BOMBER',
+    label: '爆撃機',
     cost: 18000,
     movementType: 'AIR',
     moveRange: 7,
@@ -126,6 +136,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   ATTACKER: {
     type: 'ATTACKER',
+    label: '攻撃機',
     cost: 14000,
     movementType: 'AIR',
     moveRange: 7,
@@ -139,6 +150,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   STEALTH_BOMBER: {
     type: 'STEALTH_BOMBER',
+    label: 'ステルス爆撃機',
     cost: 22000,
     movementType: 'AIR',
     moveRange: 8,
@@ -154,6 +166,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   DESTROYER: {
     type: 'DESTROYER',
+    label: '駆逐艦',
     cost: 20000,
     movementType: 'NAVAL',
     moveRange: 6,
@@ -166,6 +179,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
   },
   LANDER: {
     type: 'LANDER',
+    label: '揚陸艦',
     cost: 12000,
     movementType: 'NAVAL',
     moveRange: 6,
@@ -177,3 +191,23 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
     attackRangeMax: 1,
   },
 };
+
+export const BASE_DAMAGE_TABLE: Record<UnitType, Partial<Record<UnitType, number>>> = {
+  INFANTRY: { INFANTRY: 55, RECON: 20, TANK: 10, ANTI_TANK: 8, ARTILLERY: 20, ANTI_AIR: 12, FLAK_TANK: 20, MISSILE_AA: 25 },
+  RECON: { INFANTRY: 50, RECON: 35, TANK: 15, ANTI_TANK: 10, ARTILLERY: 45, ANTI_AIR: 12, FLAK_TANK: 50, MISSILE_AA: 55 },
+  TANK: { INFANTRY: 75, RECON: 80, TANK: 55, ANTI_TANK: 45, ARTILLERY: 70, ANTI_AIR: 65, FLAK_TANK: 75, MISSILE_AA: 80 },
+  ANTI_TANK: { INFANTRY: 65, RECON: 75, TANK: 85, ANTI_TANK: 50, ARTILLERY: 70, ANTI_AIR: 60, FLAK_TANK: 75, MISSILE_AA: 80 },
+  ARTILLERY: { INFANTRY: 80, RECON: 75, TANK: 50, ANTI_TANK: 50, ARTILLERY: 65, ANTI_AIR: 60, FLAK_TANK: 60, MISSILE_AA: 75 },
+  ANTI_AIR: { INFANTRY: 95, RECON: 100, TANK: 25, ANTI_TANK: 45, ARTILLERY: 75, ANTI_AIR: 55, FLAK_TANK: 50, MISSILE_AA: 60, FIGHTER: 65, ATTACKER: 80, BOMBER: 65, STEALTH_BOMBER: 60 },
+  FLAK_TANK: { INFANTRY: 55, RECON: 45, TANK: 15, ANTI_TANK: 20, ARTILLERY: 35, ANTI_AIR: 30, FLAK_TANK: 30, MISSILE_AA: 35, FIGHTER: 80, ATTACKER: 100, BOMBER: 90, STEALTH_BOMBER: 85 },
+  MISSILE_AA: { FIGHTER: 95, ATTACKER: 115, BOMBER: 105, STEALTH_BOMBER: 100 },
+  FIGHTER: { FIGHTER: 65, ATTACKER: 105, BOMBER: 85, STEALTH_BOMBER: 75 },
+  BOMBER: { INFANTRY: 110, RECON: 105, TANK: 80, ANTI_TANK: 80, ARTILLERY: 80, ANTI_AIR: 30, FLAK_TANK: 35, MISSILE_AA: 40 },
+  ATTACKER: { INFANTRY: 95, RECON: 95, TANK: 60, ANTI_TANK: 60, ARTILLERY: 60, ANTI_AIR: 20, FLAK_TANK: 25, MISSILE_AA: 30 },
+  STEALTH_BOMBER: { INFANTRY: 110, RECON: 90, TANK: 75, ANTI_TANK: 70, ARTILLERY: 80, ANTI_AIR: 40, FIGHTER: 30, ATTACKER: 80, BOMBER: 70, STEALTH_BOMBER: 55 },
+  DESTROYER: { DESTROYER: 70, LANDER: 90, INFANTRY: 50, TANK: 45, ARTILLERY: 60 },
+  LANDER: {},
+};
+
+export const getBaseDamage = (attackerType: UnitType, defenderType: UnitType): number =>
+  BASE_DAMAGE_TABLE[attackerType][defenderType] ?? 0;
