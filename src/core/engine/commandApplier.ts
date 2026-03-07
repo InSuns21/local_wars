@@ -611,6 +611,7 @@ const applyLoadCommand = (
   }
   if (transport.acted) return { ok: false, reason: 'この輸送ユニットは既に行動済みです。' };
   if (!isTransportUnitType(transport.type)) return { ok: false, reason: '輸送ユニットではありません。' };
+  if (transport.loadedThisTurn) return { ok: false, reason: '搭載は1ターンに1回までです。' };
   if (manhattanDistance(transport.position, cargoUnit.position) !== 1) {
     return { ok: false, reason: '搭載対象は隣接している必要があります。' };
   }
@@ -622,7 +623,7 @@ const applyLoadCommand = (
 
   state.units[transport.id] = {
     ...transport,
-    acted: true,
+    loadedThisTurn: true,
     cargo: [...(transport.cargo ?? []), cloneUnit({ ...cargoUnit, moved: true, acted: true, lastMovePath: [] })],
   };
   delete state.units[cargoUnit.id];
@@ -641,6 +642,7 @@ const applyUnloadCommand = (
   if (transport.owner !== state.currentPlayerId) return { ok: false, reason: '自軍ユニットのみ降車できます。' };
   if (!isTransportUnitType(transport.type)) return { ok: false, reason: '輸送ユニットではありません。' };
   if (transport.acted) return { ok: false, reason: 'この輸送ユニットは既に行動済みです。' };
+  if (transport.unloadedThisTurn) return { ok: false, reason: '降車は1ターンに1回までです。' };
 
   const cargoIndex = (transport.cargo ?? []).findIndex((cargoUnit) => cargoUnit.id === command.cargoUnitId);
   if (cargoIndex < 0) return { ok: false, reason: '搭載ユニットが見つかりません。' };
@@ -655,7 +657,7 @@ const applyUnloadCommand = (
   remainingCargo.splice(cargoIndex, 1);
   state.units[transport.id] = {
     ...transport,
-    acted: true,
+    unloadedThisTurn: true,
     cargo: remainingCargo,
   };
   state.units[cargoUnit!.id] = {
@@ -706,19 +708,21 @@ const applyProduceUnitCommand = (
   const unitId = `${command.playerId}_${command.unitType}_${state.turn}_${Object.keys(state.units).length + 1}`;
   state.players[command.playerId].funds -= def.cost;
   state.units[unitId] = {
-    id: unitId,
-    owner: command.playerId,
-    type: command.unitType,
-    hp: 10,
-    fuel: def.maxFuel,
-    ammo: def.maxAmmo,
-    supplyCharges: def.resupplyTarget ? (state.maxSupplyCharges ?? 4) : undefined,
-    cargo: undefined,
-    position: { ...command.factoryCoord },
-    moved: true,
+  id: unitId,
+  owner: command.playerId,
+  type: command.unitType,
+  hp: 10,
+  fuel: def.maxFuel,
+  ammo: def.maxAmmo,
+  supplyCharges: def.resupplyTarget ? (state.maxSupplyCharges ?? 4) : undefined,
+  cargo: undefined,
+  loadedThisTurn: false,
+  unloadedThisTurn: false,
+  position: { ...command.factoryCoord },
+  moved: true,
     acted: true,
-    lastMovePath: [],
-  };
+      lastMovePath: [],
+    };
 
   appendLog(state, state.currentPlayerId, 'PRODUCE_UNIT', `${command.unitType} @ ${tileKey}`);
   applyVictory(state);

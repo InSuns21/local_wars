@@ -488,6 +488,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       !isGameOver &&
       selectedUnit &&
       !selectedUnit.acted &&
+      !selectedUnit.loadedThisTurn &&
       loadableAdjacentUnits.length > 0,
   );
 
@@ -496,6 +497,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       !isGameOver &&
       selectedUnit &&
       !selectedUnit.acted &&
+      !selectedUnit.unloadedThisTurn &&
       unloadCargoUnitId &&
       unloadCandidateTiles.length > 0,
   );
@@ -1117,6 +1119,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     </Paper>
                   )}
                   {UNIT_DEFINITIONS[selectedUnit.type].transportMode && (
+                    <Paper variant="outlined" sx={{ p: 1 }}>
+                      <Typography variant="caption" color="text.secondary">搭載/降車回数</Typography>
+                      <Typography>{`${selectedUnit.loadedThisTurn ? 1 : 0}/1 ・ ${selectedUnit.unloadedThisTurn ? 1 : 0}/1`}</Typography>
+                    </Paper>
+                  )}
+                  {UNIT_DEFINITIONS[selectedUnit.type].transportMode && (
                     <Paper variant="outlined" sx={{ p: 1, gridColumn: "1 / -1", minWidth: 0 }}>
                       <Typography variant="caption" color="text.secondary">搭載中ユニット</Typography>
                       <Typography sx={{ overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.25 }}>
@@ -1188,6 +1196,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                         ))}
                       </NativeSelect>
                     </FormControl>
+                    <Typography variant="body2">
+                      搭載回数: {selectedUnit?.loadedThisTurn ? '使用済み' : '未使用'} / 降車回数: {selectedUnit?.unloadedThisTurn ? '使用済み' : '未使用'}
+                    </Typography>
                     <Typography variant="body2">
                       降車候補: {unloadCandidateTiles.length > 0 ? unloadCandidateTiles.map((coord) => `${coord.x},${coord.y}`).join(' / ') : 'なし'}
                     </Typography>

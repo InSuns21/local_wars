@@ -32,6 +32,8 @@ export type UnitState = {
   ammo: number;
   supplyCharges?: number;
   cargo?: UnitState[];
+  loadedThisTurn?: boolean;
+  unloadedThisTurn?: boolean;
   position: Coord;
   moved: boolean;
   acted: boolean;

@@ -138,7 +138,15 @@ export const nextTurnState = (state: GameState): GameState => {
         return [id, unit];
       }
 
-      const nextUnit = { ...unit, moved: false, acted: false, movePointsRemaining: undefined, lastMovePath: [] };
+      const nextUnit = {
+        ...unit,
+        moved: false,
+        acted: false,
+        loadedThisTurn: false,
+        unloadedThisTurn: false,
+        movePointsRemaining: undefined,
+        lastMovePath: [],
+      };
       const tile = state.map.tiles[toCoordKey(unit.position)];
       const canResupply = isSupplyTileForUnit(tile, nextUnit);
 

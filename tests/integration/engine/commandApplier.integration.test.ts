@@ -390,7 +390,6 @@ describe('commandApplier 統合テスト', () => {
     );
     expect(loaded.result.ok).toBe(true);
 
-    loaded.state.units.p1_tank.acted = false;
     loaded.state.units.p1_tank.moved = true;
     const unloaded = applyCommand(
       loaded.state,
@@ -400,6 +399,216 @@ describe('commandApplier 統合テスト', () => {
 
     expect(unloaded.result.ok).toBe(true);
     expect(unloaded.state.units.p1_inf.position).toEqual({ x: 2, y: 3 });
+  });
+
+  it('搭載後も輸送ユニットは移動できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_TRUCK',
+      fuel: 80,
+      ammo: 0,
+      position: { x: 2, y: 1 },
+      moved: false,
+      acted: false,
+      cargo: [],
+    };
+    state.units.p1_inf.position = { x: 1, y: 1 };
+    delete state.units.p2_tank;
+
+    const loaded = applyCommand(
+      state,
+      { type: 'LOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf' },
+      { rng: () => 0.5 },
+    );
+
+    expect(loaded.result.ok).toBe(true);
+    expect(loaded.state.units.p1_tank.acted).toBe(false);
+
+    const moved = applyCommand(
+      loaded.state,
+      { type: 'MOVE_UNIT', unitId: 'p1_tank', to: { x: 3, y: 1 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(moved.result.ok).toBe(true);
+    expect(moved.state.units.p1_tank.position).toEqual({ x: 3, y: 1 });
+  });
+
+  it('降車後も輸送ユニットは移動できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_TRUCK',
+      fuel: 80,
+      ammo: 0,
+      position: { x: 2, y: 1 },
+      moved: false,
+      acted: false,
+      cargo: [
+        {
+          ...state.units.p1_inf,
+          position: { x: 2, y: 1 },
+          moved: true,
+          acted: true,
+          lastMovePath: [],
+        },
+      ],
+    };
+    delete state.units.p1_inf;
+    delete state.units.p2_tank;
+
+    const unloaded = applyCommand(
+      state,
+      { type: 'UNLOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf', to: { x: 3, y: 1 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(unloaded.result.ok).toBe(true);
+    expect(unloaded.state.units.p1_tank.acted).toBe(false);
+
+    const moved = applyCommand(
+      unloaded.state,
+      { type: 'MOVE_UNIT', unitId: 'p1_tank', to: { x: 2, y: 2 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(moved.result.ok).toBe(true);
+    expect(moved.state.units.p1_tank.position).toEqual({ x: 2, y: 2 });
+  });
+
+  it('輸送ユニットは移動後でも搭載と降車ができる', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_TRUCK',
+      fuel: 80,
+      ammo: 0,
+      position: { x: 1, y: 2 },
+      moved: false,
+      acted: false,
+      cargo: [],
+    };
+    state.units.p1_inf.position = { x: 2, y: 1 };
+    delete state.units.p2_tank;
+
+    const moved = applyCommand(
+      state,
+      { type: 'MOVE_UNIT', unitId: 'p1_tank', to: { x: 2, y: 2 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(moved.result.ok).toBe(true);
+    expect(moved.state.units.p1_tank.moved).toBe(true);
+    expect(moved.state.units.p1_tank.acted).toBe(false);
+
+    const loaded = applyCommand(
+      moved.state,
+      { type: 'LOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf' },
+      { rng: () => 0.5 },
+    );
+
+    expect(loaded.result.ok).toBe(true);
+    expect(loaded.state.units.p1_inf).toBeUndefined();
+
+    const unloaded = applyCommand(
+      loaded.state,
+      { type: 'UNLOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf', to: { x: 3, y: 2 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(unloaded.result.ok).toBe(true);
+    expect(unloaded.state.units.p1_inf.position).toEqual({ x: 3, y: 2 });
+  });
+
+  it('搭載は1ターンに1回までしか実行できない', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_TRUCK',
+      fuel: 80,
+      ammo: 0,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      cargo: [],
+    };
+    state.units.p1_inf.position = { x: 2, y: 1 };
+    state.units.p2_inf = {
+      ...state.units.p2_inf,
+      owner: 'P1',
+      position: { x: 3, y: 2 },
+      moved: false,
+      acted: false,
+    };
+    state.units.p2_tank.position = { x: 5, y: 5 };
+
+    const firstLoad = applyCommand(
+      state,
+      { type: 'LOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf' },
+      { rng: () => 0.5 },
+    );
+
+    expect(firstLoad.result.ok).toBe(true);
+
+    const secondLoad = applyCommand(
+      firstLoad.state,
+      { type: 'LOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p2_inf' },
+      { rng: () => 0.5 },
+    );
+
+    expect(secondLoad.result.ok).toBe(false);
+    expect(secondLoad.result.reason).toBe('搭載は1ターンに1回までです。');
+  });
+
+  it('降車は1ターンに1回までしか実行できない', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_TRUCK',
+      fuel: 80,
+      ammo: 0,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      cargo: [
+        {
+          ...state.units.p1_inf,
+          id: 'cargo_inf_1',
+          position: { x: 2, y: 2 },
+          moved: true,
+          acted: true,
+          lastMovePath: [],
+        },
+        {
+          ...state.units.p1_inf,
+          id: 'cargo_inf_2',
+          position: { x: 2, y: 2 },
+          moved: true,
+          acted: true,
+          lastMovePath: [],
+        },
+      ],
+    };
+    delete state.units.p1_inf;
+    delete state.units.p2_tank;
+
+    const firstUnload = applyCommand(
+      state,
+      { type: 'UNLOAD', transportUnitId: 'p1_tank', cargoUnitId: 'cargo_inf_1', to: { x: 3, y: 2 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(firstUnload.result.ok).toBe(true);
+
+    const secondUnload = applyCommand(
+      firstUnload.state,
+      { type: 'UNLOAD', transportUnitId: 'p1_tank', cargoUnitId: 'cargo_inf_2', to: { x: 2, y: 3 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(secondUnload.result.ok).toBe(false);
+    expect(secondUnload.result.reason).toBe('降車は1ターンに1回までです。');
   });
 
   it('輸送ユニットが破壊されると cargo もまとめて失われる', () => {
