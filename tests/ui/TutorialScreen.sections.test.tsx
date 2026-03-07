@@ -9,7 +9,8 @@ describe('TutorialScreen UIテスト: セクション分割', () => {
     expect(screen.getByRole('button', { name: '3分で分かる基本操作' })).toBeInTheDocument();
     expect(screen.getByText('基本操作の流れ')).toBeInTheDocument();
     expect(screen.getByText(/1. ユニット情報で自軍ユニットを確認する/)).toBeInTheDocument();
-    expect(screen.getByText(/5. ターン終了で相手手番へ進める/)).toBeInTheDocument();
+    expect(screen.getByText(/4. 補給が必要な部隊は補給ユニットの隣に寄せる/)).toBeInTheDocument();
+    expect(screen.getByText(/6. ターン終了で相手手番へ進める/)).toBeInTheDocument();
   });
 
   it('基本操作編に対局画面のUIラベルが含まれる', () => {
