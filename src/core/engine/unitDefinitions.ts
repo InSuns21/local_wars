@@ -146,7 +146,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
     attackRangeMax: 1,
     transportMode: 'GROUND',
     cargoCapacity: 2,
-    cargoUnitTypes: ['INFANTRY', 'RECON', 'ANTI_TANK', 'ARTILLERY', 'ANTI_AIR', 'SUPPLY_TRUCK', 'FLAK_TANK', 'MISSILE_AA'],
+    cargoUnitTypes: ['INFANTRY', 'RECON', 'ANTI_TANK', 'ARTILLERY', 'ANTI_AIR', 'SUPPLY_TRUCK', 'FLAK_TANK', 'MISSILE_AA', 'COUNTER_DRONE_AA', 'AIR_DEFENSE_INFANTRY'],
     canUnloadAfterMove: true,
   },
   AIR_DEFENSE_INFANTRY: {
@@ -280,7 +280,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
     turnEndFuelCost: 1,
     transportMode: 'AIR',
     cargoCapacity: 1,
-    cargoUnitTypes: ['INFANTRY'],
+    cargoUnitTypes: ['INFANTRY', 'AIR_DEFENSE_INFANTRY'],
     canUnloadAfterMove: true,
   },
   DESTROYER: {
