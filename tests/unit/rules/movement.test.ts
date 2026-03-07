@@ -148,6 +148,24 @@ describe('移動ルール', () => {
     expect(blocked).toBeNull();
   });
 
+  it('findMovePathはblockedCoordKeysを避けて別ルートを選ぶ', () => {
+    const map = makeMap();
+    const unit = makeUnit({ type: 'INFANTRY', position: { x: 0, y: 0 } });
+
+    const path = findMovePath(
+      {
+        map,
+        unit,
+        enemyUnits: [],
+        maxMove: 6,
+        blockedCoordKeys: new Set(['1,0']),
+      },
+      { x: 2, y: 0 },
+    );
+
+    expect(path).toEqual([{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 0 }]);
+  });
+
   it('getReachableTilesは移動力0で空配列を返す', () => {
     const map = makeMap();
     const unit = makeUnit({ type: 'TANK', position: { x: 0, y: 0 } });

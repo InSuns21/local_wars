@@ -102,6 +102,7 @@ export type MoveRangeInput = {
   unit: UnitState;
   enemyUnits: UnitState[];
   maxMove: number;
+  blockedCoordKeys?: Set<string>;
 };
 
 const isAdjacent = (a: Coord, b: Coord): boolean => manhattanDistance(a, b) === 1;
@@ -159,6 +160,9 @@ export const findMovePath = (input: MoveRangeInput, to: Coord): Coord[] | null =
       const tile = getTile(input.map, next);
       if (!tile) continue;
 
+      const nextKey = toCoordKey(next);
+      if (input.blockedCoordKeys?.has(nextKey)) continue;
+
       const cost = getMovementCost(tile.terrainType, movementType);
       if (!Number.isFinite(cost)) continue;
 
@@ -169,7 +173,6 @@ export const findMovePath = (input: MoveRangeInput, to: Coord): Coord[] | null =
       const nextRemaining = currentRemaining - cost;
       if (nextRemaining < 0) continue;
 
-      const nextKey = toCoordKey(next);
       const known = remainingByKey.get(nextKey);
       if (known === undefined || nextRemaining > known) {
         remainingByKey.set(nextKey, nextRemaining);
@@ -196,7 +199,7 @@ export const findMovePath = (input: MoveRangeInput, to: Coord): Coord[] | null =
   return reversed.reverse();
 };
 
-export const getReachableTiles = ({ map, unit, enemyUnits, maxMove }: MoveRangeInput): Coord[] => {
+export const getReachableTiles = ({ map, unit, enemyUnits, maxMove, blockedCoordKeys }: MoveRangeInput): Coord[] => {
   const startKey = toCoordKey(unit.position);
   const remainingByKey = new Map<string, number>([[startKey, maxMove]]);
   const queue: Coord[] = [unit.position];
@@ -214,6 +217,9 @@ export const getReachableTiles = ({ map, unit, enemyUnits, maxMove }: MoveRangeI
       const tile = getTile(map, next);
       if (!tile) continue;
 
+      const key = toCoordKey(next);
+      if (blockedCoordKeys?.has(key)) continue;
+
       const cost = getMovementCost(tile.terrainType, movementType);
       if (!Number.isFinite(cost)) continue;
 
@@ -224,7 +230,6 @@ export const getReachableTiles = ({ map, unit, enemyUnits, maxMove }: MoveRangeI
       const nextRemaining = currentRemaining - cost;
       if (nextRemaining < 0) continue;
 
-      const key = toCoordKey(next);
       const known = remainingByKey.get(key);
       if (known === undefined || nextRemaining > known) {
         remainingByKey.set(key, nextRemaining);

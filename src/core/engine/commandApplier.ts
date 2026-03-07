@@ -78,6 +78,22 @@ const appendLog = (state: GameState, playerId: PlayerId, action: string, detail?
   });
 };
 
+const getVisibleEnemyCoordKeys = (state: GameState, unit: UnitState): Set<string> => {
+  const visibleEnemyIds = (state.fogOfWar ?? false)
+    ? getVisibleEnemyUnitIds(state, unit.owner)
+    : new Set(
+        Object.values(state.units)
+          .filter((other) => other.owner !== unit.owner && other.hp > 0)
+          .map((other) => other.id),
+      );
+
+  return new Set(
+    Object.values(state.units)
+      .filter((other) => visibleEnemyIds.has(other.id) && other.hp > 0)
+      .map((other) => toCoordKey(other.position)),
+  );
+};
+
 const applyVictory = (state: GameState): void => {
   const verdict = checkVictory(state);
   state.winner = verdict.winner;
@@ -102,7 +118,29 @@ const applyMoveCommand = (
     maxMove: getUnitMove(state, unit),
   };
 
-  const resolvedPath = command.path ?? findMovePath(moveInput, command.to);
+  const findResolvedPath = (): Coord[] | null => {
+    const visibleEnemyCoordKeys = getVisibleEnemyCoordKeys(state, unit);
+    const preferredPath = command.path ?? findMovePath(moveInput, command.to);
+
+    const isPathUsable = (path: Coord[] | null): path is Coord[] => {
+      if (!path || path.length === 0) return false;
+      const directCost = getPathCost(moveInput, path);
+      if (directCost === null) return false;
+      const lastStep = path[path.length - 1];
+      if (!lastStep || lastStep.x !== command.to.x || lastStep.y !== command.to.y) {
+        return false;
+      }
+      return !path.some((step) => visibleEnemyCoordKeys.has(toCoordKey(step)));
+    };
+
+    if (isPathUsable(preferredPath)) {
+      return preferredPath;
+    }
+
+    return findMovePath({ ...moveInput, blockedCoordKeys: visibleEnemyCoordKeys }, command.to);
+  };
+
+  const resolvedPath = findResolvedPath();
   if (!resolvedPath || resolvedPath.length === 0) {
     return { ok: false, reason: '移動経路を確定できません。' };
   }

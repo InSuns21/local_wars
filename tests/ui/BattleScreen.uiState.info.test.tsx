@@ -41,7 +41,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     render(<BattleScreen useStore={store} />);
 
     expect(screen.getByText('自軍資金: 10000')).toBeInTheDocument();
-    expect(screen.getByText('自軍収入: +3000/ターン')).toBeInTheDocument();
+    expect(screen.getByText('自軍収入: +4000/ターン')).toBeInTheDocument();
   });
 
   it('可視マスでは地形/ユニット詳細ツールチップが表示される', () => {
