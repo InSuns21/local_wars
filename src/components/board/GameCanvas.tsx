@@ -214,14 +214,14 @@ const buildTileTooltip = (
   return lines.join('\n');
 };
 
-const UnitIcon: React.FC<{ unit: UnitState; currentPlayerId: 'P1' | 'P2' }> = ({ unit, currentPlayerId }) => {
+const UnitIcon: React.FC<{ unit: UnitState; currentPlayerId: 'P1' | 'P2'; size: number }> = ({ unit, currentPlayerId, size }) => {
   const isFriendly = unit.owner === currentPlayerId;
   const ring = isFriendly ? BOARD_VISUAL_TOKENS.friendlyUnit.borderColor : BOARD_VISUAL_TOKENS.enemyUnit.borderColor;
   const fill = isFriendly ? '#1e40af' : '#9f1239';
   const paths = UNIT_GLYPH_PATHS[unit.type] ?? UNIT_GLYPH_PATHS.INFANTRY;
 
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" data-testid={`unit-icon-${unit.type}`}>
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" data-testid={`unit-icon-${unit.type}`}>
       <defs>
         <radialGradient id={`unit-core-${unit.id}`} cx="35%" cy="30%" r="70%">
           <stop offset="0%" stopColor="rgba(255,255,255,0.35)" />
@@ -266,6 +266,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const propertyMinWidth = Math.max(40, Math.round(44 * zoom));
   const previewMarkerSize = Math.max(10, Math.round(12 * zoom));
   const previewMarkerBorderWidth = Math.max(1, Math.round(2 * zoom));
+  const unitIconSize = Math.max(22, Math.round(29 * zoom));
 
   const tileStyle: React.CSSProperties = {
     width: tileWidth,
@@ -437,7 +438,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   data-property-durability={propertyDurabilityLabel ?? 'NONE'}
                   aria-label={'タイル ' + x + ',' + y}
                 >
-                  {isVisible && unit ? <UnitIcon unit={unit} currentPlayerId={gameState.currentPlayerId} /> : null}
+                  {isVisible && unit ? <UnitIcon unit={unit} currentPlayerId={gameState.currentPlayerId} size={unitIconSize} /> : null}
                   <span
                     style={{
                       padding: '1px 4px',

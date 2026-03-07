@@ -118,31 +118,43 @@ const applyMoveCommand = (
     maxMove: getUnitMove(state, unit),
   };
 
-  const findResolvedPath = (): Coord[] | null => {
+  const findResolvedPath = (): { path: Coord[] | null; reason?: string } => {
     const visibleEnemyCoordKeys = getVisibleEnemyCoordKeys(state, unit);
-    const preferredPath = command.path ?? findMovePath(moveInput, command.to);
 
-    const isPathUsable = (path: Coord[] | null): path is Coord[] => {
-      if (!path || path.length === 0) return false;
-      const directCost = getPathCost(moveInput, path);
-      if (directCost === null) return false;
-      const lastStep = path[path.length - 1];
-      if (!lastStep || lastStep.x !== command.to.x || lastStep.y !== command.to.y) {
-        return false;
+    if (command.path) {
+      if (command.path.length === 0) {
+        return { path: null, reason: '移動経路を確定できません。' };
       }
-      return !path.some((step) => visibleEnemyCoordKeys.has(toCoordKey(step)));
-    };
 
-    if (isPathUsable(preferredPath)) {
-      return preferredPath;
+      const lastStep = command.path[command.path.length - 1];
+      if (!lastStep || lastStep.x !== command.to.x || lastStep.y !== command.to.y) {
+        return { path: null, reason: '移動経路の終点が移動先と一致しません。' };
+      }
+
+      const directCost = getPathCost(moveInput, command.path);
+      if (directCost === null) {
+        return { path: null, reason: '不正な移動経路です。' };
+      }
+
+      const intersectsVisibleEnemy = command.path.some((step) => visibleEnemyCoordKeys.has(toCoordKey(step)));
+      if (!intersectsVisibleEnemy) {
+        return { path: command.path };
+      }
+
+      return { path: findMovePath({ ...moveInput, blockedCoordKeys: visibleEnemyCoordKeys }, command.to) };
     }
 
-    return findMovePath({ ...moveInput, blockedCoordKeys: visibleEnemyCoordKeys }, command.to);
+    const preferredPath = findMovePath(moveInput, command.to);
+    if (preferredPath && !preferredPath.some((step) => visibleEnemyCoordKeys.has(toCoordKey(step)))) {
+      return { path: preferredPath };
+    }
+
+    return { path: findMovePath({ ...moveInput, blockedCoordKeys: visibleEnemyCoordKeys }, command.to) };
   };
 
-  const resolvedPath = findResolvedPath();
+  const { path: resolvedPath, reason: resolvedPathError } = findResolvedPath();
   if (!resolvedPath || resolvedPath.length === 0) {
-    return { ok: false, reason: '移動経路を確定できません。' };
+    return { ok: false, reason: resolvedPathError ?? '移動経路を確定できません。' };
   }
 
   const last = resolvedPath[resolvedPath.length - 1];

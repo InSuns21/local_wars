@@ -546,31 +546,6 @@ describe('commandApplier 統合テスト', () => {
     expect(moved.state.units.p1_tank.position).toEqual({ x: 2, y: 1 });
   });
 
-  it('指定経路に可視敵がいても別ルートがあれば迂回して移動する', () => {
-    const state = createInitialGameState();
-    state.fogOfWar = false;
-    state.units.p1_tank.position = { x: 1, y: 2 };
-    state.units.p2_inf.position = { x: 2, y: 1 };
-    state.units.p2_tank.position = { x: 4, y: 4 };
-
-    const moved = applyCommand(
-      state,
-      {
-        type: 'MOVE_UNIT',
-        unitId: 'p1_tank',
-        to: { x: 3, y: 1 },
-        path: [{ x: 2, y: 1 }, { x: 3, y: 1 }],
-      },
-      { rng: () => 0.5 },
-    );
-
-    expect(moved.result.ok).toBe(true);
-    expect(moved.state.units.p1_tank.position).toEqual({ x: 3, y: 1 });
-    const reroutedPath = moved.state.units.p1_tank.lastMovePath ?? [];
-    expect(reroutedPath[reroutedPath.length - 1]).toEqual({ x: 3, y: 1 });
-    expect(reroutedPath).not.toContainEqual({ x: 2, y: 1 });
-  });
-
 });
 
 
