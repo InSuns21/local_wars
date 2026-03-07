@@ -44,6 +44,10 @@ export const isStealthUnitType = (unitType: UnitType): boolean => Boolean(UNIT_D
 export const canBombardProperties = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].canBombardProperties);
 export const isSupportUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].resupplyTarget);
 export const getResupplyTarget = (unitType: UnitType): 'GROUND' | 'AIR' | null => UNIT_DEFINITIONS[unitType].resupplyTarget ?? null;
+export const isTransportUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].transportMode);
+export const getTransportCapacity = (unitType: UnitType): number => UNIT_DEFINITIONS[unitType].cargoCapacity ?? 0;
+export const canTransportUnitTypeCarry = (transportType: UnitType, cargoType: UnitType): boolean =>
+  (UNIT_DEFINITIONS[transportType].cargoUnitTypes ?? []).includes(cargoType);
 
 export const getTurnEndFuelCost = (unitType: UnitType): number => UNIT_DEFINITIONS[unitType].turnEndFuelCost ?? 0;
 

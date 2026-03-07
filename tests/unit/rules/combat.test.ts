@@ -142,6 +142,13 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('MISSILE_AA', 'INFANTRY')).toBe(0);
   });
 
+  it('輸送ユニットは攻撃できない', () => {
+    expect(getBaseDamage('TRANSPORT_TRUCK', 'INFANTRY')).toBe(0);
+    expect(getBaseDamage('TRANSPORT_TRUCK', 'TANK')).toBe(0);
+    expect(getBaseDamage('TRANSPORT_HELI', 'INFANTRY')).toBe(0);
+    expect(getBaseDamage('TRANSPORT_HELI', 'FIGHTER')).toBe(0);
+  });
+
   it('補給車は主要な対地攻撃ユニットから攻撃対象に取られ、偵察車より脆い', () => {
     expect(getBaseDamage('INFANTRY', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
     expect(getBaseDamage('TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
@@ -152,6 +159,18 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('ATTACKER', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
     expect(getBaseDamage('TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(getBaseDamage('TANK', 'RECON'));
     expect(getBaseDamage('HEAVY_TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(getBaseDamage('HEAVY_TANK', 'RECON'));
+  });
+
+  it('輸送車は偵察車レベルの防御力になる', () => {
+    expect(getBaseDamage('TANK', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('TANK', 'RECON'));
+    expect(getBaseDamage('ANTI_TANK', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('ANTI_TANK', 'RECON'));
+  });
+
+  it('輸送ヘリは主要な対空攻撃ユニットから攻撃対象に取られ、航空で最も脆い水準になる', () => {
+    expect(getBaseDamage('FIGHTER', 'TRANSPORT_HELI')).toBeGreaterThan(getBaseDamage('FIGHTER', 'AIR_TANKER'));
+    expect(getBaseDamage('ANTI_AIR', 'TRANSPORT_HELI')).toBeGreaterThan(getBaseDamage('ANTI_AIR', 'AIR_TANKER'));
+    expect(getBaseDamage('FLAK_TANK', 'TRANSPORT_HELI')).toBeGreaterThan(getBaseDamage('FLAK_TANK', 'AIR_TANKER'));
+    expect(getBaseDamage('MISSILE_AA', 'TRANSPORT_HELI')).toBeGreaterThan(getBaseDamage('MISSILE_AA', 'AIR_TANKER'));
   });
 
   it('空中補給機は主要な対空攻撃ユニットから攻撃対象に取られ、航空で最も脆い水準になる', () => {

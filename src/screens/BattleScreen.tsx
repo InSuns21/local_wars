@@ -52,8 +52,8 @@ type BattleScreenProps = {
 };
 
 const PRODUCIBLE_UNITS_BY_SITE: Record<"GROUND" | "AIR" | "NAVAL", UnitType[]> = {
-  GROUND: ["INFANTRY", "RECON", "TANK", "HEAVY_TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR", "FLAK_TANK", "MISSILE_AA", "SUPPLY_TRUCK"],
-  AIR: ["FIGHTER", "BOMBER", "ATTACKER", "STEALTH_BOMBER", "AIR_TANKER"],
+  GROUND: ["INFANTRY", "RECON", "TANK", "HEAVY_TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR", "FLAK_TANK", "MISSILE_AA", "SUPPLY_TRUCK", "TRANSPORT_TRUCK"],
+  AIR: ["FIGHTER", "BOMBER", "ATTACKER", "STEALTH_BOMBER", "AIR_TANKER", "TRANSPORT_HELI"],
   NAVAL: ["DESTROYER", "LANDER"],
 };
 
@@ -113,6 +113,10 @@ const getActionLabel = (action: GameState["actionLog"][number]["action"]): strin
       return "占領";
     case "SUPPLY":
       return "補給";
+    case "LOAD":
+      return "搭載";
+    case "UNLOAD":
+      return "降車";
     case "PRODUCE_UNIT":
       return "生産";
     case "END_TURN":
@@ -200,6 +204,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   );
 
   const [targetUnitId, setTargetUnitId] = useState<string>("");
+  const [loadCargoUnitId, setLoadCargoUnitId] = useState<string>("");
+  const [unloadCargoUnitId, setUnloadCargoUnitId] = useState<string>("");
   const [produceUnitType, setProduceUnitType] = useState<UnitType>("INFANTRY");
   const [selectedFactoryKey, setSelectedFactoryKey] = useState<string>("");
   const [lastResult, setLastResult] = useState<string>("未実行");
@@ -337,6 +343,74 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     [attackRangeKeys, selectedUnit, visibleEnemyUnits],
   );
 
+  const loadableAdjacentUnits = useMemo(() => {
+    if (!selectedUnit || !canControlSelectedUnit || selectedUnit.acted) {
+      return [];
+    }
+    const definition = UNIT_DEFINITIONS[selectedUnit.type];
+    if (!definition.transportMode) {
+      return [];
+    }
+    const capacity = definition.cargoCapacity ?? 0;
+    if ((selectedUnit.cargo?.length ?? 0) >= capacity) {
+      return [];
+    }
+
+    const adjacentOffsets = [
+      { x: 0, y: -1 },
+      { x: 1, y: 0 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+    ];
+
+    return adjacentOffsets
+      .map((offset) => gameState.units[aliveUnitByTile.get(toCoordKey({ x: selectedUnit.position.x + offset.x, y: selectedUnit.position.y + offset.y })) ?? ""])
+      .filter((unit): unit is UnitState => Boolean(unit && unit.owner === selectedUnit.owner && unit.id !== selectedUnit.id))
+      .filter((unit) => !UNIT_DEFINITIONS[unit.type].transportMode)
+      .filter((unit) => (definition.cargoUnitTypes ?? []).includes(unit.type));
+  }, [aliveUnitByTile, canControlSelectedUnit, gameState.units, selectedUnit]);
+
+  const unloadCandidateTiles = useMemo(() => {
+    if (!selectedUnit || !canControlSelectedUnit || selectedUnit.acted || !unloadCargoUnitId) {
+      return [];
+    }
+    const cargoUnit = (selectedUnit.cargo ?? []).find((unit) => unit.id === unloadCargoUnitId);
+    if (!cargoUnit) {
+      return [];
+    }
+
+    const adjacentOffsets = [
+      { x: 0, y: -1 },
+      { x: 1, y: 0 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+    ];
+
+    return adjacentOffsets
+      .map((offset) => ({ x: selectedUnit.position.x + offset.x, y: selectedUnit.position.y + offset.y }))
+      .filter((coord) => coord.x >= 0 && coord.x < gameState.map.width && coord.y >= 0 && coord.y < gameState.map.height)
+      .filter((coord) => !aliveUnitByTile.has(toCoordKey(coord)))
+      .filter((coord) => {
+        const tile = gameState.map.tiles[toCoordKey(coord)];
+        if (!tile) {
+          return false;
+        }
+        if (selectedUnit.type === "TRANSPORT_HELI") {
+          return cargoUnit.type === "INFANTRY" && tile.terrainType !== "SEA";
+        }
+        const pathCost = getPathCost(
+          {
+            map: gameState.map,
+            unit: { ...cargoUnit, position: { ...selectedUnit.position } },
+            enemyUnits: [],
+            maxMove: 1,
+          },
+          [coord],
+        );
+        return pathCost !== null;
+      });
+  }, [aliveUnitByTile, canControlSelectedUnit, gameState.map, selectedUnit, unloadCargoUnitId]);
+
   const supplyRangeTiles = useMemo(() => {
     if (!selectedUnit || !canControlSelectedUnit || selectedUnit.acted) {
       return [];
@@ -409,6 +483,23 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     return PRODUCIBLE_UNITS_BY_SITE[productionType];
   }, [selectedProductionTile]);
 
+  const canIssueLoad = Boolean(
+    canControlSelectedUnit &&
+      !isGameOver &&
+      selectedUnit &&
+      !selectedUnit.acted &&
+      loadableAdjacentUnits.length > 0,
+  );
+
+  const canIssueUnload = Boolean(
+    canControlSelectedUnit &&
+      !isGameOver &&
+      selectedUnit &&
+      !selectedUnit.acted &&
+      unloadCargoUnitId &&
+      unloadCandidateTiles.length > 0,
+  );
+
   const canIssueSupply = Boolean(
     canControlSelectedUnit &&
       !isGameOver &&
@@ -479,6 +570,27 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       setTargetUnitId(attackableEnemyUnits[0].id);
     }
   }, [attackableEnemyUnits, targetUnitId]);
+
+  useEffect(() => {
+    if (loadableAdjacentUnits.length === 0) {
+      setLoadCargoUnitId("");
+      return;
+    }
+    if (!loadableAdjacentUnits.some((unit) => unit.id === loadCargoUnitId)) {
+      setLoadCargoUnitId(loadableAdjacentUnits[0].id);
+    }
+  }, [loadCargoUnitId, loadableAdjacentUnits]);
+
+  useEffect(() => {
+    const cargoUnits = selectedUnit?.cargo ?? [];
+    if (cargoUnits.length === 0) {
+      setUnloadCargoUnitId("");
+      return;
+    }
+    if (!cargoUnits.some((unit) => unit.id === unloadCargoUnitId)) {
+      setUnloadCargoUnitId(cargoUnits[0].id);
+    }
+  }, [selectedUnit, unloadCargoUnitId]);
 
   useEffect(() => {
     if (producibleUnitTypes.length === 0) {
@@ -714,6 +826,38 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     const result = dispatchCommand({ type: "CAPTURE", unitId: selectedUnitId });
     setCommandResult(result.ok, result.reason);
   };
+  const handleLoad = (): void => {
+    if (isGameOver) {
+      setLastResult("失敗: 既に勝敗が確定しています。");
+      return;
+    }
+    if (!selectedUnitId || !loadCargoUnitId) {
+      setLastResult("失敗: 搭載対象を選択してください。");
+      return;
+    }
+
+    const result = dispatchCommand({ type: "LOAD", transportUnitId: selectedUnitId, cargoUnitId: loadCargoUnitId });
+    setCommandResult(result.ok, result.reason);
+  };
+
+  const handleUnload = (): void => {
+    if (isGameOver) {
+      setLastResult("失敗: 既に勝敗が確定しています。");
+      return;
+    }
+    if (!selectedUnitId || !unloadCargoUnitId) {
+      setLastResult("失敗: 降車ユニットを選択してください。");
+      return;
+    }
+    if (!selectedTile) {
+      setLastResult("失敗: 降車先タイルを選択してください。");
+      return;
+    }
+
+    const result = dispatchCommand({ type: "UNLOAD", transportUnitId: selectedUnitId, cargoUnitId: unloadCargoUnitId, to: selectedTile });
+    setCommandResult(result.ok, result.reason);
+  };
+
   const handleSupply = (): void => {
     if (isGameOver) {
       setLastResult("失敗: 既に勝敗が確定しています。");
@@ -933,10 +1077,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
             <AccordionDetails>
               {!selectedUnit && <Typography variant="body2">ユニット未選択</Typography>}
               {selectedUnit && (
-                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
-                  <Paper variant="outlined" sx={{ p: 1 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, minWidth: 0 }}>
+                  <Paper variant="outlined" sx={{ p: 1, minWidth: 0 }}>
                     <Typography variant="caption" color="text.secondary">ID</Typography>
-                    <Typography>{selectedUnit.id}</Typography>
+                    <Typography sx={{ overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.25 }}>
+                      {selectedUnit.id}
+                    </Typography>
                   </Paper>
                   <Paper variant="outlined" sx={{ p: 1 }}>
                     <Typography variant="caption" color="text.secondary">種類</Typography>
@@ -962,6 +1108,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     <Paper variant="outlined" sx={{ p: 1 }}>
                       <Typography variant="caption" color="text.secondary">補給回数</Typography>
                       <Typography>{`${selectedUnit.supplyCharges ?? 0}/${gameState.maxSupplyCharges ?? 4}`}</Typography>
+                    </Paper>
+                  )}
+                  {UNIT_DEFINITIONS[selectedUnit.type].transportMode && (
+                    <Paper variant="outlined" sx={{ p: 1 }}>
+                      <Typography variant="caption" color="text.secondary">搭載数</Typography>
+                      <Typography>{`${selectedUnit.cargo?.length ?? 0}/${UNIT_DEFINITIONS[selectedUnit.type].cargoCapacity ?? 0}`}</Typography>
+                    </Paper>
+                  )}
+                  {UNIT_DEFINITIONS[selectedUnit.type].transportMode && (
+                    <Paper variant="outlined" sx={{ p: 1, gridColumn: "1 / -1", minWidth: 0 }}>
+                      <Typography variant="caption" color="text.secondary">搭載中ユニット</Typography>
+                      <Typography sx={{ overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.25 }}>
+                        {selectedUnit.cargo && selectedUnit.cargo.length > 0 ? selectedUnit.cargo.map((unit) => `${UNIT_DEFINITIONS[unit.type].label}(${unit.id})`).join(" / ") : "なし"}
+                      </Typography>
                     </Paper>
                   )}
                 </Box>
@@ -998,12 +1158,49 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 <Typography variant="body2">
                   攻撃予測: {attackForecastText}
                 </Typography>
+                {UNIT_DEFINITIONS[selectedUnit?.type ?? "INFANTRY"].transportMode && (
+                  <>
+                    <FormControl>
+                      <InputLabel shrink variant="standard" htmlFor="load-cargo-unit">搭載対象</InputLabel>
+                      <NativeSelect
+                        inputProps={{ id: "load-cargo-unit" }}
+                        value={loadCargoUnitId}
+                        onChange={(e) => setLoadCargoUnitId(e.target.value)}
+                        disabled={!canIssueLoad}
+                      >
+                        {loadableAdjacentUnits.length === 0 && <option value="">搭載可能な味方なし</option>}
+                        {loadableAdjacentUnits.map((unit) => (
+                          <option key={unit.id} value={unit.id}>{`${UNIT_DEFINITIONS[unit.type].label} (${unit.id})`}</option>
+                        ))}
+                      </NativeSelect>
+                    </FormControl>
+                    <FormControl>
+                      <InputLabel shrink variant="standard" htmlFor="unload-cargo-unit">降車対象</InputLabel>
+                      <NativeSelect
+                        inputProps={{ id: "unload-cargo-unit" }}
+                        value={unloadCargoUnitId}
+                        onChange={(e) => setUnloadCargoUnitId(e.target.value)}
+                        disabled={(selectedUnit?.cargo?.length ?? 0) === 0}
+                      >
+                        {(selectedUnit?.cargo?.length ?? 0) === 0 && <option value="">搭載ユニットなし</option>}
+                        {(selectedUnit?.cargo ?? []).map((unit) => (
+                          <option key={unit.id} value={unit.id}>{`${UNIT_DEFINITIONS[unit.type].label} (${unit.id})`}</option>
+                        ))}
+                      </NativeSelect>
+                    </FormControl>
+                    <Typography variant="body2">
+                      降車候補: {unloadCandidateTiles.length > 0 ? unloadCandidateTiles.map((coord) => `${coord.x},${coord.y}`).join(' / ') : 'なし'}
+                    </Typography>
+                  </>
+                )}
                 {UNIT_DEFINITIONS[selectedUnit?.type ?? "INFANTRY"].resupplyTarget && (
                   <Typography variant="body2">
                     補給対象: {supplyRangeTiles.length > 0 ? supplyRangeTiles.map((coord) => `${coord.x},${coord.y}`).join(' / ') : 'なし'}
                   </Typography>
                 )}
                 <Button type="button" variant="contained" color="secondary" onClick={handleAttack} disabled={!canIssueAttack}>攻撃実行</Button>
+                <Button type="button" variant="outlined" onClick={handleLoad} disabled={!canIssueLoad}>搭載実行</Button>
+                <Button type="button" variant="outlined" onClick={handleUnload} disabled={!canIssueUnload}>降車実行</Button>
                 <Button type="button" variant="outlined" color="success" onClick={handleSupply} disabled={!canIssueSupply}>補給実行</Button>
                 <Button type="button" variant="outlined" color="warning" onClick={handleBombard} disabled={!canIssueBombard}>施設爆撃</Button>
                 <Button type="button" variant="outlined" onClick={handleCapture} disabled={!canCaptureSelectedUnit}>占領実行</Button>

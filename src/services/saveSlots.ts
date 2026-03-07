@@ -90,6 +90,14 @@ const inferMapIdFromState = (state: GameState): string => {
   return 'plains-clash';
 };
 
+const normalizeUnit = (unit: GameState['units'][string], maxSupplyCharges: number): GameState['units'][string] => ({
+  ...unit,
+  supplyCharges: UNIT_DEFINITIONS[unit.type].resupplyTarget
+    ? unit.supplyCharges ?? maxSupplyCharges
+    : unit.supplyCharges,
+  cargo: unit.cargo?.map((cargoUnit) => normalizeUnit(cargoUnit, maxSupplyCharges)),
+});
+
 const normalizeState = (state: GameState, settings: GameSettings): GameState => ({
   ...state,
   humanPlayerSide: state.humanPlayerSide ?? settings.humanPlayerSide,
@@ -102,18 +110,7 @@ const normalizeState = (state: GameState, settings: GameSettings): GameState => 
   hpRecoveryHq: state.hpRecoveryHq ?? settings.hpRecoveryHq,
   maxSupplyCharges: state.maxSupplyCharges ?? settings.maxSupplyCharges,
   units: Object.fromEntries(
-    Object.entries(state.units).map(([id, unit]) => {
-      if (!UNIT_DEFINITIONS[unit.type].resupplyTarget) {
-        return [id, unit];
-      }
-      return [
-        id,
-        {
-          ...unit,
-          supplyCharges: unit.supplyCharges ?? (state.maxSupplyCharges ?? settings.maxSupplyCharges),
-        },
-      ];
-    }),
+    Object.entries(state.units).map(([id, unit]) => [id, normalizeUnit(unit, state.maxSupplyCharges ?? settings.maxSupplyCharges)]),
   ),
   facilityCaptureCostIncreasePercent:
     state.facilityCaptureCostIncreasePercent ?? settings.facilityCaptureCostIncreasePercent ?? DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent,

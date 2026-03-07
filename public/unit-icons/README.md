@@ -15,7 +15,7 @@ Recommended constraints:
 - single solid silhouette
 - monochrome black shape on transparent is recommended
 - square canvas
-- centered within the canvas with a small margin
+- centered within the canvas with a no margin
 - avoid text, gradients, shadows, and embedded raster images
 - keep the silhouette readable at about 24px to 30px
 - prefer `viewBox="0 0 24 24"`, but larger square viewBox values also work if the silhouette is centered

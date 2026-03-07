@@ -290,6 +290,149 @@ describe('commandApplier 統合テスト', () => {
     expect(Object.values(next.units).some((u) => u.id.startsWith('P1_HEAVY_TANK_'))).toBe(true);
   });
 
+  it('工場では輸送車を生産できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 1, y: 1 };
+    state.players.P1.funds = 10000;
+
+    const { state: next, result } = applyCommand(
+      state,
+      {
+        type: 'PRODUCE_UNIT',
+        playerId: 'P1',
+        factoryCoord: { x: 0, y: 1 },
+        unitType: 'TRANSPORT_TRUCK',
+      },
+      { rng: () => 0.5 },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(Object.values(next.units).some((u) => u.id.startsWith('P1_TRANSPORT_TRUCK_'))).toBe(true);
+  });
+
+  it('空港では輸送ヘリを生産できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 1, y: 1 };
+    state.players.P1.funds = 20000;
+
+    const { state: next, result } = applyCommand(
+      state,
+      {
+        type: 'PRODUCE_UNIT',
+        playerId: 'P1',
+        factoryCoord: { x: 0, y: 2 },
+        unitType: 'TRANSPORT_HELI',
+      },
+      { rng: () => 0.5 },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(Object.values(next.units).some((u) => u.id.startsWith('P1_TRANSPORT_HELI_'))).toBe(true);
+  });
+
+  it('輸送車は軽地上ユニットを搭載して降車できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_TRUCK',
+      fuel: 80,
+      ammo: 0,
+      position: { x: 2, y: 1 },
+      moved: false,
+      acted: false,
+      cargo: [],
+    };
+    state.units.p1_inf.position = { x: 1, y: 1 };
+    delete state.units.p2_tank;
+
+    const loaded = applyCommand(
+      state,
+      { type: 'LOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf' },
+      { rng: () => 0.5 },
+    );
+
+    expect(loaded.result.ok).toBe(true);
+    expect(loaded.state.units.p1_inf).toBeUndefined();
+    expect(loaded.state.units.p1_tank.cargo?.map((unit) => unit.id)).toEqual(['p1_inf']);
+
+    loaded.state.units.p1_tank.acted = false;
+    const unloaded = applyCommand(
+      loaded.state,
+      { type: 'UNLOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf', to: { x: 3, y: 1 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(unloaded.result.ok).toBe(true);
+    expect(unloaded.state.units.p1_inf.position).toEqual({ x: 3, y: 1 });
+    expect(unloaded.state.units.p1_inf.moved).toBe(true);
+    expect(unloaded.state.units.p1_inf.acted).toBe(true);
+  });
+
+  it('輸送ヘリは歩兵のみを移動後でも降車できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_HELI',
+      fuel: 70,
+      ammo: 0,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      cargo: [],
+    };
+    state.units.p1_inf.position = { x: 2, y: 1 };
+    delete state.units.p2_tank;
+
+    const loaded = applyCommand(
+      state,
+      { type: 'LOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf' },
+      { rng: () => 0.5 },
+    );
+    expect(loaded.result.ok).toBe(true);
+
+    loaded.state.units.p1_tank.acted = false;
+    loaded.state.units.p1_tank.moved = true;
+    const unloaded = applyCommand(
+      loaded.state,
+      { type: 'UNLOAD', transportUnitId: 'p1_tank', cargoUnitId: 'p1_inf', to: { x: 2, y: 3 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(unloaded.result.ok).toBe(true);
+    expect(unloaded.state.units.p1_inf.position).toEqual({ x: 2, y: 3 });
+  });
+
+  it('輸送ユニットが破壊されると cargo もまとめて失われる', () => {
+    const state = createInitialGameState();
+    state.currentPlayerId = 'P2';
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'TRANSPORT_TRUCK',
+      hp: 1,
+      position: { x: 2, y: 2 },
+      cargo: [
+        {
+          ...state.units.p1_inf,
+          position: { x: 2, y: 2 },
+          moved: true,
+          acted: true,
+        },
+      ],
+    };
+    delete state.units.p1_inf;
+    state.units.p2_tank.position = { x: 3, y: 2 };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK', attackerId: 'p2_tank', defenderId: 'p1_tank' },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(true);
+    expect(attacked.state.units.p1_tank).toBeUndefined();
+    expect(Object.values(attacked.state.units).some((unit) => unit.id === 'p1_inf')).toBe(false);
+  });
+
   it('攻撃機は施設爆撃できない', () => {
     const state = createInitialGameState();
     state.units.p1_tank = {

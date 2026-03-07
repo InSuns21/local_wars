@@ -11,11 +11,13 @@ export type UnitType =
   | 'FLAK_TANK'
   | 'MISSILE_AA'
   | 'SUPPLY_TRUCK'
+  | 'TRANSPORT_TRUCK'
   | 'FIGHTER'
   | 'BOMBER'
   | 'ATTACKER'
   | 'STEALTH_BOMBER'
   | 'AIR_TANKER'
+  | 'TRANSPORT_HELI'
   | 'DESTROYER'
   | 'LANDER';
 
@@ -29,6 +31,7 @@ export type UnitState = {
   fuel: number;
   ammo: number;
   supplyCharges?: number;
+  cargo?: UnitState[];
   position: Coord;
   moved: boolean;
   acted: boolean;
@@ -52,4 +55,8 @@ export type UnitDefinition = {
   isStealth?: boolean;
   turnEndFuelCost?: number;
   resupplyTarget?: 'GROUND' | 'AIR';
+  transportMode?: 'GROUND' | 'AIR';
+  cargoCapacity?: number;
+  cargoUnitTypes?: UnitType[];
+  canUnloadAfterMove?: boolean;
 };

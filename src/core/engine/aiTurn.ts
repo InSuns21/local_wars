@@ -18,6 +18,7 @@ export type AiTurnOptions = {
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
 const INDIRECT_SUPPORT_UNITS = new Set<UnitType>(['ARTILLERY', 'FLAK_TANK', 'MISSILE_AA']);
 const getEnemyPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
+const LIGHT_TRANSPORTABLE_TYPES = new Set<UnitType>(['INFANTRY', 'RECON', 'ANTI_TANK', 'ARTILLERY', 'ANTI_AIR', 'SUPPLY_TRUCK', 'FLAK_TANK', 'MISSILE_AA']);
 
 const getAliveUnits = (state: GameState, owner: PlayerId): UnitState[] =>
   Object.values(state.units).filter((u) => u.owner === owner && u.hp > 0);
@@ -40,6 +41,55 @@ const canCaptureNow = (state: GameState, unit: UnitState): boolean => {
   if (!tile) return false;
   if (!CAPTURABLE_TERRAINS.has(tile.terrainType)) return false;
   return tile.owner !== unit.owner;
+};
+
+const getNearestRemoteCaptureTargetDistance = (state: GameState, aiPlayer: PlayerId): number | null => {
+  const infantry = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'INFANTRY');
+  if (infantry.length === 0) {
+    return null;
+  }
+
+  const targets = Object.values(state.map.tiles).filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== aiPlayer);
+  if (targets.length === 0) {
+    return null;
+  }
+
+  let best: number | null = null;
+  for (const unit of infantry) {
+    for (const tile of targets) {
+      const turns = Math.ceil(manhattanDistance(unit.position, tile.coord) / Math.max(1, UNIT_DEFINITIONS.INFANTRY.moveRange));
+      if (turns >= 3 && (best === null || turns < best)) {
+        best = turns;
+      }
+    }
+  }
+
+  return best;
+};
+
+const shouldProduceTransport = (state: GameState, aiPlayer: PlayerId, terrainType: string): UnitType | null => {
+  const enemyAirCount = getAliveUnits(state, getEnemyPlayer(aiPlayer)).filter(
+    (unit) => UNIT_DEFINITIONS[unit.type].movementType === 'AIR',
+  ).length;
+  if (enemyAirCount > 0) {
+    return null;
+  }
+
+  const remoteTurns = getNearestRemoteCaptureTargetDistance(state, aiPlayer);
+  if (remoteTurns === null) {
+    return null;
+  }
+
+  if (terrainType === 'AIRPORT' && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.TRANSPORT_HELI.cost) {
+    return 'TRANSPORT_HELI';
+  }
+
+  const hasCargoCandidate = getAliveUnits(state, aiPlayer).some((unit) => LIGHT_TRANSPORTABLE_TYPES.has(unit.type));
+  if (terrainType === 'FACTORY' && hasCargoCandidate && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.TRANSPORT_TRUCK.cost) {
+    return 'TRANSPORT_TRUCK';
+  }
+
+  return null;
 };
 
 const getAttackableEnemies = (state: GameState, unit: UnitState): UnitState[] => {
@@ -326,11 +376,13 @@ const emptyUnitCountMap = (): Record<UnitType, number> => ({
   FLAK_TANK: 0,
   MISSILE_AA: 0,
   SUPPLY_TRUCK: 0,
+  TRANSPORT_TRUCK: 0,
   FIGHTER: 0,
   BOMBER: 0,
   ATTACKER: 0,
   STEALTH_BOMBER: 0,
   AIR_TANKER: 0,
+  TRANSPORT_HELI: 0,
   DESTROYER: 0,
   LANDER: 0,
 });
@@ -405,8 +457,8 @@ const selectAiProductionUnitForTile = (
   if (!tile) return null;
 
   const easyPriorities: UnitType[] = tile.terrainType === 'AIRPORT'
-    ? ['FIGHTER', 'ATTACKER']
-    : ['INFANTRY', 'TANK', 'RECON'];
+    ? ['FIGHTER', 'ATTACKER', 'TRANSPORT_HELI']
+    : ['INFANTRY', 'TANK', 'RECON', 'TRANSPORT_TRUCK'];
 
   if (difficulty === 'easy') {
     return easyPriorities.find(
@@ -420,6 +472,10 @@ const selectAiProductionUnitForTile = (
     if (enemyAir > 0 && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.FIGHTER.cost) {
       return 'FIGHTER';
     }
+    const transportType = shouldProduceTransport(state, aiPlayer, tile.terrainType);
+    if (transportType) {
+      return transportType;
+    }
     if (state.players[aiPlayer].funds >= UNIT_DEFINITIONS.ATTACKER.cost) {
       return 'ATTACKER';
     }
@@ -429,7 +485,7 @@ const selectAiProductionUnitForTile = (
     return null;
   }
 
-  return selectNormalProductionUnit(state, aiPlayer);
+  return shouldProduceTransport(state, aiPlayer, tile.terrainType) ?? selectNormalProductionUnit(state, aiPlayer);
 };
 
 const produceForAi = (

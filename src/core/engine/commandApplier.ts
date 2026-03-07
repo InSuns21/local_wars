@@ -13,15 +13,18 @@ import {
   applyFacilityDestruction,
   canBombardProperties,
   canUnitProduceAtTile,
+  canTransportUnitTypeCarry,
   getBaseStructureHp,
   getFacilityHp,
   getResupplyTarget,
+  getTransportCapacity,
   isAirUnitType,
   isBombardableTerrain,
   isFacilityTargetInRange,
   isOperationalFacility,
   isNavalUnitType,
   isSupportUnitType,
+  isTransportUnitType,
 } from '@core/rules/facilities';
 import { nextTurnState } from './turnEngine';
 import { UNIT_DEFINITIONS } from './unitDefinitions';
@@ -35,13 +38,20 @@ export type ApplyCommandResult = {
   result: CommandResult;
 };
 
+const cloneUnit = (unit: UnitState): UnitState => ({
+  ...unit,
+  position: { ...unit.position },
+  lastMovePath: unit.lastMovePath ? unit.lastMovePath.map((coord) => ({ ...coord })) : unit.lastMovePath,
+  cargo: unit.cargo?.map(cloneUnit),
+});
+
 const cloneState = (state: GameState): GameState => ({
   ...state,
   map: {
     ...state.map,
     tiles: { ...state.map.tiles },
   },
-  units: Object.fromEntries(Object.entries(state.units).map(([id, unit]) => [id, { ...unit }])),
+  units: Object.fromEntries(Object.entries(state.units).map(([id, unit]) => [id, cloneUnit(unit)])),
   players: {
     P1: { ...state.players.P1 },
     P2: { ...state.players.P2 },
@@ -104,6 +114,65 @@ const getSupplyTargets = (state: GameState, unit: UnitState): UnitState[] => {
       }
       return !isAirUnitType(target.type) && !isNavalUnitType(target.type);
     });
+};
+
+const getTerrainPassability = (state: GameState, unit: UnitState, coord: Coord): boolean => {
+  const occupied = getUnitAt(state, coord);
+  if (occupied) {
+    return false;
+  }
+  const pathCost = getPathCost(
+    {
+      map: state.map,
+      unit: { ...unit, position: { ...unit.position } },
+      enemyUnits: [],
+      maxMove: 1,
+    },
+    [coord],
+  );
+  return pathCost !== null;
+};
+
+const getLoadTargets = (state: GameState, transport: UnitState): UnitState[] => {
+  if (!isTransportUnitType(transport.type)) {
+    return [];
+  }
+
+  const capacity = getTransportCapacity(transport.type);
+  if ((transport.cargo?.length ?? 0) >= capacity) {
+    return [];
+  }
+
+  return getAdjacentCoords(transport.position)
+    .map((coord) => getUnitAt(state, coord))
+    .filter((target): target is UnitState => Boolean(target && target.owner === transport.owner && target.id !== transport.id))
+    .filter((target) => target.hp > 0)
+    .filter((target) => !isTransportUnitType(target.type))
+    .filter((target) => canTransportUnitTypeCarry(transport.type, target.type));
+};
+
+const getUnloadCoords = (state: GameState, transport: UnitState, cargoUnit: UnitState | null): Coord[] => {
+  if (!cargoUnit) {
+    return [];
+  }
+
+  return getAdjacentCoords(transport.position).filter((coord) => {
+    if (cargoUnit.type === 'INFANTRY' && transport.type === 'TRANSPORT_HELI') {
+      const tile = state.map.tiles[toCoordKey(coord)];
+      if (!tile || tile.terrainType === 'SEA') {
+        return false;
+      }
+    }
+    return getTerrainPassability(state, { ...cargoUnit, position: { ...transport.position } }, coord);
+  });
+};
+
+const deleteUnitWithCargo = (state: GameState, unitId: string): void => {
+  const unit = state.units[unitId];
+  if (!unit) {
+    return;
+  }
+  delete state.units[unitId];
 };
 
 const getVisibleEnemyCoordKeys = (state: GameState, unit: UnitState): Set<string> => {
@@ -286,10 +355,10 @@ const applyMoveCommand = (
     }
 
     if (state.units[unit.id] && state.units[unit.id].hp <= 0) {
-      delete state.units[unit.id];
+      deleteUnitWithCargo(state, unit.id);
     }
     if (state.units[blockingUnit.id] && state.units[blockingUnit.id].hp <= 0) {
-      delete state.units[blockingUnit.id];
+      deleteUnitWithCargo(state, blockingUnit.id);
     }
 
     appendLog(
@@ -373,10 +442,10 @@ const applyAttackCommand = (
   }
 
   if (state.units[command.attackerId] && state.units[command.attackerId].hp <= 0) {
-    delete state.units[command.attackerId];
+    deleteUnitWithCargo(state, command.attackerId);
   }
   if (state.units[command.defenderId] && state.units[command.defenderId].hp <= 0) {
-    delete state.units[command.defenderId];
+    deleteUnitWithCargo(state, command.defenderId);
   }
 
   appendLog(
@@ -529,6 +598,80 @@ const applySupplyCommand = (
   return { ok: true };
 };
 
+const applyLoadCommand = (
+  state: GameState,
+  command: Extract<GameCommand, { type: 'LOAD' }>,
+): CommandResult => {
+  const transport = state.units[command.transportUnitId];
+  const cargoUnit = state.units[command.cargoUnitId];
+
+  if (!transport || !cargoUnit) return { ok: false, reason: '搭載対象が不正です。' };
+  if (transport.owner !== state.currentPlayerId || cargoUnit.owner !== state.currentPlayerId) {
+    return { ok: false, reason: '自軍ユニットのみ搭載できます。' };
+  }
+  if (transport.acted) return { ok: false, reason: 'この輸送ユニットは既に行動済みです。' };
+  if (!isTransportUnitType(transport.type)) return { ok: false, reason: '輸送ユニットではありません。' };
+  if (manhattanDistance(transport.position, cargoUnit.position) !== 1) {
+    return { ok: false, reason: '搭載対象は隣接している必要があります。' };
+  }
+
+  const loadTargets = getLoadTargets(state, transport);
+  if (!loadTargets.some((target) => target.id === cargoUnit.id)) {
+    return { ok: false, reason: 'そのユニットは搭載できません。' };
+  }
+
+  state.units[transport.id] = {
+    ...transport,
+    acted: true,
+    cargo: [...(transport.cargo ?? []), cloneUnit({ ...cargoUnit, moved: true, acted: true, lastMovePath: [] })],
+  };
+  delete state.units[cargoUnit.id];
+
+  appendLog(state, state.currentPlayerId, 'LOAD', `${transport.id} <= ${cargoUnit.id}`);
+  applyVictory(state);
+  return { ok: true };
+};
+
+const applyUnloadCommand = (
+  state: GameState,
+  command: Extract<GameCommand, { type: 'UNLOAD' }>,
+): CommandResult => {
+  const transport = state.units[command.transportUnitId];
+  if (!transport) return { ok: false, reason: '輸送ユニットが存在しません。' };
+  if (transport.owner !== state.currentPlayerId) return { ok: false, reason: '自軍ユニットのみ降車できます。' };
+  if (!isTransportUnitType(transport.type)) return { ok: false, reason: '輸送ユニットではありません。' };
+  if (transport.acted) return { ok: false, reason: 'この輸送ユニットは既に行動済みです。' };
+
+  const cargoIndex = (transport.cargo ?? []).findIndex((cargoUnit) => cargoUnit.id === command.cargoUnitId);
+  if (cargoIndex < 0) return { ok: false, reason: '搭載ユニットが見つかりません。' };
+
+  const cargoUnit = transport.cargo?.[cargoIndex] ?? null;
+  const unloadCoords = getUnloadCoords(state, transport, cargoUnit);
+  if (!unloadCoords.some((coord) => coord.x === command.to.x && coord.y === command.to.y)) {
+    return { ok: false, reason: 'そのタイルには降車できません。' };
+  }
+
+  const remainingCargo = [...(transport.cargo ?? [])];
+  remainingCargo.splice(cargoIndex, 1);
+  state.units[transport.id] = {
+    ...transport,
+    acted: true,
+    cargo: remainingCargo,
+  };
+  state.units[cargoUnit!.id] = {
+    ...cloneUnit(cargoUnit!),
+    position: { ...command.to },
+    moved: true,
+    acted: true,
+    movePointsRemaining: 0,
+    lastMovePath: [],
+  };
+
+  appendLog(state, state.currentPlayerId, 'UNLOAD', `${transport.id} => ${cargoUnit!.id} @ ${command.to.x},${command.to.y}`);
+  applyVictory(state);
+  return { ok: true };
+};
+
 const applyProduceUnitCommand = (
   state: GameState,
   command: Extract<GameCommand, { type: 'PRODUCE_UNIT' }>,
@@ -570,6 +713,7 @@ const applyProduceUnitCommand = (
     fuel: def.maxFuel,
     ammo: def.maxAmmo,
     supplyCharges: def.resupplyTarget ? (state.maxSupplyCharges ?? 4) : undefined,
+    cargo: undefined,
     position: { ...command.factoryCoord },
     moved: true,
     acted: true,
@@ -618,6 +762,12 @@ export const applyCommand = (
       break;
     case 'SUPPLY':
       result = applySupplyCommand(state, command);
+      break;
+    case 'LOAD':
+      result = applyLoadCommand(state, command);
+      break;
+    case 'UNLOAD':
+      result = applyUnloadCommand(state, command);
       break;
     case 'PRODUCE_UNIT':
       result = applyProduceUnitCommand(state, command);

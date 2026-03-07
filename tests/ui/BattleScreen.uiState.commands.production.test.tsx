@@ -30,6 +30,7 @@ describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
 
     expect(screen.getByRole('option', { name: '歩兵 (1000)' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '補給車 (3000)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: `輸送車 (${UNIT_DEFINITIONS.TRANSPORT_TRUCK.cost})` })).toBeInTheDocument();
     expect(screen.getByText('必要資金: 1000')).toBeInTheDocument();
     expect(screen.getByText('現在手番の資金: 500')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '生産実行' })).toBeDisabled();
@@ -91,7 +92,9 @@ describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
     await waitFor(() => {
       const optionLabels = Array.from(unitSelect.options).map((option) => option.textContent);
       expect(optionLabels).toContain(`空中補給機 (${UNIT_DEFINITIONS.AIR_TANKER.cost})`);
+      expect(optionLabels).toContain(`輸送ヘリ (${UNIT_DEFINITIONS.TRANSPORT_HELI.cost})`);
       expect(optionLabels).not.toContain(`補給車 (${UNIT_DEFINITIONS.SUPPLY_TRUCK.cost})`);
+      expect(optionLabels).not.toContain(`輸送車 (${UNIT_DEFINITIONS.TRANSPORT_TRUCK.cost})`);
     });
   });
 });

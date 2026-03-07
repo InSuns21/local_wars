@@ -69,4 +69,27 @@ describe('BattleScreen UIテスト: コマンド操作', () => {
     expect(screen.getByText(/攻撃予測:/)).toBeInTheDocument();
     expect(screen.getByText(/与ダメージ/)).toBeInTheDocument();
   });
+
+  it('輸送ユニット選択時は搭載と降車の導線が表示される', () => {
+    renderBattleScreen({
+      mutateState: (state) => {
+        state.units.p1_tank = {
+          ...state.units.p1_tank,
+          type: 'TRANSPORT_TRUCK',
+          cargo: [],
+          ammo: 0,
+          position: { x: 2, y: 1 },
+          moved: false,
+          acted: false,
+        };
+        state.units.p1_inf.position = { x: 1, y: 1 };
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,1' }));
+
+    expect(screen.getByLabelText('搭載対象')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '搭載実行' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '降車実行' })).toBeDisabled();
+  });
 });

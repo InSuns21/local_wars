@@ -64,6 +64,19 @@ export type SupplyCommand = {
   unitId: string;
 };
 
+export type LoadCommand = {
+  type: 'LOAD';
+  transportUnitId: string;
+  cargoUnitId: string;
+};
+
+export type UnloadCommand = {
+  type: 'UNLOAD';
+  transportUnitId: string;
+  cargoUnitId: string;
+  to: Coord;
+};
+
 export type ProduceUnitCommand = {
   type: 'PRODUCE_UNIT';
   playerId: PlayerId;
@@ -85,6 +98,8 @@ export type GameCommand =
   | AttackTileCommand
   | CaptureCommand
   | SupplyCommand
+  | LoadCommand
+  | UnloadCommand
   | ProduceUnitCommand
   | EndTurnCommand
   | UndoCommand;
