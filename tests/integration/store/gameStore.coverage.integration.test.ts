@@ -39,4 +39,29 @@ describe('gameStore 追加カバレッジ', () => {
     expect(store.getState().history).toHaveLength(0);
     expect(store.getState().gameState.map.width).toBe(14);
   });
+
+  it('endTurnでAI手番まで進行して次ターンの自軍手番に戻る', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+
+    const result = store.getState().endTurn();
+    const nextState = store.getState().gameState;
+
+    expect(result.ok).toBe(true);
+    expect(nextState.currentPlayerId).toBe('P1');
+    expect(nextState.turn).toBe(2);
+  });
+
+  it('undoで直前のターン進行を巻き戻せる', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+
+    store.getState().endTurn();
+    expect(store.getState().gameState.turn).toBe(2);
+
+    const undoResult = store.getState().undo();
+    const rolledBack = store.getState().gameState;
+
+    expect(undoResult.ok).toBe(true);
+    expect(rolledBack.currentPlayerId).toBe('P1');
+    expect(rolledBack.turn).toBe(1);
+  });
 });

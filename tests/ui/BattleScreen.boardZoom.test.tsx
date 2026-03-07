@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
+
+jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
+jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+
 import { BattleScreen } from '@/screens/BattleScreen';
 import { createGameStore } from '@store/gameStore';
 import { createInitialGameState } from '@core/engine/createInitialGameState';

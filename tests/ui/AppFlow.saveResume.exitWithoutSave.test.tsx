@@ -1,5 +1,8 @@
 ﻿import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
+
+jest.mock('@/screens/BattleScreen', () => require('./helpers/mockBattleScreen'));
+
 import { App } from '@/app/App';
 import { createScopedSaveKey, startNewGameFlow } from './helpers/appFlowTestUtils';
 
