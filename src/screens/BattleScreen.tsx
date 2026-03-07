@@ -483,6 +483,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     return PRODUCIBLE_UNITS_BY_SITE[productionType];
   }, [selectedProductionTile]);
 
+  const showLoadUnloadControls = Boolean(
+    canControlSelectedUnit && selectedUnit && UNIT_DEFINITIONS[selectedUnit.type].transportMode,
+  );
+
   const canIssueLoad = Boolean(
     canControlSelectedUnit &&
       !isGameOver &&
@@ -502,6 +506,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       unloadCandidateTiles.length > 0,
   );
 
+  const showSupplyControl = Boolean(
+    canControlSelectedUnit && selectedUnit && UNIT_DEFINITIONS[selectedUnit.type].resupplyTarget,
+  );
+
   const canIssueSupply = Boolean(
     canControlSelectedUnit &&
       !isGameOver &&
@@ -510,6 +518,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       UNIT_DEFINITIONS[selectedUnit.type].resupplyTarget &&
       (selectedUnit.supplyCharges ?? 0) > 0 &&
       supplyRangeTiles.length > 0,
+  );
+
+  const showBombardControl = Boolean(
+    canControlSelectedUnit && selectedUnit && canBombardProperties(selectedUnit.type),
   );
 
   const canIssueBombard = Boolean(
@@ -527,6 +539,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       isBombardableTerrain(gameState.map.tiles[toCoordKey(selectedTile)]?.terrainType ?? "PLAIN") &&
       !gameState.units[aliveUnitByTile.get(toCoordKey(selectedTile)) ?? ""] &&
       isOperationalFacility(gameState.map.tiles[toCoordKey(selectedTile)]),
+  );
+
+  const showCaptureControl = Boolean(
+    canControlSelectedUnit && selectedUnit && UNIT_DEFINITIONS[selectedUnit.type].canCapture,
   );
 
   const canProduce = Boolean(
@@ -1166,7 +1182,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 <Typography variant="body2">
                   攻撃予測: {attackForecastText}
                 </Typography>
-                {UNIT_DEFINITIONS[selectedUnit?.type ?? "INFANTRY"].transportMode && (
+                {showLoadUnloadControls && (
                   <>
                     <FormControl>
                       <InputLabel shrink variant="standard" htmlFor="load-cargo-unit">搭載対象</InputLabel>
@@ -1204,17 +1220,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     </Typography>
                   </>
                 )}
-                {UNIT_DEFINITIONS[selectedUnit?.type ?? "INFANTRY"].resupplyTarget && (
+                {showSupplyControl && (
                   <Typography variant="body2">
                     補給対象: {supplyRangeTiles.length > 0 ? supplyRangeTiles.map((coord) => `${coord.x},${coord.y}`).join(' / ') : 'なし'}
                   </Typography>
                 )}
                 <Button type="button" variant="contained" color="secondary" onClick={handleAttack} disabled={!canIssueAttack}>攻撃実行</Button>
-                <Button type="button" variant="outlined" onClick={handleLoad} disabled={!canIssueLoad}>搭載実行</Button>
-                <Button type="button" variant="outlined" onClick={handleUnload} disabled={!canIssueUnload}>降車実行</Button>
-                <Button type="button" variant="outlined" color="success" onClick={handleSupply} disabled={!canIssueSupply}>補給実行</Button>
-                <Button type="button" variant="outlined" color="warning" onClick={handleBombard} disabled={!canIssueBombard}>施設爆撃</Button>
-                <Button type="button" variant="outlined" onClick={handleCapture} disabled={!canCaptureSelectedUnit}>占領実行</Button>
+                {showLoadUnloadControls && <Button type="button" variant="outlined" onClick={handleLoad} disabled={!canIssueLoad}>搭載実行</Button>}
+                {showLoadUnloadControls && <Button type="button" variant="outlined" onClick={handleUnload} disabled={!canIssueUnload}>降車実行</Button>}
+                {showSupplyControl && <Button type="button" variant="outlined" color="success" onClick={handleSupply} disabled={!canIssueSupply}>補給実行</Button>}
+                {showBombardControl && <Button type="button" variant="outlined" color="warning" onClick={handleBombard} disabled={!canIssueBombard}>施設爆撃</Button>}
+                {showCaptureControl && <Button type="button" variant="outlined" onClick={handleCapture} disabled={!canCaptureSelectedUnit}>占領実行</Button>}
                 <Typography>最終コマンド: {lastResult}</Typography>
               </Stack>
             </AccordionDetails>

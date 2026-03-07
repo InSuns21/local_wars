@@ -87,6 +87,7 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     const state = createBattleState();
     state.fogOfWar = true;
     state.units.p1_inf.position = { x: 1, y: 2 };
+    state.units.p1_tank.position = { x: 1, y: 3 };
     state.units.p2_inf.position = { x: 3, y: 2 };
     state.map.tiles['3,2'] = { coord: { x: 3, y: 2 }, terrainType: 'FOREST' };
     state.map.tiles['4,2'] = { coord: { x: 4, y: 2 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };

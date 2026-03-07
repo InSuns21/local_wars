@@ -19,7 +19,7 @@ describe('BattleScreen UIテスト: コマンド操作', () => {
     expect(screen.getByText('選択移動先: 未選択')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '移動実行' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '攻撃実行' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '占領実行' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '占領実行' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'タイル 2,2' })).toHaveAttribute('data-attack-range', 'false');
   });
 
@@ -52,12 +52,29 @@ describe('BattleScreen UIテスト: コマンド操作', () => {
     expect(screen.getByRole('button', { name: '攻撃実行' })).toBeEnabled();
   });
 
-  it('占領不可ユニットでは占領実行が不活性になる', () => {
+  it('戦車選択時は輸送・補給・施設爆撃・占領を表示しない', () => {
     renderBattleScreen();
 
     fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
 
-    expect(screen.getByRole('button', { name: '占領実行' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '搭載実行' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '降車実行' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '補給実行' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '施設爆撃' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '占領実行' })).not.toBeInTheDocument();
+  });
+
+  it('歩兵選択時は攻撃実行と占領実行だけが表示される', () => {
+    renderBattleScreen();
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,1' }));
+
+    expect(screen.getByRole('button', { name: '攻撃実行' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '占領実行' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '搭載実行' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '降車実行' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '補給実行' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '施設爆撃' })).not.toBeInTheDocument();
   });
 
   it('攻撃前に予測ダメージが表示される', () => {
