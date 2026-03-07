@@ -49,5 +49,21 @@ describe('スカーミッシュマップ定義', () => {
       expect(scenario?.map.height).toBe(meta.height);
     }
   });
+
+  it('空港を含むマップは16x16以上で都市が6個以上ある', () => {
+    for (const meta of MAP_CATALOG) {
+      const scenario = getSkirmishScenario(meta.id);
+      if (!scenario) continue;
+
+      const tiles = Object.values(scenario.map.tiles);
+      const hasAirport = tiles.some((tile) => tile.terrainType === 'AIRPORT');
+      if (!hasAirport) continue;
+
+      const cityCount = tiles.filter((tile) => tile.terrainType === 'CITY').length;
+      expect(scenario.map.width).toBeGreaterThanOrEqual(16);
+      expect(scenario.map.height).toBeGreaterThanOrEqual(16);
+      expect(cityCount).toBeGreaterThanOrEqual(6);
+    }
+  });
 });
 
