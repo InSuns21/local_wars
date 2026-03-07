@@ -1,6 +1,7 @@
 ﻿import { manhattanDistance } from '@/utils/coord';
 import { runAiTurn } from '@core/engine/aiTurn';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import type { GameState } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 
@@ -22,45 +23,15 @@ const BASE_SETTINGS = {
 };
 
 const makeUnit = (overrides: Partial<UnitState> & Pick<UnitState, 'id' | 'owner' | 'type'>): UnitState => {
-  const fuelByType: Partial<Record<UnitState['type'], number>> = {
-    INFANTRY: 99,
-    RECON: 80,
-    TANK: 70,
-    HEAVY_TANK: 60,
-    ANTI_TANK: 70,
-    ARTILLERY: 50,
-    ANTI_AIR: 60,
-    FLAK_TANK: 55,
-    MISSILE_AA: 50,
-    FIGHTER: 80,
-    BOMBER: 70,
-    DESTROYER: 99,
-    LANDER: 99,
-  };
-
-  const ammoByType: Partial<Record<UnitState['type'], number>> = {
-    INFANTRY: 9,
-    RECON: 9,
-    TANK: 6,
-    HEAVY_TANK: 4,
-    ANTI_TANK: 6,
-    ARTILLERY: 6,
-    ANTI_AIR: 6,
-    FLAK_TANK: 6,
-    MISSILE_AA: 5,
-    FIGHTER: 6,
-    BOMBER: 6,
-    DESTROYER: 6,
-    LANDER: 0,
-  };
+  const definition = UNIT_DEFINITIONS[overrides.type];
 
   return {
     id: overrides.id,
     owner: overrides.owner,
     type: overrides.type,
     hp: overrides.hp ?? 10,
-    fuel: overrides.fuel ?? fuelByType[overrides.type] ?? 99,
-    ammo: overrides.ammo ?? ammoByType[overrides.type] ?? 6,
+    fuel: overrides.fuel ?? definition.maxFuel,
+    ammo: overrides.ammo ?? definition.maxAmmo,
     position: overrides.position ?? { x: 0, y: 0 },
     moved: overrides.moved ?? false,
     acted: overrides.acted ?? false,
