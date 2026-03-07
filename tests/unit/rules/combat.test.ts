@@ -131,6 +131,27 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('ARTILLERY', 'BOMBER')).toBe(0);
   });
 
+  it('地対空ミサイル車は航空ユニット専用で対地攻撃できない', () => {
+    expect(getBaseDamage('MISSILE_AA', 'FIGHTER')).toBeGreaterThan(0);
+    expect(getBaseDamage('MISSILE_AA', 'TANK')).toBe(0);
+    expect(getBaseDamage('MISSILE_AA', 'INFANTRY')).toBe(0);
+  });
+
+  it('高射砲車は対空に加えて対地攻撃もできる', () => {
+    expect(getBaseDamage('FLAK_TANK', 'BOMBER')).toBeGreaterThan(0);
+    expect(getBaseDamage('FLAK_TANK', 'INFANTRY')).toBeGreaterThan(0);
+    expect(getBaseDamage('FLAK_TANK', 'TANK')).toBeGreaterThan(0);
+  });
+
+  it('間接対空ユニットは隣接では反撃できない', () => {
+    const attacker = makeUnit({ type: 'TANK', position: { x: 0, y: 0 } });
+    const missile = makeUnit({ owner: 'P2', type: 'MISSILE_AA', position: { x: 1, y: 0 } });
+    const flak = makeUnit({ owner: 'P2', type: 'FLAK_TANK', position: { x: 1, y: 0 } });
+
+    expect(canCounterAttack(attacker, missile)).toBe(false);
+    expect(canCounterAttack(attacker, flak)).toBe(false);
+  });
+
   it('executeCombatでcanCounter=falseなら反撃ダメージは0になる', () => {
     const attacker = makeUnit({ type: 'TANK', position: { x: 0, y: 0 } });
     const defender = makeUnit({ owner: 'P2', type: 'TANK', position: { x: 1, y: 0 } });

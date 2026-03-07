@@ -1,27 +1,13 @@
-import type { GameState } from '@core/types/state';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import type { PlayerId } from '@core/types/game';
+import type { GameState } from '@core/types/state';
 import { manhattanDistance, toCoordKey } from '@/utils/coord';
 import { isStealthUnitType } from './facilities';
-
-const VISION_RANGE_BY_UNIT: Record<string, number> = {
-  INFANTRY: 2,
-  RECON: 4,
-  TANK: 3,
-  ANTI_TANK: 3,
-  ARTILLERY: 3,
-  ANTI_AIR: 3,
-  FIGHTER: 5,
-  BOMBER: 4,
-  ATTACKER: 4,
-  STEALTH_BOMBER: 4,
-  DESTROYER: 4,
-  LANDER: 3,
-};
 
 const INFANTRY_MOUNTAIN_VISION_BONUS = 1;
 
 const getVisionRange = (state: GameState, unitType: string, coordKey: string): number => {
-  const base = VISION_RANGE_BY_UNIT[unitType] ?? 2;
+  const base = UNIT_DEFINITIONS[unitType as keyof typeof UNIT_DEFINITIONS]?.visionRange ?? 2;
   const tile = state.map.tiles[coordKey];
   if (unitType === 'INFANTRY' && tile?.terrainType === 'MOUNTAIN') {
     return base + INFANTRY_MOUNTAIN_VISION_BONUS;

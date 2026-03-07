@@ -7,6 +7,8 @@ export type UnitType =
   | 'ANTI_TANK'
   | 'ARTILLERY'
   | 'ANTI_AIR'
+  | 'FLAK_TANK'
+  | 'MISSILE_AA'
   | 'FIGHTER'
   | 'BOMBER'
   | 'ATTACKER'
@@ -37,6 +39,7 @@ export type UnitDefinition = {
   moveRange: number;
   maxFuel: number;
   maxAmmo: number;
+  visionRange: number;
   canCapture: boolean;
   attackRangeMin: number;
   attackRangeMax: number;

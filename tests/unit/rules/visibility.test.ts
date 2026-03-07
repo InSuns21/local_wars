@@ -1,5 +1,6 @@
 import { applyCommand } from '@core/engine/commandApplier';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
+import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getVisibleEnemyCoordKeys, getVisibleEnemyUnitIds, getVisibleTileCoordKeys } from '@core/rules/visibility';
 
 describe('visibility ルール', () => {
@@ -23,6 +24,27 @@ describe('visibility ルール', () => {
     const visible = getVisibleEnemyUnitIds(state, 'P1');
 
     expect(visible.size).toBe(0);
+  });
+
+  it('visionRange定義を変更すると可視結果も追従する', () => {
+    const originalTankVision = UNIT_DEFINITIONS.TANK.visionRange;
+
+    try {
+      const state = createInitialGameState();
+      state.fogOfWar = true;
+      state.units.p1_tank.position = { x: 1, y: 1 };
+      state.units.p1_inf.position = { x: 0, y: 4 };
+      state.units.p2_inf.position = { x: 4, y: 1 };
+      state.units.p2_tank.position = { x: 4, y: 4 };
+
+      UNIT_DEFINITIONS.TANK.visionRange = 2;
+      expect(getVisibleEnemyUnitIds(state, 'P1').has('p2_inf')).toBe(false);
+
+      UNIT_DEFINITIONS.TANK.visionRange = 3;
+      expect(getVisibleEnemyUnitIds(state, 'P1').has('p2_inf')).toBe(true);
+    } finally {
+      UNIT_DEFINITIONS.TANK.visionRange = originalTankVision;
+    }
   });
 
   it('山にいる歩兵は視界が1マス広がる', () => {
@@ -200,5 +222,26 @@ describe('visibility ルール', () => {
     state.units.p1_tank.position = { x: 4, y: 3 };
 
     expect(getVisibleEnemyUnitIds(state, 'P1').has('p2_tank')).toBe(true);
+  });
+
+  it('地対空ミサイル車は索敵範囲が広く、遠方の航空ユニットを捉えられる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+    state.units.p1_inf = {
+      ...state.units.p1_inf,
+      type: 'MISSILE_AA',
+      position: { x: 0, y: 0 },
+    };
+    state.units.p1_tank.position = { x: 0, y: 4 };
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'BOMBER',
+      position: { x: 4, y: 2 },
+    };
+    state.units.p2_inf.position = { x: 4, y: 4 };
+
+    const visible = getVisibleEnemyUnitIds(state, 'P1');
+    expect(visible.has('p2_tank')).toBe(true);
+    expect(visible.has('p2_inf')).toBe(false);
   });
 });

@@ -29,6 +29,8 @@ const makeUnit = (overrides: Partial<UnitState> & Pick<UnitState, 'id' | 'owner'
     ANTI_TANK: 70,
     ARTILLERY: 50,
     ANTI_AIR: 60,
+    FLAK_TANK: 55,
+    MISSILE_AA: 50,
     FIGHTER: 80,
     BOMBER: 70,
     DESTROYER: 99,
@@ -42,6 +44,8 @@ const makeUnit = (overrides: Partial<UnitState> & Pick<UnitState, 'id' | 'owner'
     ANTI_TANK: 6,
     ARTILLERY: 6,
     ANTI_AIR: 6,
+    FLAK_TANK: 6,
+    MISSILE_AA: 5,
     FIGHTER: 6,
     BOMBER: 6,
     DESTROYER: 6,
@@ -231,6 +235,6 @@ describe('aiターンの挙動テスト', () => {
 
     const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
     expect(produceLogs.length).toBeGreaterThan(0);
-    expect(produceLogs.some((log) => log.detail?.startsWith('ANTI_AIR'))).toBe(true);
+    expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(true);
   });
 });

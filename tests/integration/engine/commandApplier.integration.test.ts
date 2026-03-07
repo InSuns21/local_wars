@@ -250,6 +250,26 @@ describe('commandApplier 統合テスト', () => {
     expect(Object.values(next.units).some((u) => u.id.startsWith('P1_FIGHTER_'))).toBe(true);
   });
 
+  it('工場では間接対空地上ユニットを生産できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf.position = { x: 1, y: 1 };
+    state.players.P1.funds = 12000;
+
+    const { state: next, result } = applyCommand(
+      state,
+      {
+        type: 'PRODUCE_UNIT',
+        playerId: 'P1',
+        factoryCoord: { x: 0, y: 1 },
+        unitType: 'MISSILE_AA',
+      },
+      { rng: () => 0.5 },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(Object.values(next.units).some((u) => u.id.startsWith('P1_MISSILE_AA_'))).toBe(true);
+  });
+
   it('攻撃機は施設爆撃できない', () => {
     const state = createInitialGameState();
     state.units.p1_tank = {

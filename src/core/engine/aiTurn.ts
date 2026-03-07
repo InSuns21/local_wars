@@ -16,6 +16,7 @@ export type AiTurnOptions = {
 };
 
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
+const INDIRECT_SUPPORT_UNITS = new Set<UnitType>(['ARTILLERY', 'FLAK_TANK', 'MISSILE_AA']);
 const getEnemyPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 
 const getAliveUnits = (state: GameState, owner: PlayerId): UnitState[] =>
@@ -87,8 +88,12 @@ const scoreAttackTarget = (
     score -= 25;
   }
 
-  if (target.type === 'ARTILLERY') {
+  if (INDIRECT_SUPPORT_UNITS.has(target.type)) {
     score += 8;
+  }
+
+  if (UNIT_DEFINITIONS[target.type].movementType === 'AIR' && UNIT_DEFINITIONS[attacker.type].attackRangeMin > 1) {
+    score += 6;
   }
 
   const targetTile = state.map.tiles[toCoordKey(target.position)];
@@ -205,10 +210,10 @@ const evaluateNormalMoveScore = (
     }
     score -= hqDist * 1.2;
     score -= nearestEnemyDist * 0.8;
-  } else if (unit.type === 'ARTILLERY') {
-    if (nearestEnemyDist >= 2 && nearestEnemyDist <= 3) score += 10;
+  } else if (INDIRECT_SUPPORT_UNITS.has(unit.type)) {
+    if (nearestEnemyDist >= 2 && nearestEnemyDist <= 4) score += 10;
     if (nearestEnemyDist === 1) score -= 18;
-    if (nearestEnemyDist > 3) score -= (nearestEnemyDist - 3) * 2;
+    if (nearestEnemyDist > 4) score -= (nearestEnemyDist - 4) * 2;
     score -= hqDist * 0.4;
   } else {
     if (nearestEnemyDist === 1) score += 6;
@@ -317,6 +322,8 @@ const emptyUnitCountMap = (): Record<UnitType, number> => ({
   ANTI_TANK: 0,
   ARTILLERY: 0,
   ANTI_AIR: 0,
+  FLAK_TANK: 0,
+  MISSILE_AA: 0,
   FIGHTER: 0,
   BOMBER: 0,
   ATTACKER: 0,
@@ -353,13 +360,21 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
 
   const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER;
   const antiAirTarget = Math.max(1, Math.ceil(enemyAirCount / 2));
-  if (enemyAirCount > 0 && canAfford('ANTI_AIR') && ownCounts.ANTI_AIR < antiAirTarget) {
-    return 'ANTI_AIR';
+  if (enemyAirCount > 0) {
+    if (canAfford('MISSILE_AA') && ownCounts.MISSILE_AA < Math.max(1, Math.floor(enemyAirCount / 2))) {
+      return 'MISSILE_AA';
+    }
+    if (canAfford('ANTI_AIR') && ownCounts.ANTI_AIR < antiAirTarget) {
+      return 'ANTI_AIR';
+    }
+    if (canAfford('FLAK_TANK') && ownCounts.FLAK_TANK < 1) {
+      return 'FLAK_TANK';
+    }
   }
 
   const enemyArmorCount =
-    enemyCounts.TANK + enemyCounts.ANTI_TANK + enemyCounts.ARTILLERY + enemyCounts.ANTI_AIR;
-  const ownAntiArmor = ownCounts.TANK + ownCounts.ANTI_TANK + ownCounts.ARTILLERY;
+    enemyCounts.TANK + enemyCounts.ANTI_TANK + enemyCounts.ARTILLERY + enemyCounts.ANTI_AIR + enemyCounts.FLAK_TANK + enemyCounts.MISSILE_AA;
+  const ownAntiArmor = ownCounts.TANK + ownCounts.ANTI_TANK + ownCounts.ARTILLERY + ownCounts.FLAK_TANK;
   if (enemyArmorCount > ownAntiArmor && canAfford('ANTI_TANK')) {
     return 'ANTI_TANK';
   }
@@ -369,7 +384,7 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
     return 'ARTILLERY';
   }
 
-  const candidates: UnitType[] = ['TANK', 'ANTI_TANK', 'RECON', 'INFANTRY', 'ARTILLERY'];
+  const candidates: UnitType[] = ['TANK', 'ANTI_TANK', 'RECON', 'INFANTRY', 'ARTILLERY', 'FLAK_TANK', 'MISSILE_AA'];
   for (const type of candidates) {
     if (canAfford(type)) return type;
   }
