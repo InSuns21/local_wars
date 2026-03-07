@@ -101,12 +101,61 @@ const getAttackRangeFrom = (
   return coords;
 };
 
+const getActionLabel = (action: GameState["actionLog"][number]["action"]): string => {
+  switch (action) {
+    case "MOVE_UNIT":
+      return "移動";
+    case "ATTACK":
+      return "攻撃";
+    case "ATTACK_TILE":
+      return "施設爆撃";
+    case "CAPTURE":
+      return "占領";
+    case "SUPPLY":
+      return "補給";
+    case "PRODUCE_UNIT":
+      return "生産";
+    case "END_TURN":
+      return "ターン終了";
+    case "AIR_FUEL_DEPLETION":
+      return "燃料切れ";
+    case "FOG_ENCOUNTER":
+      return "遭遇戦";
+    default:
+      return action;
+  }
+};
+
 const formatActionLogEntry = (
   entry: GameState["actionLog"][number],
+  humanSide: "P1" | "P2",
 ): string => {
-  const base = `T${entry.turn} ${entry.playerId} ${entry.action}`;
+  const playerLabel = entry.playerId === humanSide ? "自軍" : "敵軍";
+  const base = `T${entry.turn} ${playerLabel} ${getActionLabel(entry.action)}`;
   if (!entry.detail) return base;
   return `${base} | ${entry.detail}`;
+};
+
+const shouldShowActionLogEntry = (
+  entry: GameState["actionLog"][number],
+  humanSide: "P1" | "P2",
+  showEnemyLogs: boolean,
+): boolean => {
+  if (showEnemyLogs || entry.playerId === humanSide) {
+    return true;
+  }
+
+  switch (entry.action) {
+    case "ATTACK":
+    case "FOG_ENCOUNTER":
+      return entry.detail?.includes(`${humanSide}_`) ?? false;
+    case "CAPTURE":
+      return entry.detail?.includes(`owner=${humanSide}`) ?? false;
+    case "ATTACK_TILE":
+      return true;
+    default:
+      return false;
+  }
 };
 
 const getVictoryReasonLabel = (
@@ -416,10 +465,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const recentActionLogs = useMemo(() => {
     const showEnemyLogs = gameState.showEnemyActionLogs ?? false;
-    const filtered = showEnemyLogs
-      ? gameState.actionLog
-      : gameState.actionLog.filter((entry) => entry.playerId === humanSide);
-    return [...filtered].reverse();
+    return gameState.actionLog
+      .filter((entry) => shouldShowActionLogEntry(entry, humanSide, showEnemyLogs))
+      .reverse();
   }, [gameState.actionLog, gameState.showEnemyActionLogs, humanSide]);
 
   useEffect(() => {
@@ -1147,7 +1195,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                     variant="caption"
                     sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
                   >
-                    {formatActionLogEntry(entry)}
+                    {formatActionLogEntry(entry, humanSide)}
                   </Typography>
                 </Paper>
               ))}

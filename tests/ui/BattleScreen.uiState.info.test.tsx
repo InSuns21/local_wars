@@ -92,8 +92,8 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     render(<BattleScreen useStore={store} />);
 
     const logSection = screen.getByLabelText('経過ログ');
-    const newest = 'T1 P1 ATTACK | new';
-    const older = 'T1 P1 MOVE_UNIT | old';
+    const newest = 'T1 自軍 攻撃 | new';
+    const older = 'T1 自軍 移動 | old';
 
     expect(within(logSection).getByText(newest)).toBeInTheDocument();
     expect(within(logSection).getByText(older)).toBeInTheDocument();
@@ -130,8 +130,47 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     const logSection = screen.getByLabelText('経過ログ');
     const text = logSection.textContent ?? '';
 
-    expect(text).toContain('MOVE_UNIT');
-    expect(text).not.toContain('END_TURN');
+    expect(text).toContain('自軍 移動');
+    expect(text).not.toContain('敵軍 ターン終了');
+  });
+
+  it('敵方ログ表示設定がOFFでも味方に関わる敵の戦闘と占領は表示される', () => {
+    const state = createInitialGameState();
+    state.humanPlayerSide = 'P1';
+    state.showEnemyActionLogs = false;
+    state.actionLog = [
+      { turn: 1, playerId: 'P2', action: 'MOVE_UNIT', detail: 'enemy move' },
+      { turn: 1, playerId: 'P2', action: 'ATTACK', detail: 'P2_tank -> P1_tank 味方HP:10->6 敵HP:10->8 被害:4/2' },
+      { turn: 1, playerId: 'P2', action: 'CAPTURE', detail: 'P2_inf @ 1,1 terrain=CITY owner=P1' },
+    ];
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    const logSection = screen.getByLabelText('経過ログ');
+    const text = logSection.textContent ?? '';
+
+    expect(text).toContain('敵軍 攻撃');
+    expect(text).toContain('敵軍 占領');
+    expect(text).not.toContain('enemy move');
+    expect(text).not.toContain('敵軍 移動');
+  });
+
+  it('敵軍の中立施設占領は敵方ログ非表示時に表示しない', () => {
+    const state = createInitialGameState();
+    state.humanPlayerSide = 'P1';
+    state.showEnemyActionLogs = false;
+    state.actionLog = [
+      { turn: 1, playerId: 'P2', action: 'CAPTURE', detail: 'P2_inf @ 3,3 terrain=CITY owner=NEUTRAL' },
+    ];
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    const logSection = screen.getByLabelText('経過ログ');
+    const text = logSection.textContent ?? '';
+
+    expect(text).not.toContain('敵軍 占領');
   });
 });
 

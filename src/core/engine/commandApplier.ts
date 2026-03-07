@@ -478,9 +478,15 @@ const applyCaptureCommand = (state: GameState, command: Extract<GameCommand, { t
     return { ok: false, reason: 'このユニットは占領できません。' };
   }
 
+  const previousOwner = tile.owner ?? 'NEUTRAL';
   state.map.tiles[tileKey] = next.tile;
   state.units[command.unitId] = { ...unit, acted: true };
-  appendLog(state, state.currentPlayerId, 'CAPTURE', `${command.unitId} @ ${tileKey}`);
+  appendLog(
+    state,
+    state.currentPlayerId,
+    'CAPTURE',
+    `${command.unitId} @ ${tileKey} terrain=${tile.terrainType} owner=${previousOwner}`,
+  );
   applyVictory(state);
   return { ok: true };
 };
