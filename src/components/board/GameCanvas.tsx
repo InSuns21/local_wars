@@ -216,8 +216,8 @@ const buildTileTooltip = (
 
 const failedExternalUnitIcons = new Set<string>();
 
-const UnitIcon: React.FC<{ unit: UnitState; currentPlayerId: 'P1' | 'P2'; size: number }> = ({ unit, currentPlayerId, size }) => {
-  const isFriendly = unit.owner === currentPlayerId;
+const UnitIcon: React.FC<{ unit: UnitState; viewerPlayerId: 'P1' | 'P2'; size: number }> = ({ unit, viewerPlayerId, size }) => {
+  const isFriendly = unit.owner === viewerPlayerId;
   const ring = isFriendly ? BOARD_VISUAL_TOKENS.friendlyUnit.borderColor : BOARD_VISUAL_TOKENS.enemyUnit.borderColor;
   const fill = isFriendly ? '#1e40af' : '#9f1239';
   const paths = UNIT_GLYPH_PATHS[unit.type] ?? UNIT_GLYPH_PATHS.INFANTRY;
@@ -301,6 +301,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   onSelectUnit,
   onSelectTile,
 }) => {
+  const viewerPlayerId = gameState.humanPlayerSide ?? gameState.currentPlayerId;
   const tileWidth = Math.round(BASE_TILE_WIDTH * zoom);
   const tileHeight = Math.round(BASE_TILE_HEIGHT * zoom);
   const tileFontSize = Math.max(10, Math.round(12 * zoom));
@@ -324,26 +325,25 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     justifyContent: 'center',
   };
   const visibleEnemyCoordKeys = useMemo(
-    () => getVisibleEnemyCoordKeys(gameState, gameState.currentPlayerId),
-    [gameState],
+    () => getVisibleEnemyCoordKeys(gameState, viewerPlayerId),
+    [gameState, viewerPlayerId],
   );
 
   const visibleTileCoordKeys = useMemo(
-    () => getVisibleTileCoordKeys(gameState, gameState.currentPlayerId),
-    [gameState],
+    () => getVisibleTileCoordKeys(gameState, viewerPlayerId),
+    [gameState, viewerPlayerId],
   );
 
   const unitByCoordKey = useMemo(() => {
     const entries = Object.values(gameState.units)
       .filter((unit) => unit.hp > 0)
       .filter((unit) => {
-        if (!gameState.fogOfWar) return true;
-        if (unit.owner === gameState.currentPlayerId) return true;
+        if (unit.owner === viewerPlayerId) return true;
         return visibleEnemyCoordKeys.has(toCoordKey(unit.position));
       })
       .map((unit) => [toCoordKey(unit.position), unit] as const);
     return new Map(entries);
-  }, [gameState.currentPlayerId, gameState.fogOfWar, gameState.units, visibleEnemyCoordKeys]);
+  }, [gameState.fogOfWar, gameState.units, viewerPlayerId, visibleEnemyCoordKeys]);
 
   const selectedUnit = selectedUnitId ? gameState.units[selectedUnitId] ?? null : null;
   const previewKeys = new Set(previewPath.map((coord) => toCoordKey(coord)));
@@ -411,7 +411,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                           ? BOARD_VISUAL_TOKENS.attackRange.overlay
                           : 'rgba(255,255,255,0.06)';
               const ownerBadge = unit
-                ? unit.owner === gameState.currentPlayerId
+                ? unit.owner === viewerPlayerId
                   ? '味'
                   : '敵'
                 : null;
@@ -499,7 +499,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         pointerEvents: 'none',
                       }}
                     >
-                      <UnitIcon unit={unit} currentPlayerId={gameState.currentPlayerId} size={unitIconSize} />
+                      <UnitIcon unit={unit} viewerPlayerId={viewerPlayerId} size={unitIconSize} />
                     </span>
                   ) : null}
                   <span
