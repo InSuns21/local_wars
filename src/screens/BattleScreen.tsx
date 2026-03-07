@@ -300,8 +300,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const attackForecast = useMemo(() => {
     if (!selectedUnitId || !targetUnitId) return null;
-    return simulateCombat(selectedUnitId, targetUnitId);
-  }, [selectedUnitId, simulateCombat, targetUnitId]);
+
+    const projectedAttackerPosition =
+      selectedTile && selectedUnit && !selectedUnit.moved ? selectedTile : undefined;
+
+    return simulateCombat(selectedUnitId, targetUnitId, projectedAttackerPosition);
+  }, [selectedTile, selectedUnit, selectedUnitId, simulateCombat, targetUnitId]);
 
   const attackForecastText = useMemo(() => {
     if (!attackForecast) return "なし";

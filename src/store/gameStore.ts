@@ -19,7 +19,7 @@ export type GameStoreState = {
   getMoveRange: (unitId: string) => Coord[];
   getAttackRange: (unitId: string) => Coord[];
   buildMovePath: (unitId: string, to: Coord) => Coord[] | null;
-  simulateCombat: (attackerId: string, defenderId: string) => CombatForecast | null;
+  simulateCombat: (attackerId: string, defenderId: string, attackerPosition?: Coord) => CombatForecast | null;
   selectUnit: (unitId: string | null) => void;
   selectTile: (coord: Coord | null) => void;
   endTurn: () => CommandResult;
@@ -129,20 +129,24 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
         to,
       );
     },
-    simulateCombat: (attackerId, defenderId) => {
+    simulateCombat: (attackerId, defenderId, attackerPosition) => {
       const state = get().gameState;
       const attacker = state.units[attackerId];
       const defender = state.units[defenderId];
       if (!attacker || !defender) return null;
 
-      const canCounter = (state.enableAmmoSupply ?? true)
-        ? attacker.ammo > 0 && defender.ammo > 0 && canCounterAttack(attacker, defender)
-        : canCounterAttack(attacker, defender);
+      const projectedAttacker = attackerPosition
+        ? { ...attacker, position: { ...attackerPosition } }
+        : attacker;
 
-      return forecastCombat(attacker, defender, {
+      const canCounter = (state.enableAmmoSupply ?? true)
+        ? projectedAttacker.ammo > 0 && defender.ammo > 0 && canCounterAttack(projectedAttacker, defender)
+        : canCounterAttack(projectedAttacker, defender);
+
+      return forecastCombat(projectedAttacker, defender, {
         canCounter,
         defenderDefenseModifier: getDefenseModifier(state, defender),
-        attackerDefenseModifier: getDefenseModifier(state, attacker),
+        attackerDefenseModifier: getDefenseModifier(state, projectedAttacker),
       });
     },
     selectUnit: (unitId) => set({ selectedUnitId: unitId }),

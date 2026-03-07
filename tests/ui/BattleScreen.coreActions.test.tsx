@@ -189,6 +189,24 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
     expect(screen.getByRole('button', { name: 'タイル 3,2' })).toHaveAttribute('data-attack-range', 'true');
   });
+
+  it('移動後に隣接した自走砲への攻撃予測では反撃なしと表示される', () => {
+    const state = createInitialGameState();
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'ARTILLERY',
+      position: { x: 4, y: 2 },
+    };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 3,2' }));
+    fireEvent.change(screen.getByLabelText('攻撃対象'), { target: { value: 'p2_tank' } });
+
+    expect(screen.getByText(/被ダメージ 0\(反撃なし\)/)).toBeInTheDocument();
+  });
 });
 
 
