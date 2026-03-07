@@ -10,10 +10,6 @@
 ## 現在の主な技術的負債
 
 ### 高優先度
-- 航空ユニット、空港、ステルス、施設爆撃の仕様追加
-  - 現象: `AIRPORT` 地形と一部航空ユニット定義はあるが、正式な生産、補給、可視、破壊ルールが未完了
-  - 影響: 航空戦をゲームループへ組み込めず、将来の空海拡張も止まる
-  - 次の打ち手: [active/2026-03-06-air-units-and-airport-expansion.md](active/2026-03-06-air-units-and-airport-expansion.md) で仕様確定から進める
 - スタック拡張ルール未実装
   - 現象: 現状は 1 マス 1 ユニット前提
   - 影響: 工場 2、HQ 3、複数積み生産などの要件を満たせない
@@ -51,10 +47,15 @@
 - 破壊的操作モーダルの視覚差別化
 - モバイル UI の実機レビュー手順整備
 
+## 完了済みの主な整理
+- 航空ユニット、空港、ステルス、施設爆撃の仕様追加
+  - 完了記録: [completed/2026-03-06-air-units-and-airport-expansion.md](completed/2026-03-06-air-units-and-airport-expansion.md)
+  - 仕様: [../product-specs/air-units-and-airport.md](../product-specs/air-units-and-airport.md)
+
 ## 参照先
 - 完了記録: [completed/mvp-baseline-2026-03.md](completed/mvp-baseline-2026-03.md)
-- 進行中計画: [active/2026-03-06-air-units-and-airport-expansion.md](active/2026-03-06-air-units-and-airport-expansion.md)
+- 完了記録: [completed/2026-03-06-air-units-and-airport-expansion.md](completed/2026-03-06-air-units-and-airport-expansion.md)
 - 設計判断: [../design-docs/system-overview.md](../design-docs/system-overview.md)
 - UI/UX 判断: [../design-docs/ui-ux-review.md](../design-docs/ui-ux-review.md)
 - 画面仕様: [../product-specs/screen-flow.md](../product-specs/screen-flow.md)
-- 航空仕様草案: [../product-specs/air-units-and-airport.md](../product-specs/air-units-and-airport.md)
+- 航空仕様: [../product-specs/air-units-and-airport.md](../product-specs/air-units-and-airport.md)
