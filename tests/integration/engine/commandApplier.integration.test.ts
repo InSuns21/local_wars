@@ -74,7 +74,7 @@ describe('commandApplier 統合テスト', () => {
     );
 
     expect(attacked.result.ok).toBe(true);
-    expect(attacked.state.units.p2_tank.hp).toBeLessThan(10);
+    expect(attacked.state.units.p2_tank?.hp ?? 0).toBeLessThan(10);
   });
   it('攻撃ログ詳細に味方/敵HPの戦闘前後が記録される', () => {
     const state = createInitialGameState();
@@ -707,6 +707,62 @@ describe('commandApplier 統合テスト', () => {
     expect(supplied.state.units.p1_fighter.fuel).toBe(80);
     expect(supplied.state.units.p1_fighter.ammo).toBe(6);
     expect(supplied.state.units.p1_tank.fuel).toBe(4);
+  });
+
+  it('戦車は補給車を通常の攻撃対象として攻撃できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank.position = { x: 2, y: 2 };
+    state.units.p2_inf = {
+      ...state.units.p2_inf,
+      type: 'SUPPLY_TRUCK',
+      ammo: 0,
+      fuel: 70,
+      supplyCharges: 4,
+      position: { x: 3, y: 2 },
+      moved: false,
+      acted: false,
+    };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK', attackerId: 'p1_tank', defenderId: 'p2_inf' },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(true);
+    expect(attacked.state.units.p2_inf?.hp ?? 0).toBeLessThan(10);
+  });
+
+  it('戦闘機は空中補給機を通常の攻撃対象として攻撃できる', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'FIGHTER',
+      fuel: 80,
+      ammo: 6,
+      position: { x: 4, y: 4 },
+      moved: false,
+      acted: false,
+    };
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'AIR_TANKER',
+      fuel: 80,
+      ammo: 0,
+      supplyCharges: 4,
+      position: { x: 5, y: 4 },
+      moved: false,
+      acted: false,
+    };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK', attackerId: 'p1_tank', defenderId: 'p2_tank' },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(true);
+    expect(attacked.state.units.p2_tank?.hp ?? 0).toBeLessThan(10);
   });
 
 });

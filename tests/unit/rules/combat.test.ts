@@ -142,6 +142,29 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('MISSILE_AA', 'INFANTRY')).toBe(0);
   });
 
+  it('補給車は主要な対地攻撃ユニットから攻撃対象に取られ、偵察車より脆い', () => {
+    expect(getBaseDamage('INFANTRY', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
+    expect(getBaseDamage('TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
+    expect(getBaseDamage('HEAVY_TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
+    expect(getBaseDamage('ANTI_TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
+    expect(getBaseDamage('ARTILLERY', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
+    expect(getBaseDamage('BOMBER', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
+    expect(getBaseDamage('ATTACKER', 'SUPPLY_TRUCK')).toBeGreaterThan(0);
+    expect(getBaseDamage('TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(getBaseDamage('TANK', 'RECON'));
+    expect(getBaseDamage('HEAVY_TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(getBaseDamage('HEAVY_TANK', 'RECON'));
+  });
+
+  it('空中補給機は主要な対空攻撃ユニットから攻撃対象に取られ、航空で最も脆い水準になる', () => {
+    expect(getBaseDamage('FIGHTER', 'AIR_TANKER')).toBeGreaterThan(0);
+    expect(getBaseDamage('ANTI_AIR', 'AIR_TANKER')).toBeGreaterThan(0);
+    expect(getBaseDamage('FLAK_TANK', 'AIR_TANKER')).toBeGreaterThan(0);
+    expect(getBaseDamage('MISSILE_AA', 'AIR_TANKER')).toBeGreaterThan(0);
+    expect(getBaseDamage('FIGHTER', 'AIR_TANKER')).toBeGreaterThan(getBaseDamage('FIGHTER', 'ATTACKER'));
+    expect(getBaseDamage('ANTI_AIR', 'AIR_TANKER')).toBeGreaterThan(getBaseDamage('ANTI_AIR', 'ATTACKER'));
+    expect(getBaseDamage('FLAK_TANK', 'AIR_TANKER')).toBeGreaterThan(getBaseDamage('FLAK_TANK', 'ATTACKER'));
+    expect(getBaseDamage('MISSILE_AA', 'AIR_TANKER')).toBeGreaterThan(getBaseDamage('MISSILE_AA', 'ATTACKER'));
+  });
+
   it('高射砲車は対空に加えて対地攻撃もできる', () => {
     expect(getBaseDamage('FLAK_TANK', 'BOMBER')).toBeGreaterThan(0);
     expect(getBaseDamage('FLAK_TANK', 'INFANTRY')).toBeGreaterThan(0);
