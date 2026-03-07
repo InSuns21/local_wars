@@ -17,7 +17,17 @@ describe('Screen layout: 内容スクロール + 固定フッター', () => {
   it('マップ選択画面', () => {
     render(
       <MapSelectScreen
-        maps={[{ id: 'map-a', name: 'Map A', width: 10, height: 10 }]}
+        maps={[{
+          id: 'map-a',
+          name: 'Map A',
+          width: 10,
+          height: 10,
+          difficulty: 'beginner',
+          estimatedMinutes: 15,
+          victoryHint: '中央制圧',
+          featureTags: ['平地多め'],
+          summary: 'レイアウト確認用のダミーマップ',
+        }]}
         onConfirm={() => {}}
         onBack={() => {}}
       />,
