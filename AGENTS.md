@@ -9,7 +9,7 @@
 ## 必ず守る
 - ファイルの読み込み・書き込みでは Filesystem MCP の利用を優先すること
 - ts ファイルを編集した後は必ず構文チェックをすること
-- ts ファイルを編集した後は編集部分を確認するテストコードも用意し、テストを実行して PASS を確認すること。実行するテストは`npm run test:changed`,全体テストは`npm run test`,コア部分は`npm run test:core`,UI部分は`npm run test:ui`だけを利用すること
+- ts ファイルを編集した後は編集部分を確認するテストコードも用意し、テストを実行して PASS を確認すること。実行するテストは`npm run test:changed`,全体テストは`npm run test`,コア部分は`npm run test:core`,UI部分は`npm run test:ui`だけを利用すること。それ以外の--runInBandオプションを使ったテストは実行しないこと。
 - ファイルを変更したとき、[コミットメッセージ] 具体的なコミットメッセージを日本語で考えること
 
 ## 使い方

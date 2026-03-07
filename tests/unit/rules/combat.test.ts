@@ -30,6 +30,11 @@ describe('戦闘ルール', () => {
     expect(lowHpDamage).toBeLessThan(fullHpDamage);
   });
 
+  it('重戦車は戦車より高火力で正面戦闘に強い', () => {
+    expect(getBaseDamage('HEAVY_TANK', 'TANK')).toBeGreaterThan(getBaseDamage('TANK', 'TANK'));
+    expect(getBaseDamage('TANK', 'HEAVY_TANK')).toBeLessThan(getBaseDamage('TANK', 'TANK'));
+  });
+
   it('防御補正や攻撃力差によっては被ダメージ0になる', () => {
     const weakBase = getBaseDamage('INFANTRY', 'TANK');
     const damage = computeDamage(weakBase, 1, 1, 0.8);

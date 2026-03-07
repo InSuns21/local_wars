@@ -111,6 +111,7 @@ describe('facilities rules', () => {
     expect(canUnitProduceAtTile('INFANTRY', makeTile({ terrainType: 'FACTORY', operational: false }))).toBe(false);
 
     expect(canUnitProduceAtTile('INFANTRY', makeTile({ terrainType: 'FACTORY' }))).toBe(true);
+    expect(canUnitProduceAtTile('HEAVY_TANK', makeTile({ terrainType: 'FACTORY', capturePoints: 20 }))).toBe(true);
     expect(canUnitProduceAtTile('FIGHTER', makeTile({ terrainType: 'FACTORY' }))).toBe(false);
     expect(canUnitProduceAtTile('MISSILE_AA', makeTile({ terrainType: 'FACTORY', capturePoints: 20 }))).toBe(true);
     expect(canUnitProduceAtTile('FLAK_TANK', makeTile({ terrainType: 'FACTORY', capturePoints: 20 }))).toBe(true);

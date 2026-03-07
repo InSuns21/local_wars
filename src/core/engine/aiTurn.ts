@@ -319,6 +319,7 @@ const emptyUnitCountMap = (): Record<UnitType, number> => ({
   INFANTRY: 0,
   RECON: 0,
   TANK: 0,
+  HEAVY_TANK: 0,
   ANTI_TANK: 0,
   ARTILLERY: 0,
   ANTI_AIR: 0,
@@ -373,18 +374,18 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitT
   }
 
   const enemyArmorCount =
-    enemyCounts.TANK + enemyCounts.ANTI_TANK + enemyCounts.ARTILLERY + enemyCounts.ANTI_AIR + enemyCounts.FLAK_TANK + enemyCounts.MISSILE_AA;
-  const ownAntiArmor = ownCounts.TANK + ownCounts.ANTI_TANK + ownCounts.ARTILLERY + ownCounts.FLAK_TANK;
+    enemyCounts.TANK + enemyCounts.HEAVY_TANK + enemyCounts.ANTI_TANK + enemyCounts.ARTILLERY + enemyCounts.ANTI_AIR + enemyCounts.FLAK_TANK + enemyCounts.MISSILE_AA;
+  const ownAntiArmor = ownCounts.TANK + ownCounts.HEAVY_TANK + ownCounts.ANTI_TANK + ownCounts.ARTILLERY + ownCounts.FLAK_TANK;
   if (enemyArmorCount > ownAntiArmor && canAfford('ANTI_TANK')) {
     return 'ANTI_TANK';
   }
 
-  const ownFrontline = ownCounts.TANK + ownCounts.ANTI_TANK + ownCounts.RECON + ownCounts.ANTI_AIR;
+  const ownFrontline = ownCounts.TANK + ownCounts.HEAVY_TANK + ownCounts.ANTI_TANK + ownCounts.RECON + ownCounts.ANTI_AIR;
   if (ownFrontline >= 2 && ownCounts.ARTILLERY === 0 && canAfford('ARTILLERY')) {
     return 'ARTILLERY';
   }
 
-  const candidates: UnitType[] = ['TANK', 'ANTI_TANK', 'RECON', 'INFANTRY', 'ARTILLERY', 'FLAK_TANK', 'MISSILE_AA'];
+  const candidates: UnitType[] = ['HEAVY_TANK', 'TANK', 'ANTI_TANK', 'RECON', 'INFANTRY', 'ARTILLERY', 'FLAK_TANK', 'MISSILE_AA'];
   for (const type of candidates) {
     if (canAfford(type)) return type;
   }

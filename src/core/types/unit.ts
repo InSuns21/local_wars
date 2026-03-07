@@ -4,6 +4,7 @@ export type UnitType =
   | 'INFANTRY'
   | 'RECON'
   | 'TANK'
+  | 'HEAVY_TANK'
   | 'ANTI_TANK'
   | 'ARTILLERY'
   | 'ANTI_AIR'
