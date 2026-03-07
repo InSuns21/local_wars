@@ -11,13 +11,13 @@ describe('App 導線テスト: ナビゲーション', () => {
   it('タイトルからクレジットへ遷移して戻れる', () => {
     render(<App />);
 
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'クレジット' }));
 
     expect(screen.getByRole('heading', { name: 'クレジット' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'タイトルへ戻る' }));
 
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
   });
 
   it('はじめからで マップ選択→設定→ゲーム画面 へ進む', () => {
@@ -32,12 +32,15 @@ describe('App 導線テスト: ナビゲーション', () => {
   it('タイトルからチュートリアルへ遷移して戻れる', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'チュートリアル' }));
+    fireEvent.click(screen.getByRole('button', { name: '3分で分かる基本操作を見る' }));
     expect(screen.getByRole('heading', { name: 'チュートリアル' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '基本操作の流れ' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '詳細ルール' }));
     expect(screen.getByRole('heading', { name: '勝利条件' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '戻る' }));
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
   });
 
   it('ゲーム画面からチュートリアルへ遷移して対局に戻れる', () => {
@@ -61,7 +64,7 @@ describe('App 導線テスト: ナビゲーション', () => {
     expect(screen.getByRole('heading', { name: '音量設定' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'タイトルへ戻る' }));
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
   });
 });
 

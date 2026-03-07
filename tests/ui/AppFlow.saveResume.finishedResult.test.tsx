@@ -31,6 +31,6 @@ describe('App 導線テスト: セーブ終了と再開(勝敗確定データ再
     expect(screen.getByRole('heading', { name: '対局結果' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'タイトルへ戻る' }));
 
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
   });
 });

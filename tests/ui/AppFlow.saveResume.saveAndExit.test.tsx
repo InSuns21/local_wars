@@ -22,7 +22,7 @@ describe('App 導線テスト: セーブ終了と再開(保存して終了)', ()
     fireEvent.click(screen.getByRole('button', { name: 'ゲーム終了' }));
     fireEvent.click(screen.getByRole('button', { name: '保存して終了' }));
 
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
 
     const raw = localStorage.getItem(TEST_SAVE_KEY);
     expect(raw).not.toBeNull();

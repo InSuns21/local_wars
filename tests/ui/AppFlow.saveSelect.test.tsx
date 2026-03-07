@@ -9,9 +9,16 @@ describe('App 導線テスト: セーブ選択', () => {
   });
 
   it('つづきからで空スロット選択時はカード内でロード不可が分かる', () => {
+    seedSlots({
+      '1': createSavePayload('plains-clash'),
+      '2': null,
+      '3': null,
+    });
+
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'つづきから' }));
+    fireEvent.click(screen.getByLabelText('スロット2'));
 
     const loadButton = screen.getByRole('button', { name: 'ロード不可' });
     expect(loadButton).toBeDisabled();

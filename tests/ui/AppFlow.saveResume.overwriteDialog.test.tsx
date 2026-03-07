@@ -35,7 +35,7 @@ describe('App 導線テスト: セーブ終了と再開(上書き保存)', () =>
     fireEvent.click(screen.getByRole('radio', { name: /スロット2/ }));
     fireEvent.click(screen.getByRole('button', { name: 'このスロットに保存' }));
 
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
 
     const raw = localStorage.getItem(TEST_SAVE_KEY);
     expect(raw).not.toBeNull();

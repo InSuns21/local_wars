@@ -24,6 +24,6 @@ describe('App 導線テスト: セーブ終了と再開(保存しないで終了
     expect(screen.getByRole('dialog', { name: '保存しないで終了' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '終了する' }));
-    expect(screen.getByText('タイトル画面')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
   });
 });
