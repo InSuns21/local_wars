@@ -2,8 +2,9 @@
 import type { TerrainType } from '@core/types/map';
 
 describe('terrainDefense 防御補正', () => {
-  it('歩兵が山にいると防御補正が有利になる', () => {
+  it('歩兵系が山にいると防御補正が有利になる', () => {
     expect(getTerrainDefenseModifier('MOUNTAIN', 'INFANTRY')).toBe(0.8);
+    expect(getTerrainDefenseModifier('MOUNTAIN', 'AIR_DEFENSE_INFANTRY')).toBe(0.8);
   });
 
   it('森では地上ユニットの防御補正が有利になる', () => {
@@ -21,6 +22,7 @@ describe('terrainDefense 防御補正', () => {
     expect(getTerrainDefenseModifier('ROAD', 'TANK')).toBe(1.2);
     expect(getTerrainDefenseModifier('BRIDGE', 'RECON')).toBe(1.2);
     expect(getTerrainDefenseModifier('RIVER', 'INFANTRY')).toBe(1.2);
+    expect(getTerrainDefenseModifier('RIVER', 'AIR_DEFENSE_INFANTRY')).toBe(1.2);
   });
 
   it('川は歩兵以外の地上ユニットには補正が入らない', () => {
@@ -28,7 +30,7 @@ describe('terrainDefense 防御補正', () => {
     expect(getTerrainDefenseModifier('RIVER', 'ARTILLERY')).toBe(1);
   });
 
-  it('山でも歩兵以外は標準補正', () => {
+  it('山でも歩兵系以外は標準補正', () => {
     expect(getTerrainDefenseModifier('MOUNTAIN', 'TANK')).toBe(1);
     expect(getTerrainDefenseModifier('MOUNTAIN', 'RECON')).toBe(1);
   });

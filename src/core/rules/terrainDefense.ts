@@ -13,6 +13,8 @@ const GROUND_UNITS: UnitType[] = [
   'ANTI_AIR',
   'FLAK_TANK',
   'MISSILE_AA',
+  'AIR_DEFENSE_INFANTRY',
+  'COUNTER_DRONE_AA',
 ];
 
 const buildGroundDefenseTable = (value: number): Partial<Record<UnitType, number>> =>
@@ -22,11 +24,13 @@ const terrainDefenseTable: Partial<Record<TerrainType, Partial<Record<UnitType, 
   FOREST: buildGroundDefenseTable(0.8),
   MOUNTAIN: {
     INFANTRY: 0.8,
+    AIR_DEFENSE_INFANTRY: 0.8,
   },
   ROAD: buildGroundDefenseTable(1.2),
   BRIDGE: buildGroundDefenseTable(1.2),
   RIVER: {
     INFANTRY: 1.2,
+    AIR_DEFENSE_INFANTRY: 1.2,
   },
   CITY: buildGroundDefenseTable(0.75),
   FACTORY: buildGroundDefenseTable(0.75),

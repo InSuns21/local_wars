@@ -47,7 +47,7 @@ describe('visibility ルール', () => {
     }
   });
 
-  it('山にいる歩兵は視界が1マス広がる', () => {
+  it('山にいる歩兵は視界が2マス広がる', () => {
     const state = createInitialGameState();
     state.fogOfWar = true;
 
@@ -58,8 +58,17 @@ describe('visibility ルール', () => {
     state.units.p1_inf.position = { x: 1, y: 1 };
     state.units.p1_tank.position = { x: 0, y: 4 };
 
-    state.units.p2_inf.position = { x: 4, y: 1 };
-    state.units.p2_tank.position = { x: 4, y: 4 };
+    state.units.p2_inf.position = { x: 5, y: 1 };
+    state.units.p2_tank.position = { x: 5, y: 4 };
+    state.map.tiles['5,1'] = {
+      coord: { x: 5, y: 1 },
+      terrainType: 'PLAIN',
+    };
+    state.map.tiles['5,4'] = {
+      coord: { x: 5, y: 4 },
+      terrainType: 'PLAIN',
+    };
+    state.map.width = 6;
 
     const visible = getVisibleEnemyUnitIds(state, 'P1');
 
@@ -222,6 +231,30 @@ describe('visibility ルール', () => {
     state.units.p1_tank.position = { x: 4, y: 3 };
 
     expect(getVisibleEnemyUnitIds(state, 'P1').has('p2_tank')).toBe(true);
+  });
+
+  it('防空歩兵も山に登ると歩兵同様に視界が2マス広がる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+    state.map.tiles['1,1'] = {
+      ...state.map.tiles['1,1'],
+      terrainType: 'MOUNTAIN',
+    };
+    state.units.p1_inf = {
+      ...state.units.p1_inf,
+      type: 'AIR_DEFENSE_INFANTRY',
+      position: { x: 1, y: 1 },
+    };
+    state.units.p1_tank.position = { x: 0, y: 4 };
+    state.units.p2_inf.position = { x: 5, y: 1 };
+    state.map.tiles['5,1'] = {
+      coord: { x: 5, y: 1 },
+      terrainType: 'PLAIN',
+    };
+    state.map.width = 6;
+
+    const visible = getVisibleEnemyUnitIds(state, 'P1');
+    expect(visible.has('p2_inf')).toBe(true);
   });
 
   it('地対空ミサイル車は索敵範囲が広く、遠方の航空ユニットを捉えられる', () => {

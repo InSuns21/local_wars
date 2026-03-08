@@ -71,16 +71,19 @@ describe('移動ルール', () => {
     expect(result).not.toContainEqual({ x: 1, y: 1 });
   });
 
-  it('歩兵は山を通行でき、歩兵以外の陸上ユニットは通行できない', () => {
+  it('歩兵系は山を通行でき、歩兵系以外の陸上ユニットは通行できない', () => {
     const map = makeMap();
 
     const infantry = makeUnit({ id: 'inf', type: 'INFANTRY' });
+    const airDefenseInfantry = makeUnit({ id: 'ad', type: 'AIR_DEFENSE_INFANTRY' });
     const tank = makeUnit({ id: 'tank', type: 'TANK' });
 
     const infantryRange = getReachableTiles({ map, unit: infantry, enemyUnits: [], maxMove: 3 });
+    const airDefenseInfantryRange = getReachableTiles({ map, unit: airDefenseInfantry, enemyUnits: [], maxMove: 3 });
     const tankRange = getReachableTiles({ map, unit: tank, enemyUnits: [], maxMove: 3 });
 
     expect(infantryRange).toContainEqual({ x: 1, y: 1 });
+    expect(airDefenseInfantryRange).toContainEqual({ x: 1, y: 1 });
     expect(tankRange).not.toContainEqual({ x: 1, y: 1 });
   });
 
