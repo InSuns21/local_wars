@@ -279,8 +279,8 @@ const UnitIcon: React.FC<{ unit: UnitState; viewerPlayerId: 'P1' | 'P2'; size: n
           setExternalIconIndex(nextIndex);
         }}
         style={{
-          width: `${Math.max(60, Math.round(size * 0.7))}%`,
-          height: `${Math.max(60, Math.round(size * 0.7))}%`,
+          width: `${Math.max(60, Math.round(size * 0.9))}%`,
+          height: `${Math.max(60, Math.round(size * 0.9))}%`,
           objectFit: 'contain',
           filter: 'brightness(0) invert(1)',
           pointerEvents: 'none',
