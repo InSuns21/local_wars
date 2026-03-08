@@ -1180,6 +1180,45 @@ describe('commandApplier 統合テスト', () => {
     expect(attacked.state.units.p2_tank?.hp ?? 0).toBeLessThan(10);
   });
 
+  it('自爆ドローンは反撃できない間接攻撃を受けても消滅しない', () => {
+    const state = createInitialGameState();
+    state.enableSuicideDrones = true;
+    state.units.p1_drone = {
+      id: 'p1_drone',
+      owner: 'P1',
+      type: 'SUICIDE_DRONE',
+      hp: 10,
+      fuel: 50,
+      ammo: 1,
+      position: { x: 4, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      originFactoryCoord: { x: 0, y: 1 },
+    };
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'ARTILLERY',
+      position: { x: 2, y: 2 },
+      ammo: 6,
+      moved: false,
+      acted: false,
+    };
+    state.currentPlayerId = 'P2';
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK', attackerId: 'p2_tank', defenderId: 'p1_drone' },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(true);
+    expect(attacked.state.units.p1_drone).toBeDefined();
+    expect(attacked.state.units.p1_drone.hp).toBeLessThan(10);
+    expect(attacked.state.units.p1_drone.hp).toBeGreaterThan(0);
+    expect(attacked.state.units.p2_tank.hp).toBe(10);
+  });
+
   it('対ドローン防空車は移動侵入した自爆ドローンを迎撃できる', () => {
     const state = createInitialGameState({ mapId: 'river-crossing' });
     state.enableSuicideDrones = true;

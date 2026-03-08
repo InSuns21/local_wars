@@ -142,8 +142,17 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('MISSILE_AA', 'INFANTRY')).toBe(0);
   });
 
-  it('歩兵は自爆ドローンを攻撃できる', () => {
+  it('武装した陸上ユニットは自爆ドローンを攻撃できる', () => {
     expect(getBaseDamage('INFANTRY', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('RECON', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('TANK', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('HEAVY_TANK', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('ANTI_TANK', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('ARTILLERY', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('ANTI_AIR', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('FLAK_TANK', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('MISSILE_AA', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('COUNTER_DRONE_AA', 'SUICIDE_DRONE')).toBeGreaterThan(0);
   });
 
   it('輸送ユニットは攻撃できない', () => {
