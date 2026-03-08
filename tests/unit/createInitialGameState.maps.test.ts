@@ -87,7 +87,7 @@ describe('スカーミッシュマップ定義', () => {
   it('ドローン向けマップ3種が追加されている', () => {
     expect(getSkirmishScenario('drone-factory-front')).not.toBeNull();
     expect(getSkirmishScenario('interceptor-belt')).not.toBeNull();
-    expect(getSkirmishScenario('coastal-drone-raid')).not.toBeNull();
+    expect(getSkirmishScenario('industrial-drone-raid')).not.toBeNull();
   });
 
   it('道路誘導マップの斜め道路にマンハッタン補間タイルが追加されている', () => {
