@@ -36,7 +36,7 @@ import {
 import { getBgmTrackByContext, type BgmContext } from '@services/bgmTracks';
 import { loadBgmVolume, saveBgmVolume } from '@services/bgmVolume';
 import { appTheme } from '@/theme';
-import { DEFAULT_SETTINGS, type GameSettings } from './types';
+import { DEFAULT_SETTINGS, GAME_SETTINGS_PRESETS, type GameSettings } from './types';
 
 type Screen = 'title' | 'map-select' | 'settings' | 'save-select' | 'credits' | 'tutorial' | 'battle' | 'audio-settings';
 
@@ -50,6 +50,7 @@ type AppProps = {
 
 const toGain = (volumePercent: number): number => Math.max(0, Math.min(1, volumePercent / 100));
 const isAudioDisabled = process.env.NODE_ENV === 'test';
+const DRONE_FOCUSED_MAP_IDS = new Set(['drone-factory-front', 'interceptor-belt', 'industrial-drone-raid']);
 
 const tryPlay = async (audio: HTMLAudioElement): Promise<boolean> => {
   try {
@@ -71,6 +72,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
   const [activeSlotId, setActiveSlotId] = useState<1 | 2 | 3 | null>(null);
   const [activeMapId, setActiveMapId] = useState<string>('plains-clash');
   const [activeSettings, setActiveSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [pendingSettings, setPendingSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [deleteConfirmSlotId, setDeleteConfirmSlotId] = useState<1 | 2 | 3 | null>(null);
   const [showExitWithoutSaveConfirm, setShowExitWithoutSaveConfirm] = useState<boolean>(false);
   const [overwriteState, setOverwriteState] = useState<OverwriteState | null>(null);
@@ -290,7 +292,10 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
           <TitleScreen
             latestSaveSummary={latestSaveSummary}
             hasAnySaveData={hasAnySaveData}
-            onStart={() => setScreen('map-select')}
+            onStart={() => {
+              setPendingSettings(DEFAULT_SETTINGS);
+              setScreen('map-select');
+            }}
             onContinue={() => {
               refreshSlots();
               setSaveSelectFeedback('');
@@ -310,6 +315,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
             maps={MAP_CATALOG}
             onConfirm={(mapId: string) => {
               setSelectedMapId(mapId);
+              setPendingSettings(DRONE_FOCUSED_MAP_IDS.has(mapId) ? GAME_SETTINGS_PRESETS.drone : DEFAULT_SETTINGS);
               setScreen('settings');
             }}
             onBack={() => setScreen('title')}
@@ -318,6 +324,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
 
         {screen === 'settings' && (
           <SettingsScreen
+            initialSettings={pendingSettings}
             onConfirm={(nextSettings: GameSettings) => {
               startNewGame(selectedMapId, nextSettings);
             }}

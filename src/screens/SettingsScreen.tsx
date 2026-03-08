@@ -27,6 +27,7 @@ import {
 } from '@/app/types';
 
 type SettingsScreenProps = {
+  initialSettings?: GameSettings;
   onConfirm: (settings: GameSettings) => void;
   onBack: () => void;
 };
@@ -204,9 +205,9 @@ const detectPreset = (settings: GameSettings): GameSettingsPreset => {
   return 'custom';
 };
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onConfirm, onBack }) => {
-  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
-  const [selectedPreset, setSelectedPreset] = useState<GameSettingsPreset>('standard');
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ initialSettings = DEFAULT_SETTINGS, onConfirm, onBack }) => {
+  const [settings, setSettings] = useState<GameSettings>(initialSettings);
+  const [selectedPreset, setSelectedPreset] = useState<GameSettingsPreset>(detectPreset(initialSettings));
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
 
   const isValid = useMemo(

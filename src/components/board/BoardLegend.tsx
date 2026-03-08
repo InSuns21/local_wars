@@ -121,6 +121,11 @@ export const BoardLegend: React.FC = () => (
         overlay={BOARD_VISUAL_TOKENS.attackRange.overlay}
       />
       <LegendSwatch
+        label={BOARD_VISUAL_TOKENS.interceptRange.label}
+        overlay={BOARD_VISUAL_TOKENS.interceptRange.overlay}
+        outline={BOARD_VISUAL_TOKENS.interceptRange.outline}
+      />
+      <LegendSwatch
         label={BOARD_VISUAL_TOKENS.attackTarget.label}
         overlay={BOARD_VISUAL_TOKENS.attackTarget.overlay}
         outline={BOARD_VISUAL_TOKENS.attackTarget.outline}

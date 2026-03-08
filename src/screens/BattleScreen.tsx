@@ -40,7 +40,7 @@ import { getVisibleEnemyUnitIds } from "@core/rules/visibility";
 import type { Coord } from "@core/types/game";
 import type { GameState } from "@core/types/state";
 import type { UnitState, UnitType } from "@core/types/unit";
-import { toCoordKey } from "@/utils/coord";
+import { manhattanDistance, toCoordKey } from "@/utils/coord";
 
 export const battleStore = createGameStore(createInitialGameState());
 
@@ -63,6 +63,12 @@ const BOARD_ZOOM_OPTIONS = [
   { value: 0.85, label: "85%" },
   { value: 0.7, label: "70%" },
 ] as const;
+
+const DRONE_FOCUSED_MAP_IDS = new Set([
+  "drone-factory-front",
+  "interceptor-belt",
+  "industrial-drone-raid",
+]);
 
 const getIncomeForTile = (state: GameState, terrainType: string): number => {
   if (terrainType === "CITY" || terrainType === "FACTORY" || terrainType === "HQ") {
@@ -235,6 +241,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const humanIncome = getTurnIncome(gameState, humanSide);
   const currentPlayerFunds = gameState.players[gameState.currentPlayerId].funds;
   const selectedUnitCost = UNIT_DEFINITIONS[produceUnitType].cost;
+  const isDroneFocusedMap = DRONE_FOCUSED_MAP_IDS.has(gameState.mapId ?? "");
 
   const aliveUnitByTile = useMemo(() => {
     const map = new Map<string, string>();
@@ -246,6 +253,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   }, [gameState.units]);
 
   const availableFactories = useMemo(() => {
+    const terrainPriority = (terrainType?: string): number => {
+      if (isDroneFocusedMap && (gameState.enableSuicideDrones ?? false)) {
+        if (terrainType === "FACTORY") return 0;
+        if (terrainType === "AIRPORT") return 1;
+        if (terrainType === "PORT") return 2;
+      }
+      return 0;
+    };
+
     return Object.values(gameState.map.tiles)
       .filter(
         (tile) =>
@@ -253,8 +269,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           tile.owner === gameState.currentPlayerId &&
           isOperationalFacility(tile),
       )
+      .sort((left, right) => {
+        const priorityDiff = terrainPriority(left.terrainType) - terrainPriority(right.terrainType);
+        if (priorityDiff !== 0) return priorityDiff;
+        if (left.coord.y !== right.coord.y) return left.coord.y - right.coord.y;
+        return left.coord.x - right.coord.x;
+      })
       .map((tile) => tile.coord);
-  }, [gameState.currentPlayerId, gameState.map.tiles]);
+  }, [gameState.currentPlayerId, gameState.enableSuicideDrones, gameState.map.tiles, isDroneFocusedMap]);
 
   const moveRangeTiles = useMemo(() => {
     if (
@@ -447,6 +469,29 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       });
   }, [aliveUnitByTile, canControlSelectedUnit, gameState.map.height, gameState.map.width, gameState.units, selectedUnit]);
 
+  const interceptRangeTiles = useMemo(() => {
+    if (!selectedUnit || !canControlSelectedUnit || selectedUnit.type !== "COUNTER_DRONE_AA") {
+      return [];
+    }
+
+    const interceptRange = UNIT_DEFINITIONS[selectedUnit.type].interceptRange ?? 0;
+    if (interceptRange <= 0) {
+      return [];
+    }
+
+    const coords: Coord[] = [];
+    for (let y = 0; y < gameState.map.height; y += 1) {
+      for (let x = 0; x < gameState.map.width; x += 1) {
+        const coord = { x, y };
+        const distance = manhattanDistance(selectedUnit.position, coord);
+        if (distance >= 1 && distance <= interceptRange) {
+          coords.push(coord);
+        }
+      }
+    }
+    return coords;
+  }, [canControlSelectedUnit, gameState.map.height, gameState.map.width, selectedUnit]);
+
   const canIssueAttack = Boolean(
     canControlSelectedUnit &&
       !isGameOver &&
@@ -577,6 +622,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       selectedProductionTile &&
       canUnitProduceAtTile(produceUnitType, selectedProductionTile) &&
       currentPlayerFunds >= selectedUnitCost,
+  );
+
+  const droneProductionCost = UNIT_DEFINITIONS.SUICIDE_DRONE.cost;
+  const canShowDroneProductionPanel = Boolean(
+    selectedProductionTile?.terrainType === "FACTORY" && (gameState.enableSuicideDrones ?? false),
+  );
+  const canProduceDrone = Boolean(
+    !isGameOver &&
+      effectiveFactoryKey &&
+      selectedProductionTile?.terrainType === "FACTORY" &&
+      (gameState.enableSuicideDrones ?? false) &&
+      currentPlayerFunds >= droneProductionCost,
   );
 
   const attackForecast = useMemo(() => {
@@ -954,7 +1011,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setCommandResult(result.ok, result.reason);
   };
 
-  const handleProduce = (): void => {
+  const handleProduce = (unitType: UnitType = produceUnitType): void => {
     if (isGameOver) {
       setLastResult(
         "失敗: 既に勝敗が確定しています。",
@@ -973,7 +1030,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       type: "PRODUCE_UNIT",
       playerId: gameState.currentPlayerId,
       factoryCoord: { x, y },
-      unitType: produceUnitType,
+      unitType,
     });
     setCommandResult(result.ok, result.reason);
   };
@@ -1311,15 +1368,31 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 </Typography>
                 <Typography>必要資金: {selectedUnitCost}</Typography>
                 <Typography>現在手番の資金: {currentPlayerFunds}</Typography>
-                {selectedProductionTile?.terrainType === "FACTORY" && (gameState.enableSuicideDrones ?? false) && (
-                  <Typography variant="body2" color="text.secondary">
-                    この工場のドローン数: {selectedFactoryDroneCount}/{maxFactoryDronesPerFactory}
-                    {factoryProductionRecord.normalProduced ? ' / 通常生産済み' : ''}
-                    {(factoryProductionRecord.droneProducedCount ?? 0) > 0 ? ` / ドローン生産回数: ${factoryProductionRecord.droneProducedCount}` : ''}
-                  </Typography>
+                {canShowDroneProductionPanel && (
+                  <Paper variant="outlined" sx={{ p: 1, bgcolor: "grey.50" }}>
+                    <Stack spacing={0.75}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        ドローン枠 {selectedFactoryDroneCount}/{maxFactoryDronesPerFactory}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {factoryProductionRecord.normalProduced ? "通常生産済み / " : ""}
+                        {(factoryProductionRecord.droneProducedCount ?? 0) > 0
+                          ? `ドローン生産回数: ${factoryProductionRecord.droneProducedCount}`
+                          : "このターンのドローン生産回数: 0"}
+                      </Typography>
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        onClick={() => handleProduce("SUICIDE_DRONE")}
+                        disabled={!canProduceDrone}
+                      >
+                        ドローン生産
+                      </Button>
+                    </Stack>
+                  </Paper>
                 )}
 
-                <Button type="button" variant="contained" onClick={handleProduce} disabled={!canProduce}>{produceUnitType === "SUICIDE_DRONE" && (gameState.enableSuicideDrones ?? false) ? "ドローン生産" : "生産実行"}</Button>
+                <Button type="button" variant="contained" onClick={() => handleProduce()} disabled={!canProduce}>{produceUnitType === "SUICIDE_DRONE" && (gameState.enableSuicideDrones ?? false) ? "ドローン生産" : "生産実行"}</Button>
               </Stack>
             </AccordionDetails>
           </Accordion>
@@ -1387,6 +1460,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 moveRangeTiles={moveRangeTiles}
                 attackRangeTiles={attackRangeTiles}
                 supplyRangeTiles={supplyRangeTiles}
+                interceptRangeTiles={interceptRangeTiles}
                 highlightedTargetUnitId={canIssueAttack ? targetUnitId || null : null}
                 zoom={boardZoom}
                 onSelectUnit={isGameOver ? () => {} : selectUnit}

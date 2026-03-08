@@ -28,6 +28,7 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     expect(within(legend).getByText('経路プレビュー')).toBeInTheDocument();
     expect(within(legend).getByText('移動可能')).toBeInTheDocument();
     expect(within(legend).getByText('攻撃範囲')).toBeInTheDocument();
+    expect(within(legend).getByText('迎撃半径')).toBeInTheDocument();
     expect(within(legend).getByText('攻撃対象')).toBeInTheDocument();
     expect(within(legend).getByText('味方ユニット')).toBeInTheDocument();
     expect(within(legend).getByText('敵ユニット')).toBeInTheDocument();

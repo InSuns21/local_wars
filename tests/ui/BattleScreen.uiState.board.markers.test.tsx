@@ -5,6 +5,7 @@ jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanva
 jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
 
 import { renderBattleScreen } from './helpers/renderBattleScreen';
+import { createInitialGameState } from '@core/engine/createInitialGameState';
 
 describe('BattleScreen UIテスト: 盤面表示(マーカー/所有者)', () => {
   it('工場の所有者ごとに識別属性が付与される', () => {
@@ -63,5 +64,20 @@ describe('BattleScreen UIテスト: 盤面表示(マーカー/所有者)', () =>
 
     expect(screen.getByRole('button', { name: 'タイル 2,1' })).toHaveAttribute('data-move-reachable', 'false');
     expect(screen.getByRole('button', { name: 'タイル 2,3' })).toHaveAttribute('data-move-reachable', 'false');
+  });
+
+  it('対ドローン防空車を選択すると迎撃半径が盤面表示される', () => {
+    const scenarioState = createInitialGameState({ mapId: 'interceptor-belt' });
+    scenarioState.enableSuicideDrones = true;
+
+    renderBattleScreen({
+      mutateState: (state) => Object.assign(state, scenarioState),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 5,5' }));
+
+    expect(screen.getByRole('button', { name: 'タイル 5,4' })).toHaveAttribute('data-intercept-range', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 6,5' })).toHaveAttribute('data-intercept-range', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 5,5' })).toHaveAttribute('data-intercept-range', 'false');
   });
 });

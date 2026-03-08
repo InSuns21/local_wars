@@ -26,6 +26,11 @@
     label: '攻撃範囲',
     overlay: 'rgba(252,165,165,0.5)',
   },
+  interceptRange: {
+    label: '迎撃半径',
+    overlay: 'rgba(125,211,252,0.42)',
+    outline: 'inset 0 0 0 2px #0284c7',
+  },
   attackTarget: {
     label: '攻撃対象',
     overlay: 'rgba(244,63,94,0.28)',

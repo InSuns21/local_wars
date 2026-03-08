@@ -179,6 +179,7 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
     showEnemyActionLogs: options.settings?.showEnemyActionLogs ?? false,
     facilityCaptureCostIncreasePercent: options.settings?.facilityCaptureCostIncreasePercent ?? 50,
     phase: 'command',
+    mapId: options.mapId,
     map: mapState.map,
     units: mapState.units,
     players: {

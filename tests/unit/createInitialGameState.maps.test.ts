@@ -66,6 +66,23 @@ describe('スカーミッシュマップ定義', () => {
     }
   });
 
+  it('すべてのマップでHQと工場はマンハッタン距離1以内に置かれない', () => {
+    for (const meta of MAP_CATALOG) {
+      const scenario = getSkirmishScenario(meta.id);
+      if (!scenario) continue;
+
+      const hqs = Object.values(scenario.map.tiles).filter((tile) => tile.terrainType === 'HQ');
+      const factories = Object.values(scenario.map.tiles).filter((tile) => tile.terrainType === 'FACTORY');
+
+      for (const hq of hqs) {
+        for (const factory of factories) {
+          const distance = Math.abs(hq.coord.x - factory.coord.x) + Math.abs(hq.coord.y - factory.coord.y);
+          expect(distance).toBeGreaterThan(1);
+        }
+      }
+    }
+  });
+
   it('補給線重視マップ3種が追加され、補給回廊だけ空港を持たない', () => {
     const supplyGauntlet = getSkirmishScenario('supply-gauntlet');
     const relaySkyway = getSkirmishScenario('relay-skyway');
@@ -88,6 +105,16 @@ describe('スカーミッシュマップ定義', () => {
     expect(getSkirmishScenario('drone-factory-front')).not.toBeNull();
     expect(getSkirmishScenario('interceptor-belt')).not.toBeNull();
     expect(getSkirmishScenario('industrial-drone-raid')).not.toBeNull();
+  });
+
+  it('迎撃防衛線は前線に対ドローン防空車を初期配置し、中央工場をやや後方に置く', () => {
+    const interceptorBelt = getSkirmishScenario('interceptor-belt');
+    expect(interceptorBelt).not.toBeNull();
+
+    expect(interceptorBelt?.map.tiles['7,4']?.terrainType).toBe('FACTORY');
+    expect(interceptorBelt?.map.tiles['6,4']?.terrainType).toBe('PLAIN');
+    expect(Object.values(interceptorBelt?.units ?? {}).some((unit) => unit.type === 'COUNTER_DRONE_AA' && unit.owner === 'P1')).toBe(true);
+    expect(Object.values(interceptorBelt?.units ?? {}).some((unit) => unit.type === 'COUNTER_DRONE_AA' && unit.owner === 'P2')).toBe(true);
   });
 
   it('道路誘導マップの斜め道路にマンハッタン補間タイルが追加されている', () => {

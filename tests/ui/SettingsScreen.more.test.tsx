@@ -1,8 +1,17 @@
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { SettingsScreen } from '@/screens/SettingsScreen';
+import { GAME_SETTINGS_PRESETS } from '@/app/types';
 
 describe('SettingsScreen 追加UIカバレッジ', () => {
+  it('initialSettings を渡すと初期表示へ反映される', () => {
+    render(<SettingsScreen initialSettings={GAME_SETTINGS_PRESETS.drone} onConfirm={() => {}} onBack={() => {}} />);
+
+    expect(screen.getByLabelText('自爆ドローン有効')).toBeChecked();
+    expect(screen.getByLabelText('索敵あり')).toBeChecked();
+    expect(screen.getByText('現在の状態: ドローン戦')).toBeInTheDocument();
+  });
+
   it('各設定を変更して開始すると変更値が渡る', () => {
     const onConfirm = jest.fn();
 

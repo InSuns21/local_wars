@@ -1151,6 +1151,25 @@ describe('commandApplier 統合テスト', () => {
     expect(produced2.state.factoryProductionState?.['0,1']?.droneProducedCount).toBe(2);
   });
 
+  it('自爆ドローンの自動配置候補からHQは除外される', () => {
+    const state = createInitialGameState();
+    state.enableSuicideDrones = true;
+    state.players.P1.funds = 5000;
+    state.units.p1_inf.position = { x: 0, y: 1 };
+    state.units.p1_tank.position = { x: 1, y: 1 };
+
+    const produced = applyCommand(
+      state,
+      { type: 'PRODUCE_UNIT', playerId: 'P1', factoryCoord: { x: 0, y: 1 }, unitType: 'SUICIDE_DRONE' },
+      { rng: () => 0.5 },
+    );
+
+    expect(produced.result.ok).toBe(true);
+    const drone = Object.values(produced.state.units).find((unit) => unit.type === 'SUICIDE_DRONE');
+    expect(drone?.position).toEqual({ x: 0, y: 2 });
+    expect(drone?.position).not.toEqual({ x: 0, y: 0 });
+  });
+
   it('自爆ドローンは攻撃後に消滅する', () => {
     const state = createInitialGameState();
     state.enableSuicideDrones = true;

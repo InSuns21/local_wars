@@ -19,6 +19,7 @@ type GameCanvasProps = {
   moveRangeTiles: Coord[];
   attackRangeTiles: Coord[];
   supplyRangeTiles?: Coord[];
+  interceptRangeTiles?: Coord[];
   highlightedTargetUnitId?: string | null;
   zoom?: number;
   onSelectUnit: (unitId: string | null) => void;
@@ -298,6 +299,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   moveRangeTiles,
   attackRangeTiles,
   supplyRangeTiles = [],
+  interceptRangeTiles = [],
   highlightedTargetUnitId,
   zoom = 1,
   onSelectUnit,
@@ -352,6 +354,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const moveKeys = new Set(moveRangeTiles.map((coord) => toCoordKey(coord)));
   const attackKeys = new Set(attackRangeTiles.map((coord) => toCoordKey(coord)));
   const supplyKeys = new Set(supplyRangeTiles.map((coord) => toCoordKey(coord)));
+  const interceptKeys = new Set(interceptRangeTiles.map((coord) => toCoordKey(coord)));
 
   const rows: number[] = [];
   for (let y = 0; y < gameState.map.height; y += 1) rows.push(y);
@@ -391,6 +394,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const isPreview = previewKeys.has(key);
               const isMoveReachable = moveKeys.has(key);
               const isAttackRange = attackKeys.has(key);
+              const isInterceptRange = interceptKeys.has(key);
               const isAttackTarget = Boolean(unit && highlightedTargetUnitId === unit.id);
 
               const isClickable = Boolean(unit) || (!selectedUnit ? false : (isMoveReachable || isAttackRange || isSelectedTile));
@@ -411,7 +415,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         ? BOARD_VISUAL_TOKENS.moveReachable.overlay
                         : isAttackRange
                           ? BOARD_VISUAL_TOKENS.attackRange.overlay
-                          : 'rgba(255,255,255,0.06)';
+                          : isInterceptRange
+                            ? BOARD_VISUAL_TOKENS.interceptRange.overlay
+                            : 'rgba(255,255,255,0.06)';
               const ownerBadge = unit
                 ? unit.owner === viewerPlayerId
                   ? '味'
@@ -437,7 +443,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                       ? BOARD_VISUAL_TOKENS.previewPath.outline
                       : isMoveReachable
                         ? BOARD_VISUAL_TOKENS.moveReachable.outline
-                        : undefined;
+                        : isInterceptRange
+                          ? BOARD_VISUAL_TOKENS.interceptRange.outline
+                          : undefined;
 
               const isSupplyRange = supplyKeys.has(key);
               const tooltipText = buildTileTooltip(
@@ -482,6 +490,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   data-move-reachable={isMoveReachable ? 'true' : 'false'}
                   data-preview-path={isPreview ? 'true' : 'false'}
                   data-supply-range={isSupplyRange ? 'true' : 'false'}
+                  data-intercept-range={isInterceptRange ? 'true' : 'false'}
                   data-property-owner={propertyVisual ? propertyVisual.tag : 'NONE'}
                   data-fog-hidden={isVisible ? 'false' : 'true'}
                   data-unit-hp={unitHpLabel ?? 'NONE'}

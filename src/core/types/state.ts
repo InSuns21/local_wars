@@ -19,6 +19,7 @@ export type GameState = {
   showEnemyActionLogs?: boolean;
   facilityCaptureCostIncreasePercent?: number;
   phase: GamePhase;
+  mapId?: string;
   map: MapState;
   units: Record<string, UnitState>;
   players: Record<PlayerId, PlayerState>;

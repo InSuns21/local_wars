@@ -129,6 +129,9 @@ const getDroneAutoDeployCoord = (state: GameState, factoryCoord: Coord): Coord |
     if (!tile) {
       continue;
     }
+    if (tile.terrainType === 'HQ') {
+      continue;
+    }
     if (getUnitAt(state, coord)) {
       continue;
     }
