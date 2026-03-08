@@ -1,21 +1,37 @@
-# Unit Icons
+# ユニットアイコン
 
-Place optional external SVG icons here using the unit type as the file name.
+このフォルダには、盤面で使う外部ユニットアイコンを配置できます。
+ファイル名はユニット種別と完全一致にしてください。
 
-Examples:
-- `INFANTRY.svg`
-- `FIGHTER.svg`
+例:
+- `INFANTRY.png`
+- `FIGHTER.png`
 - `AIR_TANKER.svg`
 
-If a file exists, the board uses it automatically. If it does not exist or fails to load, the built-in icon is used instead.
+読み込み順は次のとおりです。
+1. `PNG`
+2. `SVG`
+3. 内蔵アイコンへフォールバック
 
-Recommended constraints:
-- 余白なし
-- transparent background
-- single solid silhouette
-- monochrome black shape on transparent is recommended
-- square canvas
-- centered within the canvas with a no margin
-- avoid text, gradients, shadows, and embedded raster images
-- keep the silhouette readable at about 24px to 30px
-- prefer `viewBox="0 0 24 24"`, but larger square viewBox values also work if the silhouette is centered
+対応形式:
+- `PNG`
+- `SVG`
+
+推奨ルール:
+- 透過背景
+- 単色シルエット推奨
+- 正方形キャンバス推奨
+- 余白はできるだけ少なく、中央に配置する
+- 文字、グラデーション、影は避ける
+- 24px から 30px 程度でも判別できる形にする
+
+`SVG` の場合の推奨:
+- `viewBox="0 0 24 24"` 推奨
+- 黒シルエット推奨
+
+`PNG` の場合の推奨:
+- 256x256 以上の正方形推奨
+- 黒または濃い単色シルエット推奨
+- アンチエイリアス込みでも外周が崩れないこと
+
+ファイルが存在しない、または読み込みに失敗した場合は、内蔵アイコンを自動で使います。

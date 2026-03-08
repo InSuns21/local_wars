@@ -21,6 +21,10 @@ export type UnitType =
   | 'STEALTH_BOMBER'
   | 'AIR_TANKER'
   | 'TRANSPORT_HELI'
+  | 'CARRIER'
+  | 'SUBMARINE'
+  | 'BATTLESHIP'
+  | 'SUPPLY_SHIP'
   | 'DESTROYER'
   | 'LANDER';
 
@@ -63,7 +67,7 @@ export type UnitDefinition = {
   isStealth?: boolean;
   turnEndFuelCost?: number;
   resupplyTarget?: 'GROUND' | 'AIR';
-  transportMode?: 'GROUND' | 'AIR';
+  transportMode?: 'GROUND' | 'AIR' | 'NAVAL';
   cargoCapacity?: number;
   cargoUnitTypes?: UnitType[];
   canUnloadAfterMove?: boolean;

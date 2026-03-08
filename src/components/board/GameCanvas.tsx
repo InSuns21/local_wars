@@ -214,15 +214,17 @@ const buildTileTooltip = (
   return lines.join('\n');
 };
 
-const failedExternalUnitIcons = new Set<string>();
+const failedExternalUnitIcons = new Map<string, number>();
 
 const UnitIcon: React.FC<{ unit: UnitState; viewerPlayerId: 'P1' | 'P2'; size: number }> = ({ unit, viewerPlayerId, size }) => {
   const isFriendly = unit.owner === viewerPlayerId;
   const ring = isFriendly ? BOARD_VISUAL_TOKENS.friendlyUnit.borderColor : BOARD_VISUAL_TOKENS.enemyUnit.borderColor;
   const fill = isFriendly ? '#1e40af' : '#9f1239';
   const paths = UNIT_GLYPH_PATHS[unit.type] ?? UNIT_GLYPH_PATHS.INFANTRY;
-  const externalIconPath = UNIT_ICON_EXTERNAL_PATHS[unit.type];
-  const [externalFailed, setExternalFailed] = useState<boolean>(() => failedExternalUnitIcons.has(unit.type));
+  const externalIconPaths = UNIT_ICON_EXTERNAL_PATHS[unit.type];
+  const [externalIconIndex, setExternalIconIndex] = useState<number>(() => failedExternalUnitIcons.get(unit.type) ?? 0);
+  const externalIconPath = externalIconPaths[externalIconIndex];
+  const externalFailed = externalIconIndex >= externalIconPaths.length;
 
   const fallbackSvg = (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" data-testid={`unit-icon-${unit.type}`}>
@@ -272,8 +274,9 @@ const UnitIcon: React.FC<{ unit: UnitState; viewerPlayerId: 'P1' | 'P2'; size: n
         alt=""
         draggable={false}
         onError={() => {
-          failedExternalUnitIcons.add(unit.type);
-          setExternalFailed(true);
+          const nextIndex = externalIconIndex + 1;
+          failedExternalUnitIcons.set(unit.type, nextIndex);
+          setExternalIconIndex(nextIndex);
         }}
         style={{
           width: `${Math.max(60, Math.round(size * 0.7))}%`,

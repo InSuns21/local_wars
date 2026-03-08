@@ -3,12 +3,14 @@ import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import {
   applyFacilityDestruction,
   canBombardProperties,
+  canTransportUnitTypeCarry,
   canUnitProduceAtTile,
   getBaseCaptureTarget,
   getBaseStructureHp,
   getFacilityHp,
   getProductionTypeForTerrain,
   getTileCaptureTarget,
+  getTransportCapacity,
   getTurnEndFuelCost,
   isAirUnitType,
   isBombardableTerrain,
@@ -95,11 +97,22 @@ describe('facilities rules', () => {
     expect(isAirUnitType('FIGHTER')).toBe(true);
     expect(isAirUnitType('INFANTRY')).toBe(false);
     expect(isNavalUnitType('DESTROYER')).toBe(true);
+    expect(isNavalUnitType('CARRIER')).toBe(true);
+    expect(isNavalUnitType('SUBMARINE')).toBe(true);
+    expect(isNavalUnitType('BATTLESHIP')).toBe(true);
+    expect(isNavalUnitType('SUPPLY_SHIP')).toBe(true);
     expect(isNavalUnitType('TANK')).toBe(false);
     expect(isStealthUnitType('STEALTH_BOMBER')).toBe(true);
+    expect(isStealthUnitType('SUBMARINE')).toBe(true);
     expect(isStealthUnitType('BOMBER')).toBe(false);
     expect(canBombardProperties('BOMBER')).toBe(true);
     expect(canBombardProperties('ATTACKER')).toBe(false);
+    expect(getTransportCapacity('LANDER')).toBe(2);
+    expect(UNIT_DEFINITIONS.LANDER.transportMode).toBe('NAVAL');
+    expect(canTransportUnitTypeCarry('LANDER', 'TANK')).toBe(true);
+    expect(canTransportUnitTypeCarry('LANDER', 'AIR_DEFENSE_INFANTRY')).toBe(true);
+    expect(canTransportUnitTypeCarry('LANDER', 'SUICIDE_DRONE')).toBe(true);
+    expect(canTransportUnitTypeCarry('LANDER', 'FIGHTER')).toBe(false);
     expect(getTurnEndFuelCost('FIGHTER')).toBe(1);
     expect(getTurnEndFuelCost('STEALTH_BOMBER')).toBe(2);
     expect(getTurnEndFuelCost('INFANTRY')).toBe(0);
@@ -120,6 +133,10 @@ describe('facilities rules', () => {
     expect(canUnitProduceAtTile('AIR_TANKER', makeTile({ terrainType: 'AIRPORT', capturePoints: 20 }))).toBe(true);
     expect(canUnitProduceAtTile('INFANTRY', makeTile({ terrainType: 'AIRPORT', capturePoints: 20 }))).toBe(false);
     expect(canUnitProduceAtTile('DESTROYER', makeTile({ terrainType: 'PORT', capturePoints: 20 }))).toBe(true);
+    expect(canUnitProduceAtTile('CARRIER', makeTile({ terrainType: 'PORT', capturePoints: 20 }))).toBe(true);
+    expect(canUnitProduceAtTile('SUBMARINE', makeTile({ terrainType: 'PORT', capturePoints: 20 }))).toBe(true);
+    expect(canUnitProduceAtTile('BATTLESHIP', makeTile({ terrainType: 'PORT', capturePoints: 20 }))).toBe(true);
+    expect(canUnitProduceAtTile('SUPPLY_SHIP', makeTile({ terrainType: 'PORT', capturePoints: 20 }))).toBe(true);
   });
 
   it('ユニットごとの補給可能タイルを判定できる', () => {

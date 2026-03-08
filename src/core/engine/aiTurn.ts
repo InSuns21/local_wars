@@ -387,6 +387,10 @@ const emptyUnitCountMap = (): Record<UnitType, number> => ({
   STEALTH_BOMBER: 0,
   AIR_TANKER: 0,
   TRANSPORT_HELI: 0,
+  CARRIER: 0,
+  SUBMARINE: 0,
+  BATTLESHIP: 0,
+  SUPPLY_SHIP: 0,
   DESTROYER: 0,
   LANDER: 0,
 });

@@ -155,6 +155,15 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('COUNTER_DRONE_AA', 'SUICIDE_DRONE')).toBeGreaterThan(0);
   });
 
+  it('港湾ユニット定義の主要な火力関係が入っている', () => {
+    expect(getBaseDamage('SUBMARINE', 'BATTLESHIP')).toBeGreaterThan(getBaseDamage('SUBMARINE', 'DESTROYER'));
+    expect(getBaseDamage('DESTROYER', 'SUBMARINE')).toBeGreaterThan(getBaseDamage('DESTROYER', 'BATTLESHIP'));
+    expect(getBaseDamage('BATTLESHIP', 'INFANTRY')).toBe(100);
+    expect(getBaseDamage('BOMBER', 'SUBMARINE')).toBe(0);
+    expect(getBaseDamage('FIGHTER', 'CARRIER')).toBeGreaterThan(0);
+    expect(getBaseDamage('SUPPLY_SHIP', 'DESTROYER')).toBe(0);
+  });
+
   it('輸送ユニットは攻撃できない', () => {
     expect(getBaseDamage('TRANSPORT_TRUCK', 'INFANTRY')).toBe(0);
     expect(getBaseDamage('TRANSPORT_TRUCK', 'TANK')).toBe(0);

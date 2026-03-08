@@ -22,6 +22,10 @@ const UNIT_ICON_FILE_TYPES: readonly UnitType[] = [
   'STEALTH_BOMBER',
   'AIR_TANKER',
   'TRANSPORT_HELI',
+  'CARRIER',
+  'SUBMARINE',
+  'BATTLESHIP',
+  'SUPPLY_SHIP',
   'DESTROYER',
   'LANDER',
 ] as const;
@@ -48,9 +52,9 @@ export const TERRAIN_TEXTURES: Record<TerrainType, string> = {
   PORT: tileSvg('#6b9db8', '<rect x="0" y="34" width="68" height="34" fill="#2f6f8a"/><rect x="8" y="22" width="18" height="12" fill="#7d5b3f"/><rect x="30" y="18" width="14" height="16" fill="#8a6545"/><path d="M0 42 C8 38 16 46 24 42 C32 38 40 46 48 42 C56 38 64 46 68 43" stroke="#9fd4f0" stroke-width="2"/><path d="M52 18 V38" stroke="#4a3726" stroke-width="3"/><path d="M52 18 L62 24" stroke="#4a3726" stroke-width="2"/>'),
 };
 
-export const UNIT_ICON_EXTERNAL_PATHS: Record<UnitType, string> = Object.fromEntries(
-  UNIT_ICON_FILE_TYPES.map((type) => [type, `/unit-icons/${type}.svg`]),
-) as Record<UnitType, string>;
+export const UNIT_ICON_EXTERNAL_PATHS: Record<UnitType, string[]> = Object.fromEntries(
+  UNIT_ICON_FILE_TYPES.map((type) => [type, [`/unit-icons/${type}.png`, `/unit-icons/${type}.svg`]]),
+) as Record<UnitType, string[]>;
 
 export const UNIT_GLYPH_PATHS: Record<UnitType, string[]> = {
   INFANTRY: [
@@ -234,6 +238,31 @@ export const UNIT_GLYPH_PATHS: Record<UnitType, string[]> = {
     'M4.4 5.8 H19.6 V6.8 H4.4 Z',
     'M11.05 2.9 H12.95 V4.2 H11.05 Z',
     'M8.6 16.9 H15.4 V17.9 H8.6 Z',
+  ],
+  CARRIER: [
+    'M2.8 16.2 H18.6 L21 13.9 H18.4 V12.6 H16.2 L14.8 10.2 H8.6 L7.1 11.7 H4.8 Z',
+    'M8.1 9.7 H15.7 V10.9 H8.1 Z',
+    'M9.9 12.1 H15.8 V13.2 H9.9 Z',
+    'M16.8 12.8 H18.3 V14.1 H16.8 Z',
+  ],
+  SUBMARINE: [
+    'M4.3 14.7 H17.8 L19.8 13.4 L18.2 12.1 H7.6 L5.7 13 Z',
+    'M8 11.1 H12.8 V12.2 H8 Z',
+    'M13.8 11.8 H15.1 V13 H13.8 Z',
+    'M5.5 13.4 H6.8 V15.3 H5.5 Z',
+  ],
+  BATTLESHIP: [
+    'M2.8 16 H17.6 L20.9 13.5 L19.3 12.9 H17.7 L16.2 10.1 H11.1 L9.9 11.8 H7.3 L5.8 13.3 H2.8 Z',
+    'M10.2 8.9 H14.8 V10.4 H10.2 Z',
+    'M8.6 11.6 H10 V13.2 H8.6 Z',
+    'M12 11.2 H13.3 V13.1 H12 Z',
+    'M15.4 11.4 H16.7 V12.9 H15.4 Z',
+  ],
+  SUPPLY_SHIP: [
+    'M3.1 16.1 H18.4 L20.1 14.2 H17.4 V12.1 H11.6 L10 10.6 H7.4 L6.2 12.5 H3.1 Z',
+    'M10.6 11.1 H15.8 V12.5 H10.6 Z',
+    'M6.7 12.8 H8.3 V16.1 H6.7 Z',
+    'M15.9 12.6 H17.1 V16.1 H15.9 Z',
   ],
   DESTROYER: [
     'M3.6 16 H17 L20.4 13.7 L18.8 13.1 H17.2 L15.9 10.6 H12.1 L10.8 12 H8.1 L6.8 13.3 H3.6 Z',
