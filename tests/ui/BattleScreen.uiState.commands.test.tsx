@@ -77,6 +77,29 @@ describe('BattleScreen UIテスト: コマンド操作', () => {
     expect(screen.queryByRole('button', { name: '施設爆撃' })).not.toBeInTheDocument();
   });
 
+  it('移動先を変えても直前の経路を継ぎ足せるならその経路を優先する', () => {
+    const state = createBattleState();
+    state.units.p1_tank.type = 'INFANTRY';
+    state.units.p1_tank.fuel = 99;
+    state.units.p1_tank.ammo = 9;
+    state.units.p1_tank.position = { x: 0, y: 0 };
+    state.map.tiles['1,1'] = { coord: { x: 1, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['1,0'] = { coord: { x: 1, y: 0 }, terrainType: 'SEA' };
+    delete state.units.p1_inf;
+    delete state.units.p2_inf;
+    delete state.units.p2_tank;
+
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 0,0' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,1' }));
+    expect(screen.getByText(/経路プレビュー: .*1,1/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,1' }));
+
+    expect(screen.getByText(/経路プレビュー: 0,1 -> 1,1 -> 2,1/)).toBeInTheDocument();
+  });
+
   it('攻撃前に予測ダメージが表示される', () => {
     renderBattleScreen();
 

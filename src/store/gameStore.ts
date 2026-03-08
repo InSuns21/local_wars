@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { applyCommand } from '@core/engine/commandApplier';
 import { canCounterAttack, forecastCombat } from '@core/rules/combat';
-import { findMovePath, getEnemyUnits, getReachableTiles } from '@core/rules/movement';
+import { findPreferredMovePath, getEnemyUnits, getReachableTiles } from '@core/rules/movement';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
 import { runAiTurn } from '@core/engine/aiTurn';
@@ -15,6 +15,7 @@ export type GameStoreState = {
   history: GameState[];
   selectedUnitId: string | null;
   selectedTile: Coord | null;
+  previousSelectedPath: Coord[] | null;
   dispatchCommand: (command: GameCommand) => CommandResult;
   getMoveRange: (unitId: string) => Coord[];
   getAttackRange: (unitId: string) => Coord[];
@@ -49,6 +50,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
     history: [],
     selectedUnitId: null,
     selectedTile: null,
+    previousSelectedPath: null,
     dispatchCommand: (command) => {
       if (command.type === 'UNDO') {
         return get().undo();
@@ -119,7 +121,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
       if (!unit) return null;
 
       const enemyUnits = getEnemyUnits(state.units, unit.owner);
-      return findMovePath(
+      return findPreferredMovePath(
         {
           map: state.map,
           unit,
@@ -127,6 +129,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
           maxMove: (state.enableFuelSupply ?? true) ? Math.min(UNIT_DEFINITIONS[unit.type].moveRange, unit.fuel) : UNIT_DEFINITIONS[unit.type].moveRange,
         },
         to,
+        get().previousSelectedPath,
       );
     },
     simulateCombat: (attackerId, defenderId, attackerPosition) => {
@@ -149,8 +152,18 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
         attackerDefenseModifier: getDefenseModifier(state, projectedAttacker),
       });
     },
-    selectUnit: (unitId) => set({ selectedUnitId: unitId }),
-    selectTile: (coord) => set({ selectedTile: coord }),
+    selectUnit: (unitId) => set({ selectedUnitId: unitId, selectedTile: null, previousSelectedPath: null }),
+    selectTile: (coord) => {
+      const state = get();
+      const previousPath =
+        coord
+        && state.selectedTile
+        && state.selectedUnitId
+        && (coord.x !== state.selectedTile.x || coord.y !== state.selectedTile.y)
+          ? state.buildMovePath(state.selectedUnitId, state.selectedTile)
+          : state.previousSelectedPath;
+      set({ selectedTile: coord, previousSelectedPath: previousPath });
+    },
     endTurn: () => get().dispatchCommand({ type: 'END_TURN' }),
     undo: () => {
       const history = get().history;
@@ -162,11 +175,13 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
       set({
         gameState: cloneState(prevState),
         history: history.slice(0, -1),
+        selectedTile: null,
+        previousSelectedPath: null,
       });
 
       return { ok: true };
     },
-    setGameState: (state) => set({ gameState: cloneState(state), history: [] }),
+    setGameState: (state) => set({ gameState: cloneState(state), history: [], selectedTile: null, previousSelectedPath: null }),
   }));
 
 

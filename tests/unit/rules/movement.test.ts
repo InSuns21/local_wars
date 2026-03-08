@@ -1,6 +1,7 @@
 ﻿import {
   canEnterTile,
   findMovePath,
+  findPreferredMovePath,
   getEnemyUnits,
   getMovementCost,
   getPathCost,
@@ -151,6 +152,22 @@ describe('移動ルール', () => {
     expect(blocked).toBeNull();
   });
 
+  it('findPreferredMovePathは同コストなら直前の経路そのものを継ぎ足す', () => {
+    const map = makeMap();
+    map.tiles['1,1'] = { coord: { x: 1, y: 1 }, terrainType: 'PLAIN' };
+    const unit = makeUnit({ type: 'INFANTRY', position: { x: 0, y: 0 } });
+
+    const direct = findMovePath({ map, unit, enemyUnits: [], maxMove: 6 }, { x: 2, y: 1 });
+    const preferred = findPreferredMovePath(
+      { map, unit, enemyUnits: [], maxMove: 6 },
+      { x: 2, y: 1 },
+      [{ x: 0, y: 1 }, { x: 1, y: 1 }],
+    );
+
+    expect(direct).toEqual([{ x: 1, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }]);
+    expect(preferred).toEqual([{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }]);
+  });
+
   it('findMovePathはblockedCoordKeysを避けて別ルートを選ぶ', () => {
     const map = makeMap();
     const unit = makeUnit({ type: 'INFANTRY', position: { x: 0, y: 0 } });
@@ -167,6 +184,19 @@ describe('移動ルール', () => {
     );
 
     expect(path).toEqual([{ x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 0 }]);
+  });
+
+  it('findPreferredMovePathは遠回りになる経由指定を採用しない', () => {
+    const map = makeMap();
+    const unit = makeUnit({ type: 'INFANTRY', position: { x: 0, y: 0 } });
+
+    const preferred = findPreferredMovePath(
+      { map, unit, enemyUnits: [], maxMove: 6 },
+      { x: 2, y: 0 },
+      [{ x: 0, y: 1 }, { x: 1, y: 1 }],
+    );
+
+    expect(preferred).toEqual([{ x: 1, y: 0 }, { x: 2, y: 0 }]);
   });
 
   it('getReachableTilesは移動力0で空配列を返す', () => {

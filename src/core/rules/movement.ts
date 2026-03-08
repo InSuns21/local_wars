@@ -199,6 +199,61 @@ export const findMovePath = (input: MoveRangeInput, to: Coord): Coord[] | null =
   return reversed.reverse();
 };
 
+export const findPreferredMovePath = (
+  input: MoveRangeInput,
+  to: Coord,
+  preferredPath?: Coord[] | null,
+): Coord[] | null => {
+  const directPath = findMovePath(input, to);
+  if (!directPath || !preferredPath || preferredPath.length === 0) {
+    return directPath;
+  }
+
+  const directCost = getPathCost(input, directPath);
+  if (directCost === null) {
+    return directPath;
+  }
+
+  const preferredCost = getPathCost(input, preferredPath);
+  if (preferredCost === null) {
+    return directPath;
+  }
+
+  const preferredEndpoint = preferredPath[preferredPath.length - 1];
+  const endpointKey = toCoordKey(preferredEndpoint);
+  const targetKey = toCoordKey(to);
+  const startKey = toCoordKey(input.unit.position);
+  if (endpointKey === startKey || endpointKey === targetKey) {
+    return directPath;
+  }
+
+  const fromEndpointInput: MoveRangeInput = {
+    ...input,
+    unit: {
+      ...input.unit,
+      position: { ...preferredEndpoint },
+    },
+    maxMove: input.maxMove - preferredCost,
+  };
+  if (fromEndpointInput.maxMove < 0) {
+    return directPath;
+  }
+
+  const extensionPath = findMovePath(fromEndpointInput, to);
+  if (!extensionPath) {
+    return directPath;
+  }
+
+  const extensionCost = getPathCost(fromEndpointInput, extensionPath);
+  if (extensionCost === null) {
+    return directPath;
+  }
+
+  return preferredCost + extensionCost === directCost
+    ? [...preferredPath, ...extensionPath]
+    : directPath;
+};
+
 export const getReachableTiles = ({ map, unit, enemyUnits, maxMove, blockedCoordKeys }: MoveRangeInput): Coord[] => {
   const startKey = toCoordKey(unit.position);
   const remainingByKey = new Map<string, number>([[startKey, maxMove]]);
