@@ -233,14 +233,24 @@ describe('visibility ルール', () => {
       position: { x: 0, y: 0 },
     };
     state.units.p1_tank.position = { x: 0, y: 4 };
+    state.map.tiles['3,2'] = {
+      coord: { x: 3, y: 2 },
+      terrainType: 'PLAIN',
+    };
+    state.map.tiles['4,4'] = {
+      coord: { x: 4, y: 4 },
+      terrainType: 'PLAIN',
+    };
     state.units.p2_tank = {
       ...state.units.p2_tank,
       type: 'BOMBER',
-      position: { x: 4, y: 2 },
+      position: { x: 3, y: 2 },
     };
     state.units.p2_inf.position = { x: 4, y: 4 };
 
+    const visibleTiles = getVisibleTileCoordKeys(state, 'P1');
     const visible = getVisibleEnemyUnitIds(state, 'P1');
+    expect(visibleTiles.has('3,2')).toBe(true);
     expect(visible.has('p2_tank')).toBe(true);
     expect(visible.has('p2_inf')).toBe(false);
   });

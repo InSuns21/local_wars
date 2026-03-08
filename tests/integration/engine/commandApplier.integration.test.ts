@@ -837,6 +837,15 @@ describe('commandApplier 統合テスト', () => {
     state.fogOfWar = true;
     state.currentPlayerId = 'P1';
 
+    state.map.tiles['1,1'] = { coord: { x: 1, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['2,1'] = { coord: { x: 2, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['3,1'] = { coord: { x: 3, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['4,1'] = { coord: { x: 4, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'PLAIN' };
+    state.map.tiles['2,2'] = { coord: { x: 2, y: 2 }, terrainType: 'PLAIN' };
+    state.map.tiles['3,2'] = { coord: { x: 3, y: 2 }, terrainType: 'PLAIN' };
+    state.map.tiles['4,2'] = { coord: { x: 4, y: 2 }, terrainType: 'PLAIN' };
+
     state.units = {
       p1_tank: {
         ...state.units.p1_tank,
@@ -846,7 +855,7 @@ describe('commandApplier 統合テスト', () => {
       },
       p2_inf: {
         ...state.units.p2_inf,
-        position: { x: 4, y: 2 },
+        position: { x: 2, y: 2 },
         hp: 10,
         moved: false,
         acted: false,
