@@ -22,6 +22,7 @@ const BASE_SETTINGS = {
   enableFuelSupply: true,
   enableAmmoSupply: true,
   enableSuicideDrones: false,
+  maxFactoryDronesPerFactory: 3,
   droneInterceptionChancePercent: 70,
   droneInterceptionMaxPerTurn: 2,
   droneAiProductionRatioLimitPercent: 50,

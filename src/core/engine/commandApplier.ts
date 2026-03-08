@@ -847,8 +847,9 @@ const applyProduceUnitCommand = (
 
   let deployCoord = { ...command.factoryCoord };
   if (isDroneProduction) {
-    if (countActiveFactoryDrones(state, command.factoryCoord) >= 5) {
-      return { ok: false, reason: 'この工場のドローン上限5機に達しています。' };
+    const maxFactoryDrones = Math.min(5, Math.max(1, state.maxFactoryDronesPerFactory ?? 3));
+    if (countActiveFactoryDrones(state, command.factoryCoord) >= maxFactoryDrones) {
+      return { ok: false, reason: `この工場のドローン上限${maxFactoryDrones}機に達しています。` };
     }
     const autoDeployCoord = getDroneAutoDeployCoord(state, command.factoryCoord);
     if (!autoDeployCoord) {

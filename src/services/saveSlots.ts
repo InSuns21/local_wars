@@ -83,6 +83,8 @@ const normalizeSettings = (value: unknown): GameSettings => {
       typeof value.showEnemyActionLogs === 'boolean' ? value.showEnemyActionLogs : (DEFAULT_SETTINGS.showEnemyActionLogs ?? false),
     enableSuicideDrones:
       typeof value.enableSuicideDrones === 'boolean' ? value.enableSuicideDrones : DEFAULT_SETTINGS.enableSuicideDrones,
+    maxFactoryDronesPerFactory:
+      typeof value.maxFactoryDronesPerFactory === 'number' ? value.maxFactoryDronesPerFactory : DEFAULT_SETTINGS.maxFactoryDronesPerFactory,
     droneInterceptionChancePercent:
       typeof value.droneInterceptionChancePercent === 'number' ? value.droneInterceptionChancePercent : DEFAULT_SETTINGS.droneInterceptionChancePercent,
     droneInterceptionMaxPerTurn:
@@ -125,6 +127,7 @@ const normalizeState = (state: GameState, settings: GameSettings): GameState => 
     state.facilityCaptureCostIncreasePercent ?? settings.facilityCaptureCostIncreasePercent ?? DEFAULT_SETTINGS.facilityCaptureCostIncreasePercent,
   showEnemyActionLogs: state.showEnemyActionLogs ?? (settings.showEnemyActionLogs ?? false),
   enableSuicideDrones: state.enableSuicideDrones ?? settings.enableSuicideDrones,
+  maxFactoryDronesPerFactory: state.maxFactoryDronesPerFactory ?? settings.maxFactoryDronesPerFactory,
   droneInterceptionChancePercent: state.droneInterceptionChancePercent ?? settings.droneInterceptionChancePercent,
   droneInterceptionMaxPerTurn: state.droneInterceptionMaxPerTurn ?? settings.droneInterceptionMaxPerTurn,
   droneAiProductionRatioLimitPercent: state.droneAiProductionRatioLimitPercent ?? settings.droneAiProductionRatioLimitPercent,

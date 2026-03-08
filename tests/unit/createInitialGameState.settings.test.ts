@@ -20,6 +20,7 @@ describe('createInitialGameState 設定反映', () => {
         enableFuelSupply: true,
         enableAmmoSupply: true,
         enableSuicideDrones: false,
+        maxFactoryDronesPerFactory: 3,
         droneInterceptionChancePercent: 70,
         droneInterceptionMaxPerTurn: 2,
         droneAiProductionRatioLimitPercent: 50,
@@ -48,6 +49,7 @@ describe('createInitialGameState 設定反映', () => {
         enableFuelSupply: true,
         enableAmmoSupply: true,
         enableSuicideDrones: false,
+        maxFactoryDronesPerFactory: 3,
         droneInterceptionChancePercent: 70,
         droneInterceptionMaxPerTurn: 2,
         droneAiProductionRatioLimitPercent: 50,
@@ -76,6 +78,7 @@ describe('createInitialGameState 設定反映', () => {
         enableFuelSupply: false,
         enableAmmoSupply: false,
         enableSuicideDrones: false,
+        maxFactoryDronesPerFactory: 3,
         droneInterceptionChancePercent: 70,
         droneInterceptionMaxPerTurn: 2,
         droneAiProductionRatioLimitPercent: 50,
@@ -86,6 +89,7 @@ describe('createInitialGameState 設定反映', () => {
     expect(state.enableFuelSupply).toBe(false);
     expect(state.enableAmmoSupply).toBe(false);
     expect(state.maxSupplyCharges).toBe(6);
+    expect(state.maxFactoryDronesPerFactory).toBe(3);
   });
 });
 

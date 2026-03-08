@@ -96,7 +96,14 @@ describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
       expect(optionLabels).toContain(`自爆ドローン (${UNIT_DEFINITIONS.SUICIDE_DRONE.cost})`);
       expect(optionLabels).toContain(`対ドローン防空車 (${UNIT_DEFINITIONS.COUNTER_DRONE_AA.cost})`);
     });
-    expect(screen.getByText('この工場のドローン数: 0/5')).toBeInTheDocument();
+    expect(screen.getByText('この工場のドローン数: 0/3')).toBeInTheDocument();
+  });
+
+  it('ドローン無効時は工場のドローン関連UI表示を隠す', () => {
+    renderBattleScreen();
+
+    expect(screen.queryByText(/この工場のドローン数:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ドローンは工場周辺5マスへ自動配置/)).not.toBeInTheDocument();
   });
 
   it('空港選択時は空中補給機を含む航空ユニットを生産候補に出す', async () => {

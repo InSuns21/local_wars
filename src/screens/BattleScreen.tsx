@@ -564,6 +564,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     ).length;
   }, [effectiveFactoryKey, gameState.units]);
 
+  const maxFactoryDronesPerFactory = Math.min(5, Math.max(1, gameState.maxFactoryDronesPerFactory ?? 3));
+
   const factoryProductionRecord = useMemo(
     () => (effectiveFactoryKey ? gameState.factoryProductionState?.[effectiveFactoryKey] ?? {} : {}),
     [effectiveFactoryKey, gameState.factoryProductionState],
@@ -1304,20 +1306,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
                 <Typography variant="body2" color="text.secondary">
                   {selectedProductionTile
-                    ? `拠点種別: ${selectedProductionTile.terrainType}${selectedProductionTile.terrainType === "AIRPORT" ? " / 航空ユニットを生産・補給" : ""}${selectedProductionTile.terrainType === "FACTORY" ? " / ドローンは工場周辺5マスへ自動配置" : ""}`
+                    ? `拠点種別: ${selectedProductionTile.terrainType}${selectedProductionTile.terrainType === "AIRPORT" ? " / 航空ユニットを生産・補給" : ""}${selectedProductionTile.terrainType === "FACTORY" && (gameState.enableSuicideDrones ?? false) ? " / ドローンは工場周辺5マスへ自動配置" : ""}`
                     : "拠点種別: 未選択"}
                 </Typography>
                 <Typography>必要資金: {selectedUnitCost}</Typography>
                 <Typography>現在手番の資金: {currentPlayerFunds}</Typography>
-                {selectedProductionTile?.terrainType === "FACTORY" && (
+                {selectedProductionTile?.terrainType === "FACTORY" && (gameState.enableSuicideDrones ?? false) && (
                   <Typography variant="body2" color="text.secondary">
-                    この工場のドローン数: {selectedFactoryDroneCount}/5
+                    この工場のドローン数: {selectedFactoryDroneCount}/{maxFactoryDronesPerFactory}
                     {factoryProductionRecord.normalProduced ? ' / 通常生産済み' : ''}
                     {(factoryProductionRecord.droneProducedCount ?? 0) > 0 ? ` / ドローン生産回数: ${factoryProductionRecord.droneProducedCount}` : ''}
                   </Typography>
                 )}
 
-                <Button type="button" variant="contained" onClick={handleProduce} disabled={!canProduce}>{produceUnitType === "SUICIDE_DRONE" ? "ドローン生産" : "生産実行"}</Button>
+                <Button type="button" variant="contained" onClick={handleProduce} disabled={!canProduce}>{produceUnitType === "SUICIDE_DRONE" && (gameState.enableSuicideDrones ?? false) ? "ドローン生産" : "生産実行"}</Button>
               </Stack>
             </AccordionDetails>
           </Accordion>

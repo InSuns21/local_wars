@@ -21,6 +21,7 @@ export type GameSettings = {
   facilityCaptureCostIncreasePercent?: number;
   showEnemyActionLogs?: boolean;
   enableSuicideDrones: boolean;
+  maxFactoryDronesPerFactory: number;
   droneInterceptionChancePercent: number;
   droneInterceptionMaxPerTurn: number;
   droneAiProductionRatioLimitPercent: number;
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   facilityCaptureCostIncreasePercent: 50,
   showEnemyActionLogs: false,
   enableSuicideDrones: false,
+  maxFactoryDronesPerFactory: 3,
   droneInterceptionChancePercent: 70,
   droneInterceptionMaxPerTurn: 2,
   droneAiProductionRatioLimitPercent: 50,
@@ -88,6 +90,7 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
     ...DEFAULT_SETTINGS,
     fogOfWar: true,
     enableSuicideDrones: true,
+    maxFactoryDronesPerFactory: 5,
     droneInterceptionChancePercent: 70,
     droneInterceptionMaxPerTurn: 2,
     droneAiProductionRatioLimitPercent: 50,

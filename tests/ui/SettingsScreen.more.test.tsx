@@ -20,10 +20,11 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     fireEvent.change(screen.getByLabelText('工場のHP回復量（ターン開始時）'), { target: { value: '4' } });
     fireEvent.change(screen.getByLabelText('HQのHP回復量（ターン開始時）'), { target: { value: '6' } });
     fireEvent.change(screen.getByLabelText('補給ユニットの最大補給回数'), { target: { value: '7' } });
+    fireEvent.click(screen.getByLabelText('自爆ドローン有効'));
+    fireEvent.change(screen.getByLabelText('工場ごとのドローン上限'), { target: { value: '5' } });
     fireEvent.change(screen.getByLabelText('対ドローン迎撃確率（%）'), { target: { value: '65' } });
     fireEvent.change(screen.getByLabelText('対ドローン迎撃回数（1ターン）'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('AIのドローン生産比率上限（%）'), { target: { value: '40' } });
-    fireEvent.click(screen.getByLabelText('自爆ドローン有効'));
     fireEvent.click(screen.getByLabelText('燃料消費あり'));
     fireEvent.click(screen.getByLabelText('弾薬消費あり'));
 
@@ -42,6 +43,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(submitted.hpRecoveryFactory).toBe(4);
     expect(submitted.hpRecoveryHq).toBe(6);
     expect(submitted.maxSupplyCharges).toBe(7);
+    expect(submitted.maxFactoryDronesPerFactory).toBe(5);
     expect(submitted.droneInterceptionChancePercent).toBe(65);
     expect(submitted.droneInterceptionMaxPerTurn).toBe(3);
     expect(submitted.droneAiProductionRatioLimitPercent).toBe(40);
@@ -82,6 +84,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
 
     expect(screen.getByLabelText('自爆ドローン有効')).toBeChecked();
     expect(screen.getByLabelText('索敵あり')).toBeChecked();
+    expect(screen.getByLabelText('工場ごとのドローン上限')).toHaveValue(5);
     expect(screen.getByLabelText('対ドローン迎撃確率（%）')).toHaveValue(70);
     expect(screen.getByLabelText('対ドローン迎撃回数（1ターン）')).toHaveValue(2);
     expect(screen.getByLabelText('AIのドローン生産比率上限（%）')).toHaveValue(50);
@@ -123,9 +126,24 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(screen.getByLabelText('初期資金')).toHaveAttribute('max', '50000');
     expect(screen.getByText(/標準値: 10000/)).toBeInTheDocument();
     expect(screen.getByText(/推奨: 8000-15000/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('工場ごとのドローン上限')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('自爆ドローン有効'));
+    expect(screen.getByLabelText('工場ごとのドローン上限')).toHaveAttribute('min', '1');
+    expect(screen.getByLabelText('工場ごとのドローン上限')).toHaveAttribute('max', '5');
     expect(screen.getByLabelText('対ドローン迎撃確率（%）')).toHaveAttribute('min', '0');
     expect(screen.getByLabelText('対ドローン迎撃確率（%）')).toHaveAttribute('max', '100');
     expect(screen.getByRole('button', { name: '詳細設定を標準へ戻す' })).toBeInTheDocument();
+  });
+
+  it('ドローン無効時はドローン関連の詳細設定を非表示にする', () => {
+    render(<SettingsScreen onConfirm={() => {}} onBack={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
+
+    expect(screen.queryByLabelText('工場ごとのドローン上限')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('対ドローン迎撃確率（%）')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('対ドローン迎撃回数（1ターン）')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('AIのドローン生産比率上限（%）')).not.toBeInTheDocument();
   });
 
   it('許容範囲外の数値を入れると開始ボタンが無効になり、警告が出る', () => {
