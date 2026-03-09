@@ -112,7 +112,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(screen.getByLabelText('1ターン収入（空港）')).toHaveValue(1000);
     expect(screen.getByLabelText('1ターン収入（港湾）')).toHaveValue(1000);
     expect(screen.getByLabelText('燃料消費あり')).toBeChecked();
-    expect(screen.getByLabelText('補給ユニットの最大補給回数')).toHaveValue(4);
+    expect(screen.getByLabelText('補給ユニットの最大補給回数')).toHaveValue(3);
     expect(screen.getByText('現在の状態: 標準')).toBeInTheDocument();
   });
 
