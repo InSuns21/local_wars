@@ -1199,6 +1199,47 @@ describe('commandApplier 統合テスト', () => {
     expect(attacked.state.units.p2_tank?.hp ?? 0).toBeLessThan(10);
   });
 
+  it('自爆ドローンは敵の自爆ドローンも攻撃できる', () => {
+    const state = createInitialGameState();
+    state.enableSuicideDrones = true;
+    state.units.p1_drone = {
+      id: 'p1_drone',
+      owner: 'P1',
+      type: 'SUICIDE_DRONE',
+      hp: 10,
+      fuel: 50,
+      ammo: 1,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      originFactoryCoord: { x: 0, y: 1 },
+    };
+    state.units.p2_drone = {
+      id: 'p2_drone',
+      owner: 'P2',
+      type: 'SUICIDE_DRONE',
+      hp: 10,
+      fuel: 50,
+      ammo: 1,
+      position: { x: 3, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      originFactoryCoord: { x: 9, y: 8 },
+    };
+
+    const attacked = applyCommand(
+      state,
+      { type: 'ATTACK', attackerId: 'p1_drone', defenderId: 'p2_drone' },
+      { rng: () => 0.5 },
+    );
+
+    expect(attacked.result.ok).toBe(true);
+    expect(attacked.state.units.p1_drone).toBeUndefined();
+    expect(attacked.state.units.p2_drone?.hp ?? 0).toBeLessThan(10);
+  });
+
   it('自爆ドローンは反撃できない間接攻撃を受けても消滅しない', () => {
     const state = createInitialGameState();
     state.enableSuicideDrones = true;

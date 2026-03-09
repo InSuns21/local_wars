@@ -153,6 +153,7 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('FLAK_TANK', 'SUICIDE_DRONE')).toBeGreaterThan(0);
     expect(getBaseDamage('MISSILE_AA', 'SUICIDE_DRONE')).toBeGreaterThan(0);
     expect(getBaseDamage('COUNTER_DRONE_AA', 'SUICIDE_DRONE')).toBeGreaterThan(0);
+    expect(getBaseDamage('SUICIDE_DRONE', 'SUICIDE_DRONE')).toBeGreaterThan(0);
   });
 
   it('港湾ユニット定義の主要な火力関係が入っている', () => {
