@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getCaptureTarget } from '@core/rules/capture';
-import { getFacilityHp, isBombardableTerrain, isOperationalFacility } from '@core/rules/facilities';
 import { getVisibleEnemyCoordKeys, getVisibleTileCoordKeys } from '@core/rules/visibility';
 import type { Coord } from '@core/types/game';
 import type { TerrainType } from '@core/types/map';
@@ -64,47 +63,43 @@ const getTerrainLabel = (terrain: TerrainType | string): string => {
   }
 };
 
-const getTerrainTraits = (terrain: TerrainType | string): { defense: string; supply: string } => {
+const getTerrainDefenseLabel = (terrain: TerrainType | string): string => {
   switch (terrain) {
     case 'HQ':
     case 'FACTORY':
     case 'CITY':
-      return { defense: '高め', supply: 'あり' };
-    case 'AIRPORT':
-      return { defense: '標準', supply: '航空補給あり' };
-    case 'PORT':
-      return { defense: '標準', supply: '海上補給あり' };
+      return '高め';
     case 'FOREST':
-      return { defense: 'やや高い', supply: 'なし' };
+      return 'やや高い';
     case 'ROAD':
     case 'BRIDGE':
     case 'RIVER':
-      return { defense: '低い', supply: 'なし' };
+      return '低い';
     default:
-      return { defense: '標準', supply: 'なし' };
+      return '標準';
   }
 };
 
-const getUnitTraitsText = (unit: UnitState): string => {
-  const def = UNIT_DEFINITIONS[unit.type];
-  const range = def.attackRangeMax > 1 ? `間接(${def.attackRangeMin}-${def.attackRangeMax})` : '直接';
-  return `${def.canCapture ? '占領可能' : '占領不可'} / ${range} / 移動:${def.movementType}`;
+const getTerrainSupplyLabel = (terrain: TerrainType | string): string => {
+  switch (terrain) {
+    case 'HQ':
+    case 'FACTORY':
+    case 'CITY':
+      return 'あり';
+    case 'AIRPORT':
+      return '航空補給あり';
+    case 'PORT':
+      return '海上補給あり';
+    default:
+      return 'なし';
+  }
 };
 
-const buildTileTooltip = (
-  terrainType: TerrainType | string,
-  unit: UnitState | undefined,
-  coord: Coord,
-  capturePoints?: number,
-  structureHp?: number,
-  operational = true,
-): string => {
-  const terrain = getTerrainTraits(terrainType);
+const buildTileTooltip = (terrainType: TerrainType | string, unit: UnitState | undefined, capturePoints?: number): string => {
   const lines = [
-    `座標: ${coord.x},${coord.y}`,
     `地形: ${getTerrainLabel(terrainType)}`,
-    `防御: ${terrain.defense}`,
-    `補給: ${terrain.supply}`,
+    `防御: ${getTerrainDefenseLabel(terrainType)}`,
+    `補給: ${getTerrainSupplyLabel(terrainType)}`,
   ];
 
   if (CAPTURABLE_TERRAINS.has(terrainType as TerrainType)) {
@@ -112,17 +107,13 @@ const buildTileTooltip = (
     lines.push(`拠点耐久: ${capturePoints ?? captureTarget}/${captureTarget}`);
   }
 
-  if (isBombardableTerrain(terrainType as TerrainType)) {
-    lines.push(`施設状態: ${operational ? '稼働中' : '機能停止'}`);
-    lines.push(`施設HP: ${structureHp ?? getCaptureTarget(terrainType as TerrainType)}`);
-  }
-
   if (unit) {
-    lines.push('');
-    lines.push(`ユニット: ${UNIT_DEFINITIONS[unit.type].label}`);
+    const def = UNIT_DEFINITIONS[unit.type];
+    const range = def.attackRangeMax > 1 ? `間接(${def.attackRangeMin}-${def.attackRangeMax})` : '直接';
+    lines.push(`ユニット: ${def.label}`);
     lines.push(`ID: ${unit.id}`);
     lines.push(`HP: ${unit.hp}`);
-    lines.push(`特性: ${getUnitTraitsText(unit)}`);
+    lines.push(`特性: ${def.canCapture ? '占領可能' : '占領不可'} / ${range} / 移動:${def.movementType}`);
   }
 
   return lines.join('\n');
@@ -145,11 +136,11 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
   const tileWidth = Math.round(BASE_TILE_WIDTH * zoom);
   const tileHeight = Math.round(BASE_TILE_HEIGHT * zoom);
   const visibleEnemyCoordKeys = useMemo(
-    () => getVisibleEnemyCoordKeys(gameState, gameState.currentPlayerId),
+    () => (gameState.fogOfWar ? getVisibleEnemyCoordKeys(gameState, gameState.currentPlayerId) : null),
     [gameState],
   );
   const visibleTileCoordKeys = useMemo(
-    () => getVisibleTileCoordKeys(gameState, gameState.currentPlayerId),
+    () => (gameState.fogOfWar ? getVisibleTileCoordKeys(gameState, gameState.currentPlayerId) : null),
     [gameState],
   );
   const unitByCoordKey = useMemo(() => {
@@ -158,7 +149,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
       .filter((unit) => {
         if (!gameState.fogOfWar) return true;
         if (unit.owner === gameState.currentPlayerId) return true;
-        return visibleEnemyCoordKeys.has(toCoordKey(unit.position));
+        return visibleEnemyCoordKeys?.has(toCoordKey(unit.position)) ?? false;
       })
       .map((unit) => [toCoordKey(unit.position), unit] as const);
     return new Map(entries);
@@ -194,7 +185,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
               const tile = gameState.map.tiles[key];
               const unit = unitByCoordKey.get(key);
               const terrainType = tile?.terrainType ?? 'PLAIN';
-              const isVisible = !gameState.fogOfWar || visibleTileCoordKeys.has(key);
+              const isVisible = !gameState.fogOfWar || (visibleTileCoordKeys?.has(key) ?? false);
               const isSelectedTile = selectedTile?.x === x && selectedTile?.y === y;
               const isSelectedUnit = selectedUnit?.position.x === x && selectedUnit?.position.y === y;
               const isPreview = previewKeys.has(key);
@@ -221,15 +212,7 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
               const propertyDurabilityLabel = isVisible && CAPTURABLE_TERRAINS.has(terrainType as TerrainType)
                 ? `耐久 ${tile?.capturePoints ?? getCaptureTarget(terrainType as TerrainType)}`
                 : 'NONE';
-              const tooltipText = buildTileTooltip(
-                terrainType,
-                isVisible ? unit : undefined,
-                coord,
-                tile?.capturePoints,
-                getFacilityHp(tile),
-                isOperationalFacility(tile),
-              );
-
+              const tooltipText = buildTileTooltip(terrainType, isVisible ? unit : undefined, tile?.capturePoints);
               return (
                 <button
                   key={key}

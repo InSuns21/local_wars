@@ -184,6 +184,19 @@ describe('戦闘ルール', () => {
     expect(getBaseDamage('HEAVY_TANK', 'SUPPLY_TRUCK')).toBeGreaterThan(getBaseDamage('HEAVY_TANK', 'RECON'));
   });
 
+  it('輸送車は偵察車レベルの防御力になる', () => {
+    expect(getBaseDamage('INFANTRY', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('INFANTRY', 'RECON'));
+    expect(getBaseDamage('RECON', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('RECON', 'RECON'));
+    expect(getBaseDamage('TANK', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('TANK', 'RECON'));
+    expect(getBaseDamage('HEAVY_TANK', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('HEAVY_TANK', 'RECON'));
+    expect(getBaseDamage('ANTI_TANK', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('ANTI_TANK', 'RECON'));
+    expect(getBaseDamage('ARTILLERY', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('ARTILLERY', 'RECON'));
+    expect(getBaseDamage('ANTI_AIR', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('ANTI_AIR', 'RECON'));
+    expect(getBaseDamage('FLAK_TANK', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('FLAK_TANK', 'RECON'));
+    expect(getBaseDamage('BOMBER', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('BOMBER', 'RECON'));
+    expect(getBaseDamage('ATTACKER', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('ATTACKER', 'RECON'));
+    expect(getBaseDamage('STEALTH_BOMBER', 'TRANSPORT_TRUCK')).toBe(getBaseDamage('STEALTH_BOMBER', 'RECON'));
+  });
 
   it('輸送ヘリは主要な対空攻撃ユニットから攻撃対象に取られ、航空で最も脆い水準になる', () => {
     expect(getBaseDamage('FIGHTER', 'TRANSPORT_HELI')).toBeGreaterThan(getBaseDamage('FIGHTER', 'AIR_TANKER'));

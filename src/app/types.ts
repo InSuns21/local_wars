@@ -27,6 +27,11 @@ export type GameSettings = {
   droneAiProductionRatioLimitPercent: number;
 };
 
+export const DRONE_FOCUSED_MAP_IDS = ['drone-factory-front', 'interceptor-belt', 'industrial-drone-raid'] as const;
+
+export const isDroneFocusedMapId = (mapId: string): boolean =>
+  (DRONE_FOCUSED_MAP_IDS as readonly string[]).includes(mapId);
+
 export const DEFAULT_SETTINGS: GameSettings = {
   aiDifficulty: 'normal',
   humanPlayerSide: 'P1',

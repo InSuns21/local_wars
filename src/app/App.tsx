@@ -38,7 +38,7 @@ import { loadBgmVolume, saveBgmVolume } from '@services/bgmVolume';
 import { loadSeVolume, saveSeVolume } from '@services/seVolume';
 import { playSoundEffect, setSoundEffectsVolume, type SoundEffectId } from '@services/soundEffects';
 import { appTheme } from '@/theme';
-import { DEFAULT_SETTINGS, GAME_SETTINGS_PRESETS, type GameSettings } from './types';
+import { DEFAULT_SETTINGS, GAME_SETTINGS_PRESETS, isDroneFocusedMapId, type GameSettings } from './types';
 
 type Screen = 'title' | 'map-select' | 'settings' | 'save-select' | 'credits' | 'tutorial' | 'battle' | 'audio-settings';
 
@@ -52,7 +52,6 @@ type AppProps = {
 
 const toGain = (volumePercent: number): number => Math.max(0, Math.min(1, volumePercent / 100));
 const isAudioDisabled = process.env.NODE_ENV === 'test';
-const DRONE_FOCUSED_MAP_IDS = new Set(['drone-factory-front', 'interceptor-belt', 'industrial-drone-raid']);
 
 const tryPlay = async (audio: HTMLAudioElement): Promise<boolean> => {
   try {
@@ -344,7 +343,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
             onConfirm={(mapId: string) => {
               playSe('confirm');
               setSelectedMapId(mapId);
-              setPendingSettings(DRONE_FOCUSED_MAP_IDS.has(mapId) ? GAME_SETTINGS_PRESETS.drone : DEFAULT_SETTINGS);
+              setPendingSettings(isDroneFocusedMapId(mapId) ? GAME_SETTINGS_PRESETS.drone : DEFAULT_SETTINGS);
               setScreen('settings');
             }}
             onBack={() => {

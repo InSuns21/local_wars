@@ -11,9 +11,9 @@ type RenderBattleScreenOptions = {
   props?: React.ComponentProps<typeof BattleScreen>;
 };
 
-const BASE_GAME_STATE = createInitialGameState();
+const BASE_GAME_STATE_SNAPSHOT = JSON.stringify(createInitialGameState());
 
-const cloneGameState = (): GameState => JSON.parse(JSON.stringify(BASE_GAME_STATE)) as GameState;
+const cloneGameState = (): GameState => JSON.parse(BASE_GAME_STATE_SNAPSHOT) as GameState;
 
 export const createBattleState = (mutateState?: (state: GameState) => void): GameState => {
   const state = cloneGameState();
