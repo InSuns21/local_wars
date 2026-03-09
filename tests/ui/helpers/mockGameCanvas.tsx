@@ -203,6 +203,16 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
               const isAttackTarget = Boolean(unit && highlightedTargetUnitId === unit.id);
               const isSupplyRange = supplyKeys.has(key);
               const isInterceptRange = interceptKeys.has(key);
+              const overlayKinds = [
+                isMoveReachable ? 'move' : null,
+                isAttackRange ? 'attack' : null,
+                isInterceptRange ? 'intercept' : null,
+                isPreview ? 'preview' : null,
+                isSelectedTile ? 'selected-tile' : null,
+                isSelectedUnit ? 'selected-unit' : null,
+                isAttackTarget ? 'attack-target' : null,
+                isSupplyRange ? 'supply' : null,
+              ].filter((kind): kind is string => Boolean(kind));
               const isClickable = Boolean(unit) || (!selectedUnit ? false : isMoveReachable || isAttackRange || isSelectedTile);
               const propertyOwner = isVisible && CAPTURABLE_TERRAINS.has(terrainType as TerrainType)
                 ? getPropertyOwnerVisual(tile?.owner)
@@ -236,6 +246,25 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
                   data-intercept-range={isInterceptRange ? 'true' : 'false'}
                   data-property-owner={propertyOwner}
                   data-fog-hidden={isVisible ? 'false' : 'true'}
+                  data-overlay-kinds={overlayKinds.join(',') || 'none'}
+                  data-overlay-layer-count={String([
+                    isMoveReachable,
+                    isAttackRange,
+                    isInterceptRange,
+                    isPreview,
+                    isSelectedTile,
+                    isSelectedUnit,
+                    isAttackTarget,
+                  ].filter(Boolean).length)}
+                  data-outline-layer-count={String([
+                    isMoveReachable,
+                    isInterceptRange,
+                    isPreview,
+                    isSelectedTile,
+                    isSelectedUnit,
+                    isAttackTarget,
+                    isSupplyRange,
+                  ].filter(Boolean).length)}
                   data-unit-hp={unitHpLabel}
                   data-property-durability={propertyDurabilityLabel}
                   style={{

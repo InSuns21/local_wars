@@ -67,6 +67,32 @@ describe('GameCanvas UIテスト: ステルス可視', () => {
     expect(screen.queryByTestId('unit-icon-STEALTH_BOMBER')).not.toBeInTheDocument();
   });
 
+  it('移動可能・攻撃範囲・迎撃半径が重なるタイルではオーバーレイを多重表示する', () => {
+    const state = createInitialGameState({ mapId: 'interceptor-belt' });
+    state.enableSuicideDrones = true;
+
+    render(
+      <GameCanvas
+        gameState={state}
+        selectedUnitId={null}
+        selectedTile={null}
+        previewPath={[]}
+        moveRangeTiles={[{ x: 5, y: 4 }]}
+        attackRangeTiles={[{ x: 5, y: 4 }]}
+        interceptRangeTiles={[{ x: 5, y: 4 }]}
+        supplyRangeTiles={[]}
+        highlightedTargetUnitId={null}
+        onSelectUnit={() => {}}
+        onSelectTile={() => {}}
+      />,
+    );
+
+    const tile = screen.getByRole('button', { name: 'タイル 5,4' });
+    expect(tile).toHaveAttribute('data-overlay-kinds', 'move,attack,intercept');
+    expect(tile).toHaveAttribute('data-overlay-layer-count', '3');
+    expect(tile).toHaveAttribute('data-outline-layer-count', '3');
+  });
+
   it('敵手番でも自軍施設直上のステルス機は表示する', () => {
     const state = createInitialGameState();
     state.fogOfWar = true;

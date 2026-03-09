@@ -18,18 +18,21 @@
   },
   moveReachable: {
     label: '移動可能',
-    overlay: 'rgba(191,219,254,0.18)',
+    overlay: 'rgba(191,219,254,0.08)',
     outline: 'inset 0 0 0 2px #2563eb',
     borderStyle: 'dashed' as const,
   },
   attackRange: {
     label: '攻撃範囲',
-    overlay: 'rgba(252,165,165,0.5)',
+    overlay: 'rgba(252,165,165,0.12)',
+    patternImage: 'repeating-linear-gradient(135deg, rgba(248,113,113,0) 0 7px, rgba(248,113,113,0.45) 7px 11px)',
+    outline: 'inset 0 0 0 1px rgba(220,38,38,0.7)',
   },
   interceptRange: {
     label: '迎撃半径',
-    overlay: 'rgba(125,211,252,0.42)',
-    outline: 'inset 0 0 0 2px #0284c7',
+    overlay: 'rgba(125,211,252,0.1)',
+    outline: 'inset 0 0 0 1px rgba(2,132,199,0.35)',
+    cornerColor: '#0284c7',
   },
   attackTarget: {
     label: '攻撃対象',

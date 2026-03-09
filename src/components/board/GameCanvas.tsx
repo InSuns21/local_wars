@@ -403,21 +403,26 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 ? getPropertyOwnerVisual(tile?.owner)
                 : null;
 
-              const overlayColor = isSelectedUnit
-                ? BOARD_VISUAL_TOKENS.selectedUnit.overlay
-                : isSelectedTile
-                  ? BOARD_VISUAL_TOKENS.selectedTile.overlay
-                  : isAttackTarget
-                    ? BOARD_VISUAL_TOKENS.attackTarget.overlay
-                    : isPreview
-                      ? BOARD_VISUAL_TOKENS.previewPath.overlay
-                      : isMoveReachable
-                        ? BOARD_VISUAL_TOKENS.moveReachable.overlay
-                        : isAttackRange
-                          ? BOARD_VISUAL_TOKENS.attackRange.overlay
-                          : isInterceptRange
-                            ? BOARD_VISUAL_TOKENS.interceptRange.overlay
-                            : 'rgba(255,255,255,0.06)';
+              const isSupplyRange = supplyKeys.has(key);
+              const overlayLayers = [
+                isMoveReachable ? BOARD_VISUAL_TOKENS.moveReachable.overlay : null,
+                isAttackRange ? BOARD_VISUAL_TOKENS.attackRange.overlay : null,
+                isInterceptRange ? BOARD_VISUAL_TOKENS.interceptRange.overlay : null,
+                isPreview ? BOARD_VISUAL_TOKENS.previewPath.overlay : null,
+                isSelectedTile ? BOARD_VISUAL_TOKENS.selectedTile.overlay : null,
+                isSelectedUnit ? BOARD_VISUAL_TOKENS.selectedUnit.overlay : null,
+                isAttackTarget ? BOARD_VISUAL_TOKENS.attackTarget.overlay : null,
+              ].filter(Boolean) as string[];
+              const overlayKinds = [
+                isMoveReachable ? 'move' : null,
+                isAttackRange ? 'attack' : null,
+                isInterceptRange ? 'intercept' : null,
+                isPreview ? 'preview' : null,
+                isSelectedTile ? 'selected-tile' : null,
+                isSelectedUnit ? 'selected-unit' : null,
+                isAttackTarget ? 'attack-target' : null,
+                isSupplyRange ? 'supply' : null,
+              ].filter(Boolean) as string[];
               const ownerBadge = unit
                 ? unit.owner === viewerPlayerId
                   ? '味'
@@ -433,21 +438,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   ? '停止'
                   : null;
 
-              const routeOutline = isSelectedUnit
-                ? BOARD_VISUAL_TOKENS.selectedUnit.outline
-                : isSelectedTile
-                  ? BOARD_VISUAL_TOKENS.selectedTile.outline
-                  : isAttackTarget
-                    ? BOARD_VISUAL_TOKENS.attackTarget.outline
-                    : isPreview
-                      ? BOARD_VISUAL_TOKENS.previewPath.outline
-                      : isMoveReachable
-                        ? BOARD_VISUAL_TOKENS.moveReachable.outline
-                        : isInterceptRange
-                          ? BOARD_VISUAL_TOKENS.interceptRange.outline
-                          : undefined;
+              const outlineLayers = [
+                isMoveReachable ? BOARD_VISUAL_TOKENS.moveReachable.outline : null,
+                isAttackRange ? BOARD_VISUAL_TOKENS.attackRange.outline : null,
+                isInterceptRange ? BOARD_VISUAL_TOKENS.interceptRange.outline : null,
+                isPreview ? BOARD_VISUAL_TOKENS.previewPath.outline : null,
+                isSelectedTile ? BOARD_VISUAL_TOKENS.selectedTile.outline : null,
+                isSelectedUnit ? BOARD_VISUAL_TOKENS.selectedUnit.outline : null,
+                isAttackTarget ? BOARD_VISUAL_TOKENS.attackTarget.outline : null,
+              ].filter(Boolean) as string[];
 
-              const isSupplyRange = supplyKeys.has(key);
               const tooltipText = buildTileTooltip(
                 terrainType,
                 isVisible ? unit : undefined,
@@ -469,13 +469,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   style={{
                     ...tileStyle,
                     backgroundColor: terrainVisual.bg,
-                    backgroundImage: `linear-gradient(${overlayColor}, ${overlayColor}), url(${TERRAIN_TEXTURES[(terrainType as TerrainType)] ?? TERRAIN_TEXTURES.PLAIN})`,
+                    backgroundImage: [
+                      ...overlayLayers.map((overlay) => `linear-gradient(${overlay}, ${overlay})`),
+                      `url(${TERRAIN_TEXTURES[(terrainType as TerrainType)] ?? TERRAIN_TEXTURES.PLAIN})`,
+                    ].join(', '),
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     borderColor: propertyVisual ? propertyVisual.color : '#64748b',
                     borderWidth: propertyVisual ? 3 : 1,
                     borderStyle: isMoveReachable && !isPreview && !isSelectedTile ? BOARD_VISUAL_TOKENS.moveReachable.borderStyle : 'solid',
-                    boxShadow: isSupplyRange && !routeOutline ? '0 0 0 2px rgba(22,163,74,0.45)' : routeOutline,
+                    boxShadow: [
+                      ...outlineLayers,
+                      isSupplyRange ? '0 0 0 2px rgba(22,163,74,0.45)' : null,
+                    ].filter(Boolean).join(', ') || undefined,
                     cursor: isClickable ? 'pointer' : 'not-allowed',
                     flexDirection: 'column',
                     gap: 3,
@@ -493,6 +499,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   data-intercept-range={isInterceptRange ? 'true' : 'false'}
                   data-property-owner={propertyVisual ? propertyVisual.tag : 'NONE'}
                   data-fog-hidden={isVisible ? 'false' : 'true'}
+                  data-overlay-kinds={overlayKinds.join(',') || 'none'}
+                  data-overlay-layer-count={String(overlayLayers.length)}
+                  data-outline-layer-count={String(outlineLayers.length + (isSupplyRange ? 1 : 0))}
                   data-unit-hp={unitHpLabel ?? 'NONE'}
                   data-property-durability={propertyDurabilityLabel ?? 'NONE'}
                   aria-label={'タイル ' + x + ',' + y}
@@ -508,6 +517,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         alignItems: 'center',
                         justifyContent: 'center',
                         pointerEvents: 'none',
+                        zIndex: 3,
                       }}
                     >
                       <UnitIcon unit={unit} viewerPlayerId={viewerPlayerId} size={unitIconSize} />
@@ -527,11 +537,33 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                       whiteSpace: 'nowrap',
                       textShadow:
                         '-1px 0 rgba(248,250,252,0.9), 0 1px rgba(248,250,252,0.9), 1px 0 rgba(248,250,252,0.9), 0 -1px rgba(248,250,252,0.9)',
+                      zIndex: 3,
                     }}
                   >
                     {terrainVisual.short}
                     {isVisible && propertyVisual ? `(${propertyVisual.tag})` : ''}
                   </span>
+                  {isAttackRange ? (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        pointerEvents: 'none',
+                        backgroundImage: BOARD_VISUAL_TOKENS.attackRange.patternImage,
+                        opacity: 1,
+                        zIndex: 1,
+                      }}
+                    />
+                  ) : null}
+                  {isInterceptRange ? (
+                    <>
+                      <span aria-hidden="true" style={{ position: 'absolute', top: 2, left: 2, width: Math.max(8, Math.round(12 * zoom)), height: Math.max(8, Math.round(12 * zoom)), borderTop: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, borderLeft: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, pointerEvents: 'none', zIndex: 2 }} />
+                      <span aria-hidden="true" style={{ position: 'absolute', top: 2, right: 2, width: Math.max(8, Math.round(12 * zoom)), height: Math.max(8, Math.round(12 * zoom)), borderTop: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, borderRight: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, pointerEvents: 'none', zIndex: 2 }} />
+                      <span aria-hidden="true" style={{ position: 'absolute', bottom: 2, left: 2, width: Math.max(8, Math.round(12 * zoom)), height: Math.max(8, Math.round(12 * zoom)), borderBottom: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, borderLeft: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, pointerEvents: 'none', zIndex: 2 }} />
+                      <span aria-hidden="true" style={{ position: 'absolute', bottom: 2, right: 2, width: Math.max(8, Math.round(12 * zoom)), height: Math.max(8, Math.round(12 * zoom)), borderBottom: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, borderRight: `3px solid ${BOARD_VISUAL_TOKENS.interceptRange.cornerColor}`, pointerEvents: 'none', zIndex: 2 }} />
+                    </>
+                  ) : null}
                   {isPreview ? (
                     <span
                       style={{
@@ -545,6 +577,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                         background: BOARD_VISUAL_TOKENS.previewPath.markerBg,
                         border: `${previewMarkerBorderWidth}px solid ${BOARD_VISUAL_TOKENS.previewPath.markerBorder}`,
                         boxShadow: '0 0 0 1px rgba(15,23,42,0.18)',
+                        zIndex: 4,
                       }}
                     />
                   ) : null}

@@ -13,6 +13,8 @@ const LegendSwatch: React.FC<{
   badgeColor?: string;
   markerBg?: string;
   markerBorder?: string;
+  patternImage?: string;
+  cornerColor?: string;
 }> = ({
   label,
   overlay,
@@ -24,6 +26,8 @@ const LegendSwatch: React.FC<{
   badgeColor,
   markerBg,
   markerBorder,
+  patternImage,
+  cornerColor,
 }) => (
   <Stack direction="row" spacing={1} alignItems="center">
     <Box
@@ -36,7 +40,10 @@ const LegendSwatch: React.FC<{
         borderStyle,
         boxShadow: outline,
         backgroundColor: '#f8fafc',
-        backgroundImage: overlay ? `linear-gradient(${overlay}, ${overlay})` : undefined,
+        backgroundImage: [
+          overlay ? `linear-gradient(${overlay}, ${overlay})` : null,
+          patternImage ?? null,
+        ].filter(Boolean).join(', ') || undefined,
         position: 'relative',
         borderRadius: 0.75,
       }}
@@ -57,6 +64,14 @@ const LegendSwatch: React.FC<{
             borderColor: markerBorder,
           }}
         />
+      ) : null}
+      {cornerColor ? (
+        <>
+          <Box component="span" sx={{ position: 'absolute', top: 2, left: 2, width: 8, height: 8, borderTop: '2px solid', borderLeft: '2px solid', borderColor: cornerColor }} />
+          <Box component="span" sx={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderTop: '2px solid', borderRight: '2px solid', borderColor: cornerColor }} />
+          <Box component="span" sx={{ position: 'absolute', bottom: 2, left: 2, width: 8, height: 8, borderBottom: '2px solid', borderLeft: '2px solid', borderColor: cornerColor }} />
+          <Box component="span" sx={{ position: 'absolute', bottom: 2, right: 2, width: 8, height: 8, borderBottom: '2px solid', borderRight: '2px solid', borderColor: cornerColor }} />
+        </>
       ) : null}
       {badgeText ? (
         <Box
@@ -119,11 +134,14 @@ export const BoardLegend: React.FC = () => (
       <LegendSwatch
         label={BOARD_VISUAL_TOKENS.attackRange.label}
         overlay={BOARD_VISUAL_TOKENS.attackRange.overlay}
+        outline={BOARD_VISUAL_TOKENS.attackRange.outline}
+        patternImage={BOARD_VISUAL_TOKENS.attackRange.patternImage}
       />
       <LegendSwatch
         label={BOARD_VISUAL_TOKENS.interceptRange.label}
         overlay={BOARD_VISUAL_TOKENS.interceptRange.overlay}
         outline={BOARD_VISUAL_TOKENS.interceptRange.outline}
+        cornerColor={BOARD_VISUAL_TOKENS.interceptRange.cornerColor}
       />
       <LegendSwatch
         label={BOARD_VISUAL_TOKENS.attackTarget.label}
