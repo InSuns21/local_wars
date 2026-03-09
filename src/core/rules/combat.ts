@@ -127,8 +127,7 @@ export const executeCombat = (
 };
 
 const bombardPowerTable: Partial<Record<UnitType, number>> = {
-  BOMBER: 9,
-  ATTACKER: 6,
+  BOMBER: 10,
   STEALTH_BOMBER: 10,
 };
 
