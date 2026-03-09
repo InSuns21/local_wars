@@ -133,4 +133,52 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     expect(store.getState().gameState.units.p1_tank.fuel).toBe(70);
     expect(store.getState().gameState.units.p1_tank.ammo).toBe(6);
   });
+
+  it('自軍ユニット選択で unit-select のSEを鳴らす', () => {
+    const onPlaySoundEffect = jest.fn();
+
+    renderBattleScreen({ props: { onPlaySoundEffect } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+
+    expect(onPlaySoundEffect).toHaveBeenCalledWith('unit-select');
+  });
+
+  it('移動成功で移動種別ごとのSEを鳴らす', () => {
+    const onPlaySoundEffect = jest.fn();
+
+    renderBattleScreen({ props: { onPlaySoundEffect } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.click(screen.getByRole('button', { name: '移動実行' }));
+
+    expect(onPlaySoundEffect).toHaveBeenCalledWith('move-confirm-tread');
+  });
+
+  it('攻撃成功で attack と destroy のSEを鳴らす', () => {
+    const onPlaySoundEffect = jest.fn();
+    const state = createBattleState();
+    state.units.p2_tank.position = { x: 2, y: 2 };
+    state.units.p2_tank.hp = 1;
+
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state), props: { onPlaySoundEffect } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+    fireEvent.change(screen.getByLabelText('攻撃対象'), { target: { value: 'p2_tank' } });
+    fireEvent.click(screen.getByRole('button', { name: '攻撃実行' }));
+
+    expect(onPlaySoundEffect).toHaveBeenCalledWith('attack');
+    expect(onPlaySoundEffect).toHaveBeenCalledWith('destroy');
+  });
+
+  it('失敗コマンドで error のSEを鳴らす', () => {
+    const onPlaySoundEffect = jest.fn();
+
+    renderBattleScreen({ props: { onPlaySoundEffect } });
+
+    fireEvent.click(screen.getByRole('button', { name: '行動を取り消す' }));
+
+    expect(onPlaySoundEffect).toHaveBeenCalledWith('error');
+  });
 });

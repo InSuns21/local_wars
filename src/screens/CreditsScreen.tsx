@@ -81,6 +81,24 @@ export const CreditsScreen: React.FC<CreditsScreenProps> = ({ onBack }) => (
           </Link>
         </Typography>
 
+        <Typography sx={{ mb: 1 }}>
+          効果音素材は Kenney の Interface Sounds を使用しています。
+        </Typography>
+        <Typography sx={{ mb: 2 }}>
+          ライセンス: CC0 1.0
+          {' '}
+          <Link href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">
+            https://creativecommons.org/publicdomain/zero/1.0/
+          </Link>
+        </Typography>
+        <Typography sx={{ mb: 2 }}>
+          配布元:
+          {' '}
+          <Link href="https://kenney.nl/assets/interface-sounds" target="_blank" rel="noopener noreferrer">
+            https://kenney.nl/assets/interface-sounds
+          </Link>
+        </Typography>
+
         {BGM_CREDITS.map((credit) => (
           <Box key={credit.screen} sx={{ mb: 1.5 }}>
             <Typography fontWeight={700}>{credit.screen}</Typography>

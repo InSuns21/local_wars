@@ -45,6 +45,7 @@
 - [docs/product-specs/gameplay-flow.md](docs/product-specs/gameplay-flow.md): 開始、対局、保存、再開の体験フロー
 - [docs/product-specs/transport-units.md](docs/product-specs/transport-units.md): 輸送車、輸送ヘリ、搭載と降車の草案仕様
 - [docs/product-specs/suicide-drones-and-counter-drone.md](docs/product-specs/suicide-drones-and-counter-drone.md): 自爆ドローン、対ドローン防空車、防空歩兵の草案仕様
+- [docs/product-specs/sound-effects.md](docs/product-specs/sound-effects.md): UI と戦闘へ導入する効果音の仕様
 
 ### 参照資料
 - [docs/references/design-system-reference-llms.txt](docs/references/design-system-reference-llms.txt): LLM 向け参照資料の置き場

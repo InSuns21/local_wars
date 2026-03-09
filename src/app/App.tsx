@@ -35,6 +35,8 @@ import {
 } from '@services/saveSlots';
 import { getBgmTrackByContext, type BgmContext } from '@services/bgmTracks';
 import { loadBgmVolume, saveBgmVolume } from '@services/bgmVolume';
+import { loadSeVolume, saveSeVolume } from '@services/seVolume';
+import { playSoundEffect, setSoundEffectsVolume, type SoundEffectId } from '@services/soundEffects';
 import { appTheme } from '@/theme';
 import { DEFAULT_SETTINGS, GAME_SETTINGS_PRESETS, type GameSettings } from './types';
 
@@ -78,6 +80,7 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
   const [overwriteState, setOverwriteState] = useState<OverwriteState | null>(null);
   const [overwriteTargetSlotId, setOverwriteTargetSlotId] = useState<1 | 2 | 3>(1);
   const [bgmVolume, setBgmVolume] = useState<number>(loadBgmVolume());
+  const [seVolume, setSeVolume] = useState<number>(loadSeVolume());
   const [isBgmBlocked, setIsBgmBlocked] = useState<boolean>(false);
   const [battleWinner, setBattleWinner] = useState<GameState['winner']>(null);
   const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -183,9 +186,25 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
     };
   }, []);
 
+  useEffect(() => {
+    setSoundEffectsVolume(seVolume);
+  }, [seVolume]);
+
+  const playSe = (id: SoundEffectId): void => {
+    if (isAudioDisabled) {
+      return;
+    }
+    playSoundEffect(id);
+  };
+
   const handleChangeBgmVolume = (volume: number): void => {
     const saved = saveBgmVolume(volume);
     setBgmVolume(saved);
+  };
+
+  const handleChangeSeVolume = (volume: number): void => {
+    const saved = saveSeVolume(volume);
+    setSeVolume(saved);
   };
 
   const startNewGame = (mapId: string, gameSettings: GameSettings): void => {
@@ -293,20 +312,29 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
             latestSaveSummary={latestSaveSummary}
             hasAnySaveData={hasAnySaveData}
             onStart={() => {
+              playSe('confirm');
               setPendingSettings(DEFAULT_SETTINGS);
               setScreen('map-select');
             }}
             onContinue={() => {
+              playSe('confirm');
               refreshSlots();
               setSaveSelectFeedback('');
               setScreen('save-select');
             }}
-            onCredits={() => setScreen('credits')}
+            onCredits={() => {
+              playSe('confirm');
+              setScreen('credits');
+            }}
             onTutorial={() => {
+              playSe('confirm');
               setTutorialReturnScreen('title');
               setScreen('tutorial');
             }}
-            onOpenAudioSettings={() => setScreen('audio-settings')}
+            onOpenAudioSettings={() => {
+              playSe('confirm');
+              setScreen('audio-settings');
+            }}
           />
         )}
 
@@ -314,11 +342,15 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
           <MapSelectScreen
             maps={MAP_CATALOG}
             onConfirm={(mapId: string) => {
+              playSe('confirm');
               setSelectedMapId(mapId);
               setPendingSettings(DRONE_FOCUSED_MAP_IDS.has(mapId) ? GAME_SETTINGS_PRESETS.drone : DEFAULT_SETTINGS);
               setScreen('settings');
             }}
-            onBack={() => setScreen('title')}
+            onBack={() => {
+              playSe('cancel');
+              setScreen('title');
+            }}
           />
         )}
 
@@ -326,9 +358,13 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
           <SettingsScreen
             initialSettings={pendingSettings}
             onConfirm={(nextSettings: GameSettings) => {
+              playSe('confirm');
               startNewGame(selectedMapId, nextSettings);
             }}
-            onBack={() => setScreen('map-select')}
+            onBack={() => {
+              playSe('cancel');
+              setScreen('map-select');
+            }}
           />
         )}
 
@@ -341,34 +377,66 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
               setSelectedSaveSlotId(slotId);
               setSaveSelectFeedback('');
             }}
-            onConfirmLoad={() => loadGameFromSlot(selectedSaveSlotId)}
-            onDelete={(slotId: 1 | 2 | 3) => setDeleteConfirmSlotId(slotId)}
-            onBack={() => setScreen('title')}
+            onConfirmLoad={() => {
+              const slot = getSaveSlot(selectedSaveSlotId, saveSlotsStorageKey);
+              playSe(slot ? 'confirm' : 'error');
+              loadGameFromSlot(selectedSaveSlotId);
+            }}
+            onDelete={(slotId: 1 | 2 | 3) => {
+              playSe('confirm');
+              setDeleteConfirmSlotId(slotId);
+            }}
+            onBack={() => {
+              playSe('cancel');
+              setScreen('title');
+            }}
           />
         )}
 
-        {screen === 'credits' && <CreditsScreen onBack={() => setScreen('title')} />}
+        {screen === 'credits' && <CreditsScreen onBack={() => {
+          playSe('cancel');
+          setScreen('title');
+        }} />}
 
-        {screen === 'tutorial' && <TutorialScreen onBack={() => setScreen(tutorialReturnScreen)} />}
+        {screen === 'tutorial' && <TutorialScreen onBack={() => {
+          playSe('cancel');
+          setScreen(tutorialReturnScreen);
+        }} />}
 
         {screen === 'audio-settings' && (
           <AudioSettingsScreen
-            volume={bgmVolume}
-            onChangeVolume={handleChangeBgmVolume}
-            onBack={() => setScreen('title')}
+            bgmVolume={bgmVolume}
+            seVolume={seVolume}
+            onChangeBgmVolume={handleChangeBgmVolume}
+            onChangeSeVolume={handleChangeSeVolume}
+            onBack={() => {
+              playSe('cancel');
+              setScreen('title');
+            }}
           />
         )}
 
         {screen === 'battle' && activeStore && (
           <BattleScreen
             useStore={activeStore}
-            onSaveAndExit={saveAndExit}
-            onExitWithoutSave={() => setShowExitWithoutSaveConfirm(true)}
-            onReturnToTitle={() => setScreen('title')}
+            onSaveAndExit={(state) => {
+              playSe('confirm');
+              saveAndExit(state);
+            }}
+            onExitWithoutSave={() => {
+              playSe('confirm');
+              setShowExitWithoutSaveConfirm(true);
+            }}
+            onReturnToTitle={() => {
+              playSe('cancel');
+              setScreen('title');
+            }}
             onOpenTutorial={() => {
+              playSe('confirm');
               setTutorialReturnScreen('battle');
               setScreen('tutorial');
             }}
+            onPlaySoundEffect={playSe}
           />
         )}
 
@@ -379,11 +447,15 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
             confirmLabel="削除する"
             cancelLabel="キャンセル"
             onConfirm={() => {
+              playSe('confirm');
               deleteSaveSlot(deleteConfirmSlotId, saveSlotsStorageKey);
               setDeleteConfirmSlotId(null);
               refreshSlots();
             }}
-            onCancel={() => setDeleteConfirmSlotId(null)}
+            onCancel={() => {
+              playSe('cancel');
+              setDeleteConfirmSlotId(null);
+            }}
           />
         )}
 
@@ -394,10 +466,14 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
             confirmLabel="終了する"
             cancelLabel="戻る"
             onConfirm={() => {
+              playSe('confirm');
               setShowExitWithoutSaveConfirm(false);
               setScreen('title');
             }}
-            onCancel={() => setShowExitWithoutSaveConfirm(false)}
+            onCancel={() => {
+              playSe('cancel');
+              setShowExitWithoutSaveConfirm(false);
+            }}
           />
         )}
 
@@ -406,7 +482,10 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
             open
             aria-modal="true"
             aria-label="保存スロット上書き選択"
-            onClose={() => setOverwriteState(null)}
+            onClose={() => {
+              playSe('cancel');
+              setOverwriteState(null);
+            }}
             maxWidth="sm"
             fullWidth
           >
@@ -430,8 +509,14 @@ export const App: React.FC<AppProps> = ({ saveSlotsStorageKey }) => {
               ))}
             </DialogContent>
             <DialogActions>
-              <Button type="button" onClick={() => setOverwriteState(null)}>キャンセル</Button>
-              <Button type="button" variant="contained" onClick={confirmOverwriteSave}>このスロットに保存</Button>
+              <Button type="button" onClick={() => {
+                playSe('cancel');
+                setOverwriteState(null);
+              }}>キャンセル</Button>
+              <Button type="button" variant="contained" onClick={() => {
+                playSe('confirm');
+                confirmOverwriteSave();
+              }}>このスロットに保存</Button>
             </DialogActions>
           </Dialog>
         )}

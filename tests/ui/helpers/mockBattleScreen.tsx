@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { GameState } from '@core/types/state';
+import type { SoundEffectId } from '@services/soundEffects';
 
 type MockBattleScreenProps = {
   useStore?: <T>(selector: (state: { gameState: GameState }) => T) => T;
@@ -7,6 +8,7 @@ type MockBattleScreenProps = {
   onExitWithoutSave?: () => void;
   onReturnToTitle?: () => void;
   onOpenTutorial?: () => void;
+  onPlaySoundEffect?: (id: SoundEffectId) => void;
 };
 
 export const BattleScreen: React.FC<MockBattleScreenProps> = ({

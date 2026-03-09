@@ -41,6 +41,7 @@ import type { Coord } from "@core/types/game";
 import type { GameState } from "@core/types/state";
 import type { UnitState, UnitType } from "@core/types/unit";
 import { manhattanDistance, toCoordKey } from "@/utils/coord";
+import { getMoveSoundEffectId, type SoundEffectId } from "@services/soundEffects";
 
 export const battleStore = createGameStore(createInitialGameState());
 
@@ -50,6 +51,7 @@ type BattleScreenProps = {
   onExitWithoutSave?: () => void;
   onReturnToTitle?: () => void;
   onOpenTutorial?: () => void;
+  onPlaySoundEffect?: (id: SoundEffectId) => void;
 };
 
 const PRODUCIBLE_UNITS_BY_SITE: Record<"GROUND" | "AIR" | "NAVAL", UnitType[]> = {
@@ -194,6 +196,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   onExitWithoutSave,
   onReturnToTitle,
   onOpenTutorial,
+  onPlaySoundEffect,
 }) => {
   const gameState = useStore((s: GameStoreState) => s.gameState);
   const selectedUnitId = useStore((s: GameStoreState) => s.selectedUnitId);
@@ -213,6 +216,37 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const canControlSelectedUnit = Boolean(
     selectedUnit && selectedUnit.owner === gameState.currentPlayerId,
   );
+
+  const playSe = (id: SoundEffectId): void => {
+    onPlaySoundEffect?.(id);
+  };
+
+  const playCombatOutcomeSound = (
+    beforeState: GameState,
+    afterState: GameState,
+    attackerId: string,
+    defenderId: string,
+  ): void => {
+    const beforeAttacker = beforeState.units[attackerId];
+    const beforeDefender = beforeState.units[defenderId];
+    const afterAttacker = afterState.units[attackerId];
+    const afterDefender = afterState.units[defenderId];
+
+    const destroyed =
+      (beforeAttacker && (!afterAttacker || afterAttacker.hp <= 0))
+      || (beforeDefender && (!afterDefender || afterDefender.hp <= 0));
+    const damaged =
+      (beforeAttacker && afterAttacker && afterAttacker.hp < beforeAttacker.hp)
+      || (beforeDefender && afterDefender && afterDefender.hp < beforeDefender.hp);
+
+    if (destroyed) {
+      playSe('destroy');
+      return;
+    }
+    if (damaged) {
+      playSe('hit');
+    }
+  };
 
   const [targetUnitId, setTargetUnitId] = useState<string>("");
   const [loadCargoUnitId, setLoadCargoUnitId] = useState<string>("");
@@ -726,6 +760,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       setLastResult("成功");
       return;
     }
+    playSe('error');
     setLastResult(
       `失敗: ${reason ?? "不明な理由"}`,
     );
@@ -735,6 +770,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     setShowOtherMenu(false);
     setShowGameExitMenu(false);
     setShowHelpMenu(false);
+  };
+
+  const handleSelectUnit = (unitId: string | null): void => {
+    if (isGameOver) {
+      return;
+    }
+    if (unitId) {
+      const unit = gameState.units[unitId];
+      if (unit && unit.owner === gameState.currentPlayerId) {
+        playSe('unit-select');
+      }
+    }
+    selectUnit(unitId);
   };
 
   const handleSelectTile = (coord: Coord): void => {
@@ -761,13 +809,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       );
       return;
     }
-    if (!selectedTile) {
+    if (!selectedTile || !selectedUnit) {
       setLastResult(
         "失敗: 盤面をクリックして移動先を指定してください。",
       );
       return;
     }
 
+    const currentSelectedUnit = selectedUnit;
     const path = buildMovePath(selectedUnitId, selectedTile);
     const result = dispatchCommand({
       type: "MOVE_UNIT",
@@ -777,6 +826,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     });
     setCommandResult(result.ok, result.reason);
     if (result.ok) {
+      playSe(getMoveSoundEffectId(UNIT_DEFINITIONS[currentSelectedUnit.type].movementType));
       selectTile(null);
     }
   };
@@ -821,6 +871,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         return;
       }
 
+      playSe(getMoveSoundEffectId(UNIT_DEFINITIONS[selectedUnit.type].movementType));
       const movedState = useStore.getState().gameState;
       const movedUnit = movedState.units[selectedUnitId];
       const targetAfterMove = movedState.units[targetUnitId];
@@ -842,6 +893,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         return;
       }
 
+      const beforeAttackState = useStore.getState().gameState;
       const attackAfterMoveResult = dispatchCommand({
         type: "ATTACK",
         attackerId: selectedUnitId,
@@ -849,6 +901,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       });
 
       if (attackAfterMoveResult.ok) {
+        playSe('attack');
+        playCombatOutcomeSound(beforeAttackState, useStore.getState().gameState, selectedUnitId, targetUnitId);
         setLastResult("成功: 移動後に攻撃しました。");
         return;
       }
@@ -857,12 +911,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       return;
     }
 
+    const beforeAttackState = useStore.getState().gameState;
     const result = dispatchCommand({
       type: "ATTACK",
       attackerId: selectedUnitId,
       defenderId: targetUnitId,
     });
     setCommandResult(result.ok, result.reason);
+    if (result.ok) {
+      playSe('attack');
+      playCombatOutcomeSound(beforeAttackState, useStore.getState().gameState, selectedUnitId, targetUnitId);
+    }
   };
   const handleCapture = (): void => {
     if (isGameOver) {
@@ -898,6 +957,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         return;
       }
 
+      playSe(getMoveSoundEffectId(UNIT_DEFINITIONS[selectedUnit.type].movementType));
       const movedState = useStore.getState().gameState;
       const movedUnit = movedState.units[selectedUnitId];
       const reachedPlannedTile = Boolean(
@@ -916,6 +976,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       const captureAfterMoveResult = dispatchCommand({ type: "CAPTURE", unitId: selectedUnitId });
 
       if (captureAfterMoveResult.ok) {
+        playSe('confirm');
         setLastResult("成功: 移動後に占領しました。");
         return;
       }
@@ -926,6 +987,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     const result = dispatchCommand({ type: "CAPTURE", unitId: selectedUnitId });
     setCommandResult(result.ok, result.reason);
+    if (result.ok) {
+      playSe('confirm');
+    }
   };
   const handleLoad = (): void => {
     if (isGameOver) {
@@ -939,6 +1003,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     const result = dispatchCommand({ type: "LOAD", transportUnitId: selectedUnitId, cargoUnitId: loadCargoUnitId });
     setCommandResult(result.ok, result.reason);
+    if (result.ok) {
+      playSe('confirm');
+    }
   };
 
   const handleUnload = (): void => {
@@ -957,6 +1024,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     const result = dispatchCommand({ type: "UNLOAD", transportUnitId: selectedUnitId, cargoUnitId: unloadCargoUnitId, to: selectedTile });
     setCommandResult(result.ok, result.reason);
+    if (result.ok) {
+      playSe('confirm');
+    }
   };
 
   const handleSupply = (): void => {
@@ -975,6 +1045,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
     const result = dispatchCommand({ type: "SUPPLY", unitId: selectedUnitId });
     setCommandResult(result.ok, result.reason);
+    if (result.ok) {
+      playSe('confirm');
+    }
   };
 
   const handleBombard = (): void => {
@@ -1009,6 +1082,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       target: selectedTile,
     });
     setCommandResult(result.ok, result.reason);
+    if (result.ok) {
+      playSe('confirm');
+    }
   };
 
   const handleProduce = (unitType: UnitType = produceUnitType): void => {
@@ -1033,6 +1109,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       unitType,
     });
     setCommandResult(result.ok, result.reason);
+    if (result.ok) {
+      playSe('confirm');
+    }
   };
 
   return (
@@ -1068,12 +1147,26 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           <Button
             type="button"
             variant="contained"
-            onClick={() => endTurn()}
+            onClick={() => {
+              const result = endTurn();
+              if (result.ok) {
+                playSe('confirm');
+              } else {
+                playSe('error');
+              }
+            }}
             disabled={isGameOver}
           >
             {"ターン終了"}
           </Button>
-          <Button type="button" variant="outlined" onClick={() => undo()}>
+          <Button type="button" variant="outlined" onClick={() => {
+            const result = undo();
+            if (result.ok) {
+              playSe('cancel');
+            } else {
+              playSe('error');
+            }
+          }}>
             {"行動を取り消す"}
           </Button>
           <Button
@@ -1463,7 +1556,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 interceptRangeTiles={interceptRangeTiles}
                 highlightedTargetUnitId={canIssueAttack ? targetUnitId || null : null}
                 zoom={boardZoom}
-                onSelectUnit={isGameOver ? () => {} : selectUnit}
+                onSelectUnit={isGameOver ? () => {} : handleSelectUnit}
                 onSelectTile={handleSelectTile}
               />
             </Box>
