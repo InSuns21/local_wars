@@ -46,7 +46,7 @@ describe('soundEffects', () => {
 
     playSoundEffect('confirm');
 
-    expect(audioCtor).toHaveBeenCalledWith('./audio/se/confirm.wav');
+    expect(audioCtor).toHaveBeenCalledWith('./audio/se/confirm.mp3');
     expect(cloneNode).toHaveBeenCalledWith(true);
     expect(clonePlay).toHaveBeenCalled();
     expect(getMoveSoundEffectId('AIR')).toBe('move-confirm-air');

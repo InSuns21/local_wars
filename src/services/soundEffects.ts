@@ -29,18 +29,18 @@ type ToneStep = {
 const DEFAULT_ATTACK = 0.005;
 const DEFAULT_RELEASE = 0.06;
 const SOUND_EFFECT_FILE_PATHS: Record<SoundEffectId, string> = {
-  confirm: './audio/se/confirm.wav',
-  cancel: './audio/se/cancel.wav',
-  error: './audio/se/error.wav',
-  'unit-select': './audio/se/unit-select.wav',
-  'move-confirm-foot': './audio/se/move-confirm-foot.wav',
-  'move-confirm-tread': './audio/se/move-confirm-tread.wav',
-  'move-confirm-wheel': './audio/se/move-confirm-wheel.wav',
-  'move-confirm-air': './audio/se/move-confirm-air.wav',
-  'move-confirm-naval': './audio/se/move-confirm-naval.wav',
-  attack: './audio/se/attack.wav',
-  hit: './audio/se/hit.wav',
-  destroy: './audio/se/destroy.wav',
+  confirm: './audio/se/confirm.mp3',
+  cancel: './audio/se/cancel.mp3',
+  error: './audio/se/error.mp3',
+  'unit-select': './audio/se/unit-select.mp3',
+  'move-confirm-foot': './audio/se/move-confirm-foot.mp3',
+  'move-confirm-tread': './audio/se/move-confirm-tread.mp3',
+  'move-confirm-wheel': './audio/se/move-confirm-wheel.mp3',
+  'move-confirm-air': './audio/se/move-confirm-air.mp3',
+  'move-confirm-naval': './audio/se/move-confirm-naval.mp3',
+  attack: './audio/se/attack.mp3',
+  hit: './audio/se/hit.mp3',
+  destroy: './audio/se/destroy.mp3',
 };
 
 const SOUND_EFFECTS: Record<SoundEffectId, ToneStep[]> = {

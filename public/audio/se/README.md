@@ -9,18 +9,18 @@
 - ライセンス: `LICENSE.txt` を参照
 
 ## 割り当て
-- `confirm.wav`: 決定
-- `cancel.wav`: 戻る・キャンセル
-- `error.wav`: エラー
-- `unit-select.wav`: ユニット選択
-- `move-confirm-foot.wav`: 徒歩移動
-- `move-confirm-tread.wav`: 履帯移動
-- `move-confirm-wheel.wav`: 車輪移動
-- `move-confirm-air.wav`: 航空移動
-- `move-confirm-naval.wav`: 海上移動
-- `attack.wav`: 攻撃開始
-- `hit.wav`: 被弾
-- `destroy.wav`: 撃破
+- `confirm.mp3`: 決定
+- `cancel.mp3`: 戻る・キャンセル
+- `error.mp3`: エラー
+- `unit-select.mp3`: ユニット選択
+- `move-confirm-foot.mp3`: 徒歩移動
+- `move-confirm-tread.mp3`: 履帯移動
+- `move-confirm-wheel.mp3`: 車輪移動
+- `move-confirm-air.mp3`: 航空移動
+- `move-confirm-naval.mp3`: 海上移動
+- `attack.mp3`: 攻撃開始
+- `hit.mp3`: 被弾
+- `destroy.mp3`: 撃破
 
 ## 運用
 - 再生サービスはまずこのディレクトリの音声ファイルを使います

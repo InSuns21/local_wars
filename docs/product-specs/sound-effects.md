@@ -88,18 +88,18 @@
 - マップや兵種ごとの個別SE差分
 
 ## 素材配置
-- `public/audio/se/confirm.wav`
-- `public/audio/se/cancel.wav`
-- `public/audio/se/error.wav`
-- `public/audio/se/unit-select.wav`
-- `public/audio/se/move-confirm-foot.wav`
-- `public/audio/se/move-confirm-tread.wav`
-- `public/audio/se/move-confirm-wheel.wav`
-- `public/audio/se/move-confirm-air.wav`
-- `public/audio/se/move-confirm-naval.wav`
-- `public/audio/se/attack.wav`
-- `public/audio/se/hit.wav`
-- `public/audio/se/destroy.wav`
+- `public/audio/se/confirm.mp3`
+- `public/audio/se/cancel.mp3`
+- `public/audio/se/error.mp3`
+- `public/audio/se/unit-select.mp3`
+- `public/audio/se/move-confirm-foot.mp3`
+- `public/audio/se/move-confirm-tread.mp3`
+- `public/audio/se/move-confirm-wheel.mp3`
+- `public/audio/se/move-confirm-air.mp3`
+- `public/audio/se/move-confirm-naval.mp3`
+- `public/audio/se/attack.mp3`
+- `public/audio/se/hit.mp3`
+- `public/audio/se/destroy.mp3`
 
 ## 受け入れ条件
 - 音量設定画面で `BGM音量` と `SE音量` を個別に調整できる
