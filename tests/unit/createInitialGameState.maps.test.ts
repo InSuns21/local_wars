@@ -133,8 +133,42 @@ describe('スカーミッシュマップ定義', () => {
     expect(islandHopping?.map.tiles['17,13']?.terrainType).toBe('SEA');
     expect(Object.values(coastalCannonade?.map.tiles ?? {}).some((tile) => tile.terrainType === 'SEA')).toBe(true);
     expect(Object.values(combinedSeaFront?.map.tiles ?? {}).some((tile) => tile.terrainType === 'AIRPORT')).toBe(true);
+    expect(Object.values(carrierStrike?.map.tiles ?? {}).filter((tile) => tile.terrainType === 'AIRPORT')).toHaveLength(2);
     expect(Object.values(carrierStrike?.units ?? {}).some((unit) => unit.type === 'CARRIER')).toBe(true);
     expect(Object.values(droneSeaFront?.units ?? {}).some((unit) => unit.type === 'COUNTER_DRONE_AA')).toBe(true);
+  });
+
+  it('carrier-strike と drone-sea-front は中央島の都市偏重を避けて左右本土へ分散している', () => {
+    const countCitiesInRect = (
+      scenario: NonNullable<ReturnType<typeof getSkirmishScenario>>,
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+    ) =>
+      Object.values(scenario.map.tiles).filter(
+        (tile) =>
+          tile.terrainType === 'CITY' &&
+          tile.coord.x >= x1 &&
+          tile.coord.x <= x2 &&
+          tile.coord.y >= y1 &&
+          tile.coord.y <= y2,
+      ).length;
+
+    const carrierStrike = getSkirmishScenario('carrier-strike');
+    const droneSeaFront = getSkirmishScenario('drone-sea-front');
+
+    expect(carrierStrike).not.toBeNull();
+    expect(droneSeaFront).not.toBeNull();
+    if (!carrierStrike || !droneSeaFront) return;
+
+    expect(countCitiesInRect(carrierStrike, 10, 7, 13, 10)).toBe(2);
+    expect(countCitiesInRect(carrierStrike, 0, 2, 4, 8)).toBe(4);
+    expect(countCitiesInRect(carrierStrike, 19, 11, 23, 17)).toBe(4);
+
+    expect(countCitiesInRect(droneSeaFront, 9, 8, 14, 12)).toBe(4);
+    expect(countCitiesInRect(droneSeaFront, 0, 1, 6, 18)).toBe(4);
+    expect(countCitiesInRect(droneSeaFront, 17, 1, 23, 18)).toBe(4);
   });
 
   it('CITY・FACTORY・AIRPORT・HQ は全マップで四方を海に囲まれない', () => {

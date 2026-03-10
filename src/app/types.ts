@@ -31,7 +31,7 @@ export type GameSettings = {
   carrierCargoHpRecoveryAtPort: number;
 };
 
-export const DRONE_FOCUSED_MAP_IDS = ['drone-factory-front', 'interceptor-belt', 'industrial-drone-raid'] as const;
+export const DRONE_FOCUSED_MAP_IDS = ['drone-factory-front', 'interceptor-belt', 'industrial-drone-raid', 'drone-sea-front'] as const;
 
 export const isDroneFocusedMapId = (mapId: string): boolean =>
   (DRONE_FOCUSED_MAP_IDS as readonly string[]).includes(mapId);
