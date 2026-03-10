@@ -54,6 +54,8 @@ const getTerrainLabel = (terrain: TerrainType | string): string => {
       return '川';
     case 'SEA':
       return '海';
+    case 'COAST':
+      return '海岸';
     case 'AIRPORT':
       return '空港';
     case 'PORT':
@@ -75,6 +77,8 @@ const getTerrainDefenseLabel = (terrain: TerrainType | string): string => {
     case 'BRIDGE':
     case 'RIVER':
       return '低い';
+    case 'COAST':
+      return '防御側不利';
     default:
       return '標準';
   }

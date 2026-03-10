@@ -24,6 +24,10 @@ describe('createInitialGameState 設定反映', () => {
         droneInterceptionChancePercent: 70,
         droneInterceptionMaxPerTurn: 2,
         droneAiProductionRatioLimitPercent: 50,
+        carrierCargoFuelRecoveryPercent: 50,
+        carrierCargoAmmoRecoveryPercent: 50,
+        carrierCargoHpRecovery: 1,
+        carrierCargoHpRecoveryAtPort: 1,
       },
     });
 
@@ -53,6 +57,10 @@ describe('createInitialGameState 設定反映', () => {
         droneInterceptionChancePercent: 70,
         droneInterceptionMaxPerTurn: 2,
         droneAiProductionRatioLimitPercent: 50,
+        carrierCargoFuelRecoveryPercent: 50,
+        carrierCargoAmmoRecoveryPercent: 50,
+        carrierCargoHpRecovery: 1,
+        carrierCargoHpRecoveryAtPort: 1,
       },
     });
 
@@ -82,6 +90,10 @@ describe('createInitialGameState 設定反映', () => {
         droneInterceptionChancePercent: 70,
         droneInterceptionMaxPerTurn: 2,
         droneAiProductionRatioLimitPercent: 50,
+        carrierCargoFuelRecoveryPercent: 35,
+        carrierCargoAmmoRecoveryPercent: 40,
+        carrierCargoHpRecovery: 2,
+        carrierCargoHpRecoveryAtPort: 3,
       },
     });
 
@@ -90,6 +102,10 @@ describe('createInitialGameState 設定反映', () => {
     expect(state.enableAmmoSupply).toBe(false);
     expect(state.maxSupplyCharges).toBe(6);
     expect(state.maxFactoryDronesPerFactory).toBe(3);
+    expect(state.carrierCargoFuelRecoveryPercent).toBe(35);
+    expect(state.carrierCargoAmmoRecoveryPercent).toBe(40);
+    expect(state.carrierCargoHpRecovery).toBe(2);
+    expect(state.carrierCargoHpRecoveryAtPort).toBe(3);
   });
 });
 

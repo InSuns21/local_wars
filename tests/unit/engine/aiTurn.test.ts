@@ -26,6 +26,10 @@ const BASE_SETTINGS = {
   droneInterceptionChancePercent: 70,
   droneInterceptionMaxPerTurn: 2,
   droneAiProductionRatioLimitPercent: 50,
+  carrierCargoFuelRecoveryPercent: 50,
+  carrierCargoAmmoRecoveryPercent: 50,
+  carrierCargoHpRecovery: 1,
+  carrierCargoHpRecoveryAtPort: 1,
 };
 
 const makeUnit = (overrides: Partial<UnitState> & Pick<UnitState, 'id' | 'owner' | 'type'>): UnitState => {
@@ -106,6 +110,38 @@ describe('aiターンの挙動テスト', () => {
     const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
 
     expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'CAPTURE' && log.detail?.includes('p2_inf'))).toBe(true);
+    expect(next.map.tiles['2,2']?.capturePoints).toBe(10);
+  });
+
+  it('Normalは防空歩兵でも占領可能なら占領を優先する', () => {
+    const state = createAiState('normal');
+    state.players.P2.funds = 0;
+
+    state.units = {
+      p2_adi: makeUnit({
+        id: 'p2_adi',
+        owner: 'P2',
+        type: 'AIR_DEFENSE_INFANTRY',
+        position: { x: 2, y: 2 },
+      }),
+      p1_tank: makeUnit({
+        id: 'p1_tank',
+        owner: 'P1',
+        type: 'TANK',
+        position: { x: 3, y: 2 },
+      }),
+    };
+
+    state.map.tiles['2,2'] = {
+      coord: { x: 2, y: 2 },
+      terrainType: 'CITY',
+      owner: 'P1',
+      capturePoints: 20,
+    };
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+
+    expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'CAPTURE' && log.detail?.includes('p2_adi'))).toBe(true);
     expect(next.map.tiles['2,2']?.capturePoints).toBe(10);
   });
 
@@ -215,5 +251,60 @@ describe('aiターンの挙動テスト', () => {
     const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
     expect(produceLogs.length).toBeGreaterThan(0);
     expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(true);
+  });
+
+  it('Normalは港を所有している海戦マップで海上ユニットを生産する', () => {
+    const state = createInitialGameState({
+      mapId: 'island-landing',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.players.P2.funds = 20000;
+
+    for (const unit of Object.values(state.units)) {
+      if (unit.owner === 'P2') {
+        unit.moved = true;
+        unit.acted = true;
+      }
+    }
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+    expect(produceLogs.length).toBeGreaterThan(0);
+    expect(produceLogs.some((log) => /^(DESTROYER|LANDER|CARRIER|SUPPLY_SHIP)/.test(log.detail ?? ''))).toBe(true);
+  });
+
+  it('Normalは海戦マップで駆逐艦が足りないとき港から駆逐艦を優先生産する', () => {
+    const state = createInitialGameState({
+      mapId: 'carrier-strike',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.players.P2.funds = UNIT_DEFINITIONS.DESTROYER.cost;
+    delete state.units.p2_destroyer;
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (tile.owner === 'P2' && (tile.terrainType === 'FACTORY' || tile.terrainType === 'AIRPORT')) {
+        tile.owner = undefined;
+      }
+    }
+
+    for (const unit of Object.values(state.units)) {
+      if (unit.owner === 'P2') {
+        unit.moved = true;
+        unit.acted = true;
+      }
+    }
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+
+    expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT' && log.detail?.startsWith('DESTROYER'))).toBe(true);
   });
 });

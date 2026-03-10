@@ -39,6 +39,10 @@ export type GameState = {
   droneInterceptionChancePercent?: number;
   droneInterceptionMaxPerTurn?: number;
   droneAiProductionRatioLimitPercent?: number;
+  carrierCargoFuelRecoveryPercent?: number;
+  carrierCargoAmmoRecoveryPercent?: number;
+  carrierCargoHpRecovery?: number;
+  carrierCargoHpRecoveryAtPort?: number;
   factoryProductionState?: Record<string, { normalProduced?: boolean; droneProducedCount?: number }>;
 };
 

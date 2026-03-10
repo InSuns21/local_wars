@@ -1323,6 +1323,105 @@ describe('commandApplier 統合テスト', () => {
     expect(moved.state.actionLog.some((entry) => entry.action === 'DRONE_INTERCEPT' && entry.detail?.includes('迎撃成功'))).toBe(true);
   });
 
+  it('揚陸艦は海岸か港にだけ降車できる', () => {
+    const state = createInitialGameState();
+    state.map.tiles['5,5'] = { coord: { x: 5, y: 5 }, terrainType: 'SEA' };
+    state.map.tiles['5,4'] = { coord: { x: 5, y: 4 }, terrainType: 'COAST' };
+    state.map.tiles['6,5'] = { coord: { x: 6, y: 5 }, terrainType: 'PORT', owner: 'P1', capturePoints: 20, operational: true };
+    state.map.tiles['5,6'] = { coord: { x: 5, y: 6 }, terrainType: 'PLAIN' };
+    state.map.tiles['4,5'] = { coord: { x: 4, y: 5 }, terrainType: 'PLAIN' };
+    state.units.p1_lander = {
+      id: 'p1_lander', owner: 'P1', type: 'LANDER', hp: 10, fuel: 99, ammo: 0,
+      position: { x: 5, y: 5 }, moved: false, acted: false, lastMovePath: [],
+      cargo: [{ ...state.units.p1_inf, id: 'cargo_inf', position: { x: 5, y: 5 } }],
+    };
+    delete state.units.p1_inf;
+
+    const unloadPlain = applyCommand(state, { type: 'UNLOAD', transportUnitId: 'p1_lander', cargoUnitId: 'cargo_inf', to: { x: 5, y: 6 } }, { rng: () => 0.5 });
+    const unloadShallow = applyCommand(state, { type: 'UNLOAD', transportUnitId: 'p1_lander', cargoUnitId: 'cargo_inf', to: { x: 5, y: 4 } }, { rng: () => 0.5 });
+    const unloadPort = applyCommand(state, { type: 'UNLOAD', transportUnitId: 'p1_lander', cargoUnitId: 'cargo_inf', to: { x: 6, y: 5 } }, { rng: () => 0.5 });
+
+    expect(unloadPlain.result.ok).toBe(false);
+    expect(unloadShallow.result.ok).toBe(true);
+    expect(unloadPort.result.ok).toBe(true);
+  });
+
+  it('港にいる揚陸艦は通常進入可能な隣接陸地にも降車できる', () => {
+    const state = createInitialGameState();
+    state.map.tiles['5,5'] = { coord: { x: 5, y: 5 }, terrainType: 'PORT', owner: 'P1', capturePoints: 20, operational: true };
+    state.map.tiles['5,4'] = { coord: { x: 5, y: 4 }, terrainType: 'PLAIN' };
+    state.units.p1_lander = {
+      id: 'p1_lander', owner: 'P1', type: 'LANDER', hp: 10, fuel: 99, ammo: 0,
+      position: { x: 5, y: 5 }, moved: false, acted: false, lastMovePath: [],
+      cargo: [{ ...state.units.p1_inf, id: 'cargo_inf', position: { x: 5, y: 5 } }],
+    };
+    delete state.units.p1_inf;
+
+    const unloaded = applyCommand(
+      state,
+      { type: 'UNLOAD', transportUnitId: 'p1_lander', cargoUnitId: 'cargo_inf', to: { x: 5, y: 4 } },
+      { rng: () => 0.5 },
+    );
+
+    expect(unloaded.result.ok).toBe(true);
+    expect(unloaded.state.units.cargo_inf.position).toEqual({ x: 5, y: 4 });
+  });
+
+  it('補給艦は隣接する味方海上ユニットだけを補給する', () => {
+    const state = createInitialGameState();
+    state.units.p1_supply_ship = {
+      id: 'p1_supply_ship',
+      owner: 'P1',
+      type: 'SUPPLY_SHIP',
+      hp: 10,
+      fuel: 99,
+      ammo: 0,
+      supplyCharges: 2,
+      position: { x: 4, y: 4 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p1_destroyer = {
+      id: 'p1_destroyer',
+      owner: 'P1',
+      type: 'DESTROYER',
+      hp: 10,
+      fuel: 20,
+      ammo: 1,
+      position: { x: 4, y: 3 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p1_tank.position = { x: 5, y: 4 };
+    state.units.p1_tank.fuel = 10;
+    state.units.p1_tank.ammo = 1;
+
+    const supplied = applyCommand(state, { type: 'SUPPLY', unitId: 'p1_supply_ship' }, { rng: () => 0.5 });
+
+    expect(supplied.result.ok).toBe(true);
+    expect(supplied.state.units.p1_destroyer.fuel).toBe(99);
+    expect(supplied.state.units.p1_destroyer.ammo).toBe(6);
+    expect(supplied.state.units.p1_tank.fuel).toBe(10);
+  });
+
+  it('港では海上ユニットを生産できる', () => {
+    const state = createInitialGameState();
+    state.players.P1.funds = 40000;
+    state.map.tiles['4,2'] = { coord: { x: 4, y: 2 }, terrainType: 'PORT', owner: 'P1', capturePoints: 20, operational: true };
+    state.units.p1_inf.position = { x: 1, y: 1 };
+
+    const produced = applyCommand(
+      state,
+      { type: 'PRODUCE_UNIT', playerId: 'P1', factoryCoord: { x: 4, y: 2 }, unitType: 'BATTLESHIP' },
+      { rng: () => 0.5 },
+    );
+
+    expect(produced.result.ok).toBe(true);
+    expect(Object.values(produced.state.units).some((u) => u.type === 'BATTLESHIP')).toBe(true);
+  });
+
 });
 
 

@@ -1,4 +1,4 @@
-﻿import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
+import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
 import type { TerrainType } from '@core/types/map';
 
 describe('terrainDefense 防御補正', () => {
@@ -35,18 +35,20 @@ describe('terrainDefense 防御補正', () => {
     expect(getTerrainDefenseModifier('MOUNTAIN', 'RECON')).toBe(1);
   });
 
-  it.each([
-    'PLAIN',
-    'SEA',
-    'AIRPORT',
-    'PORT',
-  ] as TerrainType[])('%sでは歩兵の防御補正は標準', (terrain) => {
+  it.each(['PLAIN', 'SEA', 'AIRPORT', 'PORT'] as TerrainType[])('%sでは歩兵の防御補正は標準', (terrain) => {
     expect(getTerrainDefenseModifier(terrain, 'INFANTRY')).toBe(1);
+  });
+
+  it('海岸では地上ユニットの防御が不利になる', () => {
+    expect(getTerrainDefenseModifier('COAST', 'INFANTRY')).toBe(1.15);
+    expect(getTerrainDefenseModifier('COAST', 'TANK')).toBe(1.15);
+    expect(getTerrainDefenseModifier('COAST', 'AIR_DEFENSE_INFANTRY')).toBe(1.15);
   });
 
   it('航空・海上ユニットは拠点地形でも標準補正', () => {
     expect(getTerrainDefenseModifier('CITY', 'FIGHTER')).toBe(1);
     expect(getTerrainDefenseModifier('HQ', 'DESTROYER')).toBe(1);
+    expect(getTerrainDefenseModifier('COAST', 'DESTROYER')).toBe(1);
   });
 
   it.each(['FIGHTER', 'BOMBER', 'ATTACKER', 'STEALTH_BOMBER'] as const)(
@@ -62,5 +64,3 @@ describe('terrainDefense 防御補正', () => {
     expect(getTerrainDefenseModifier(undefined, 'TANK')).toBe(1);
   });
 });
-
-

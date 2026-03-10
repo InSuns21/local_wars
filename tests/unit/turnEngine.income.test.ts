@@ -53,6 +53,10 @@ describe('turnEngine 収入処理', () => {
         droneInterceptionChancePercent: 70,
         droneInterceptionMaxPerTurn: 2,
         droneAiProductionRatioLimitPercent: 50,
+        carrierCargoFuelRecoveryPercent: 50,
+        carrierCargoAmmoRecoveryPercent: 50,
+        carrierCargoHpRecovery: 1,
+        carrierCargoHpRecoveryAtPort: 1,
       },
     });
 
@@ -163,6 +167,116 @@ describe('turnEngine 補給処理', () => {
     const next = nextTurnState(state);
 
     expect(next.units.p2_tank.hp).toBe(9);
+  });
+
+  it('港上の海上ユニットは燃料と弾薬が補給される', () => {
+    const state = createInitialGameState();
+    state.map.tiles['4,2'] = {
+      coord: { x: 4, y: 2 },
+      terrainType: 'PORT',
+      owner: 'P2',
+      capturePoints: 20,
+      operational: true,
+    };
+    state.units.p2_tank = {
+      ...state.units.p2_tank,
+      type: 'DESTROYER',
+      position: { x: 4, y: 2 },
+      fuel: 20,
+      ammo: 1,
+      owner: 'P2',
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p2_tank.fuel).toBe(99);
+    expect(next.units.p2_tank.ammo).toBe(6);
+  });
+
+  it('空母に収容された航空ユニットは毎ターン回復する', () => {
+    const state = createInitialGameState();
+    state.enableFuelSupply = true;
+    state.enableAmmoSupply = true;
+    state.carrierCargoFuelRecoveryPercent = 50;
+    state.carrierCargoAmmoRecoveryPercent = 50;
+    state.carrierCargoHpRecovery = 1;
+    state.units.p1_carrier = {
+      id: 'p1_carrier',
+      owner: 'P1',
+      type: 'CARRIER',
+      hp: 10,
+      fuel: 99,
+      ammo: 4,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      cargo: [
+        {
+          id: 'cargo_fighter',
+          owner: 'P1',
+          type: 'FIGHTER',
+          hp: 6,
+          fuel: 10,
+          ammo: 1,
+          position: { x: 2, y: 2 },
+          moved: false,
+          acted: false,
+          lastMovePath: [],
+        },
+      ],
+    };
+
+    const next = nextTurnState(state);
+    const cargo = next.units.p1_carrier.cargo?.[0];
+
+    expect(cargo?.fuel).toBe(50);
+    expect(cargo?.ammo).toBe(4);
+    expect(cargo?.hp).toBe(7);
+  });
+
+  it('港に停泊した空母の収容機は停泊時HP回復設定を使う', () => {
+    const state = createInitialGameState();
+    state.enableFuelSupply = true;
+    state.enableAmmoSupply = true;
+    state.carrierCargoHpRecovery = 1;
+    state.carrierCargoHpRecoveryAtPort = 2;
+    state.map.tiles['2,2'] = {
+      coord: { x: 2, y: 2 },
+      terrainType: 'PORT',
+      owner: 'P1',
+      capturePoints: 20,
+      operational: true,
+    };
+    state.units.p1_carrier = {
+      id: 'p1_carrier',
+      owner: 'P1',
+      type: 'CARRIER',
+      hp: 10,
+      fuel: 99,
+      ammo: 4,
+      position: { x: 2, y: 2 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+      cargo: [
+        {
+          id: 'cargo_attacker',
+          owner: 'P1',
+          type: 'ATTACKER',
+          hp: 5,
+          fuel: 20,
+          ammo: 1,
+          position: { x: 2, y: 2 },
+          moved: false,
+          acted: false,
+          lastMovePath: [],
+        },
+      ],
+    };
+
+    const next = nextTurnState(state);
+    expect(next.units.p1_carrier.cargo?.[0]?.hp).toBe(7);
   });
 
   it('補給OFF時は自軍拠点上でも燃料/弾薬が回復しない', () => {

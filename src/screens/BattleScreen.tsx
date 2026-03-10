@@ -57,7 +57,7 @@ type BattleScreenProps = {
 const PRODUCIBLE_UNITS_BY_SITE: Record<"GROUND" | "AIR" | "NAVAL", UnitType[]> = {
   GROUND: ["INFANTRY", "RECON", "TANK", "HEAVY_TANK", "ANTI_TANK", "ARTILLERY", "ANTI_AIR", "FLAK_TANK", "MISSILE_AA", "SUPPLY_TRUCK", "TRANSPORT_TRUCK", "AIR_DEFENSE_INFANTRY", "COUNTER_DRONE_AA", "SUICIDE_DRONE"],
   AIR: ["FIGHTER", "BOMBER", "ATTACKER", "STEALTH_BOMBER", "AIR_TANKER", "TRANSPORT_HELI"],
-  NAVAL: ["DESTROYER", "LANDER"],
+  NAVAL: ["DESTROYER", "LANDER", "CARRIER", "SUBMARINE", "BATTLESHIP", "SUPPLY_SHIP"],
 };
 
 const BOARD_ZOOM_OPTIONS = [
@@ -416,6 +416,23 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       return [];
     }
 
+    if (selectedUnit.type === 'CARRIER') {
+      const currentTile = gameState.map.tiles[toCoordKey(selectedUnit.position)];
+      const hasFriendlyOperationalPortAccess = (currentTile?.terrainType === 'PORT' && currentTile.owner === selectedUnit.owner && isOperationalFacility(currentTile))
+        || [
+          { x: 0, y: -1 },
+          { x: 1, y: 0 },
+          { x: 0, y: 1 },
+          { x: -1, y: 0 },
+        ].some((offset) => {
+          const tile = gameState.map.tiles[toCoordKey({ x: selectedUnit.position.x + offset.x, y: selectedUnit.position.y + offset.y })];
+          return tile?.terrainType === 'PORT' && tile.owner === selectedUnit.owner && isOperationalFacility(tile);
+        });
+      if (!hasFriendlyOperationalPortAccess) {
+        return [];
+      }
+    }
+
     const adjacentOffsets = [
       { x: 0, y: -1 },
       { x: 1, y: 0 },
@@ -428,7 +445,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       .filter((unit): unit is UnitState => Boolean(unit && unit.owner === selectedUnit.owner && unit.id !== selectedUnit.id))
       .filter((unit) => !UNIT_DEFINITIONS[unit.type].transportMode)
       .filter((unit) => (definition.cargoUnitTypes ?? []).includes(unit.type));
-  }, [aliveUnitByTile, canControlSelectedUnit, gameState.units, selectedUnit]);
+  }, [aliveUnitByTile, canControlSelectedUnit, gameState.map.tiles, gameState.units, selectedUnit]);
 
   const unloadCandidateTiles = useMemo(() => {
     if (!selectedUnit || !canControlSelectedUnit || selectedUnit.acted || !unloadCargoUnitId) {
@@ -457,6 +474,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         }
         if (selectedUnit.type === "TRANSPORT_HELI") {
           return cargoUnit.type === "INFANTRY" && tile.terrainType !== "SEA";
+        }
+        if (selectedUnit.type === 'LANDER') {
+          const transportTile = gameState.map.tiles[toCoordKey(selectedUnit.position)];
+          if (transportTile?.terrainType !== 'PORT' && tile.terrainType !== 'COAST' && tile.terrainType !== 'PORT') {
+            return false;
+          }
         }
         const pathCost = getPathCost(
           {
@@ -498,6 +521,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         }
         if (resupplyTarget === 'AIR') {
           return isAirUnitType(target.type) && !isDroneUnitType(target.type);
+        }
+        if (resupplyTarget === 'NAVAL') {
+          return isNavalUnitType(target.type);
         }
         return !isAirUnitType(target.type) && !isNavalUnitType(target.type);
       });

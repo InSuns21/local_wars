@@ -8,6 +8,7 @@ export type TerrainType =
   | 'BRIDGE'
   | 'RIVER'
   | 'SEA'
+  | 'COAST'
   | 'CITY'
   | 'FACTORY'
   | 'HQ'

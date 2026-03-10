@@ -25,6 +25,10 @@ export type GameSettings = {
   droneInterceptionChancePercent: number;
   droneInterceptionMaxPerTurn: number;
   droneAiProductionRatioLimitPercent: number;
+  carrierCargoFuelRecoveryPercent: number;
+  carrierCargoAmmoRecoveryPercent: number;
+  carrierCargoHpRecovery: number;
+  carrierCargoHpRecoveryAtPort: number;
 };
 
 export const DRONE_FOCUSED_MAP_IDS = ['drone-factory-front', 'interceptor-belt', 'industrial-drone-raid'] as const;
@@ -55,6 +59,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   droneInterceptionChancePercent: 70,
   droneInterceptionMaxPerTurn: 2,
   droneAiProductionRatioLimitPercent: 50,
+  carrierCargoFuelRecoveryPercent: 50,
+  carrierCargoAmmoRecoveryPercent: 50,
+  carrierCargoHpRecovery: 1,
+  carrierCargoHpRecoveryAtPort: 1,
 };
 
 export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
@@ -99,6 +107,10 @@ export const GAME_SETTINGS_PRESETS: Record<GameSettingsPreset, GameSettings> = {
     droneInterceptionChancePercent: 70,
     droneInterceptionMaxPerTurn: 2,
     droneAiProductionRatioLimitPercent: 50,
+    carrierCargoFuelRecoveryPercent: 50,
+    carrierCargoAmmoRecoveryPercent: 50,
+    carrierCargoHpRecovery: 1,
+    carrierCargoHpRecoveryAtPort: 1,
   },
   custom: DEFAULT_SETTINGS,
 };

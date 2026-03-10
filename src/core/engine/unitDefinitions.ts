@@ -295,8 +295,10 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
     canCapture: false,
     attackRangeMin: 1,
     attackRangeMax: 1,
+    transportMode: 'NAVAL',
     cargoCapacity: 2,
     cargoUnitTypes: ['FIGHTER', 'BOMBER', 'ATTACKER', 'STEALTH_BOMBER', 'AIR_TANKER', 'TRANSPORT_HELI'],
+    canUnloadAfterMove: true,
   },
   SUBMARINE: {
     type: 'SUBMARINE',
@@ -337,6 +339,7 @@ export const UNIT_DEFINITIONS: Record<UnitType, UnitDefinition> = {
     canCapture: false,
     attackRangeMin: 1,
     attackRangeMax: 1,
+    resupplyTarget: 'NAVAL',
   },
   DESTROYER: {
     type: 'DESTROYER',

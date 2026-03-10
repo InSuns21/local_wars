@@ -10,6 +10,7 @@
 - [transport-units.md](transport-units.md): 輸送車、輸送ヘリ、搭載と降車の草案仕様
 - [suicide-drones-and-counter-drone.md](suicide-drones-and-counter-drone.md): 自爆ドローン、対ドローン防空車、防空歩兵の草案仕様
 - [sound-effects.md](sound-effects.md): UI と戦闘へ導入する効果音の仕様
+- [naval-units-and-ports.md](naval-units-and-ports.md): 海上ユニット、港湾、海戦マップの草案仕様
 
 ## 今後ここに集約するもの
 - 画面ごとの期待導線

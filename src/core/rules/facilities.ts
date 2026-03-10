@@ -44,7 +44,7 @@ export const isNavalUnitType = (unitType: UnitType): boolean => UNIT_DEFINITIONS
 export const isStealthUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].isStealth);
 export const canBombardProperties = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].canBombardProperties);
 export const isSupportUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].resupplyTarget);
-export const getResupplyTarget = (unitType: UnitType): 'GROUND' | 'AIR' | null => UNIT_DEFINITIONS[unitType].resupplyTarget ?? null;
+export const getResupplyTarget = (unitType: UnitType): 'GROUND' | 'AIR' | 'NAVAL' | null => UNIT_DEFINITIONS[unitType].resupplyTarget ?? null;
 export const isTransportUnitType = (unitType: UnitType): boolean => Boolean(UNIT_DEFINITIONS[unitType].transportMode);
 export const getTransportCapacity = (unitType: UnitType): number => UNIT_DEFINITIONS[unitType].cargoCapacity ?? 0;
 export const canTransportUnitTypeCarry = (transportType: UnitType, cargoType: UnitType): boolean =>
@@ -69,6 +69,9 @@ export const isSupplyTileForUnit = (tile: TileState | undefined, unit: UnitState
   }
   if (isAirUnitType(unit.type)) {
     return tile.terrainType === 'AIRPORT';
+  }
+  if (isNavalUnitType(unit.type)) {
+    return tile.terrainType === 'PORT';
   }
   return tile.terrainType === 'CITY' || tile.terrainType === 'FACTORY' || tile.terrainType === 'HQ';
 };

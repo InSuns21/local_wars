@@ -152,4 +152,35 @@ describe('BattleScreen UIテスト: コマンド操作(生産/状態)', () => {
       expect(optionLabels).not.toContain(`輸送車 (${UNIT_DEFINITIONS.TRANSPORT_TRUCK.cost})`);
     });
   });
+
+  it('港選択時は海上ユニットを生産候補に出す', async () => {
+    renderBattleScreen({
+      mutateState: (state) => {
+        state.map.tiles['0,3'] = {
+          coord: { x: 0, y: 3 },
+          terrainType: 'PORT',
+          owner: 'P1',
+          capturePoints: 20,
+          structureHp: 20,
+          operational: true,
+        };
+        state.units.p1_inf.position = { x: 1, y: 1 };
+      },
+    });
+
+    fireEvent.change(screen.getByLabelText('生産拠点'), { target: { value: '0,3' } });
+
+    const unitSelect = screen.getByLabelText('ユニット') as HTMLSelectElement;
+    await waitFor(() => {
+      const optionLabels = Array.from(unitSelect.options).map((option) => option.textContent);
+      expect(optionLabels).toContain(`駆逐艦 (${UNIT_DEFINITIONS.DESTROYER.cost})`);
+      expect(optionLabels).toContain(`揚陸艦 (${UNIT_DEFINITIONS.LANDER.cost})`);
+      expect(optionLabels).toContain(`空母 (${UNIT_DEFINITIONS.CARRIER.cost})`);
+      expect(optionLabels).toContain(`潜水艦 (${UNIT_DEFINITIONS.SUBMARINE.cost})`);
+      expect(optionLabels).toContain(`戦艦 (${UNIT_DEFINITIONS.BATTLESHIP.cost})`);
+      expect(optionLabels).toContain(`補給艦 (${UNIT_DEFINITIONS.SUPPLY_SHIP.cost})`);
+      expect(optionLabels).not.toContain(`戦闘機 (${UNIT_DEFINITIONS.FIGHTER.cost})`);
+      expect(optionLabels).not.toContain(`歩兵 (${UNIT_DEFINITIONS.INFANTRY.cost})`);
+    });
+  });
 });

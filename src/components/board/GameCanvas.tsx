@@ -61,6 +61,8 @@ const getTerrainVisual = (terrain: TerrainType | string): { short: string; bg: s
       return { short: '川', bg: '#93c5fd', fg: '#1e3a8a' };
     case 'SEA':
       return { short: '海', bg: '#60a5fa', fg: '#172554' };
+    case 'COAST':
+      return { short: '岸', bg: '#93c5fd', fg: '#1e3a8a' };
     case 'AIRPORT':
       return { short: '空', bg: '#bae6fd', fg: '#0c4a6e' };
     case 'PORT':
@@ -90,6 +92,8 @@ const getTerrainLabel = (terrain: TerrainType | string): string => {
       return '川';
     case 'SEA':
       return '海';
+    case 'COAST':
+      return '海岸';
     case 'AIRPORT':
       return '空港';
     case 'PORT':
@@ -155,6 +159,12 @@ const getTerrainTraits = (terrain: TerrainType | string): {
         defense: '標準',
         supply: 'なし',
         mobility: '海上ユニット向け',
+      };
+    case 'COAST':
+      return {
+        defense: '防御側不利',
+        supply: 'なし',
+        mobility: '沿岸陸地',
       };
     default:
       return {
@@ -402,10 +412,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               const propertyVisual = isVisible && isOwnerVisibleProperty(tile?.terrainType)
                 ? getPropertyOwnerVisual(tile?.owner)
                 : null;
+              const isNavalSurfaceTerrain = terrainType === 'SEA' || terrainType === 'PORT';
+              const moveReachableVisual = isNavalSurfaceTerrain
+                ? BOARD_VISUAL_TOKENS.moveReachableSea
+                : BOARD_VISUAL_TOKENS.moveReachable;
 
               const isSupplyRange = supplyKeys.has(key);
               const overlayLayers = [
-                isMoveReachable ? BOARD_VISUAL_TOKENS.moveReachable.overlay : null,
+                isMoveReachable ? moveReachableVisual.overlay : null,
                 isAttackRange ? BOARD_VISUAL_TOKENS.attackRange.overlay : null,
                 isInterceptRange ? BOARD_VISUAL_TOKENS.interceptRange.overlay : null,
                 isPreview ? BOARD_VISUAL_TOKENS.previewPath.overlay : null,
@@ -439,7 +453,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   : null;
 
               const outlineLayers = [
-                isMoveReachable ? BOARD_VISUAL_TOKENS.moveReachable.outline : null,
+                isMoveReachable ? moveReachableVisual.outline : null,
                 isAttackRange ? BOARD_VISUAL_TOKENS.attackRange.outline : null,
                 isInterceptRange ? BOARD_VISUAL_TOKENS.interceptRange.outline : null,
                 isPreview ? BOARD_VISUAL_TOKENS.previewPath.outline : null,
@@ -477,7 +491,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                     backgroundPosition: 'center',
                     borderColor: propertyVisual ? propertyVisual.color : '#64748b',
                     borderWidth: propertyVisual ? 3 : 1,
-                    borderStyle: isMoveReachable && !isPreview && !isSelectedTile ? BOARD_VISUAL_TOKENS.moveReachable.borderStyle : 'solid',
+                    borderStyle: isMoveReachable && !isPreview && !isSelectedTile ? moveReachableVisual.borderStyle : 'solid',
                     boxShadow: [
                       ...outlineLayers,
                       isSupplyRange ? '0 0 0 2px rgba(22,163,74,0.45)' : null,
@@ -500,6 +514,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   data-property-owner={propertyVisual ? propertyVisual.tag : 'NONE'}
                   data-fog-hidden={isVisible ? 'false' : 'true'}
                   data-overlay-kinds={overlayKinds.join(',') || 'none'}
+                  data-move-overlay-tone={isMoveReachable ? (isNavalSurfaceTerrain ? 'sea' : 'land') : 'none'}
                   data-overlay-layer-count={String(overlayLayers.length)}
                   data-outline-layer-count={String(outlineLayers.length + (isSupplyRange ? 1 : 0))}
                   data-unit-hp={unitHpLabel ?? 'NONE'}

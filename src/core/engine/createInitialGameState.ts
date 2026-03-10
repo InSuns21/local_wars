@@ -59,6 +59,10 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
     droneInterceptionChancePercent: settings.droneInterceptionChancePercent,
     droneInterceptionMaxPerTurn: settings.droneInterceptionMaxPerTurn,
     droneAiProductionRatioLimitPercent: settings.droneAiProductionRatioLimitPercent,
+    carrierCargoFuelRecoveryPercent: settings.carrierCargoFuelRecoveryPercent,
+    carrierCargoAmmoRecoveryPercent: settings.carrierCargoAmmoRecoveryPercent,
+    carrierCargoHpRecovery: settings.carrierCargoHpRecovery,
+    carrierCargoHpRecoveryAtPort: settings.carrierCargoHpRecoveryAtPort,
     facilityCaptureCostIncreasePercent: settings.facilityCaptureCostIncreasePercent ?? 50,
     showEnemyActionLogs: settings.showEnemyActionLogs ?? false,
   };
@@ -204,6 +208,10 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
     droneInterceptionChancePercent: options.settings?.droneInterceptionChancePercent ?? 70,
     droneInterceptionMaxPerTurn: options.settings?.droneInterceptionMaxPerTurn ?? 2,
     droneAiProductionRatioLimitPercent: options.settings?.droneAiProductionRatioLimitPercent ?? 50,
+    carrierCargoFuelRecoveryPercent: options.settings?.carrierCargoFuelRecoveryPercent ?? 50,
+    carrierCargoAmmoRecoveryPercent: options.settings?.carrierCargoAmmoRecoveryPercent ?? 50,
+    carrierCargoHpRecovery: options.settings?.carrierCargoHpRecovery ?? 1,
+    carrierCargoHpRecoveryAtPort: options.settings?.carrierCargoHpRecoveryAtPort ?? 1,
     factoryProductionState: {},
   };
 

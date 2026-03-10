@@ -17,6 +17,7 @@ export type AiTurnOptions = {
 
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
 const INDIRECT_SUPPORT_UNITS = new Set<UnitType>(['ARTILLERY', 'FLAK_TANK', 'MISSILE_AA']);
+const NAVAL_COMBAT_TYPES = new Set<UnitType>(['DESTROYER', 'SUBMARINE', 'BATTLESHIP', 'CARRIER']);
 const getEnemyPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 const LIGHT_TRANSPORTABLE_TYPES = new Set<UnitType>(['INFANTRY', 'RECON', 'ANTI_TANK', 'ARTILLERY', 'ANTI_AIR', 'SUPPLY_TRUCK', 'FLAK_TANK', 'MISSILE_AA']);
 const AIR_UNIT_TYPES = new Set<UnitType>(['FIGHTER', 'BOMBER', 'ATTACKER', 'STEALTH_BOMBER', 'AIR_TANKER', 'TRANSPORT_HELI']);
@@ -36,7 +37,7 @@ const getEnemyHqCoord = (state: GameState, aiPlayer: PlayerId): Coord | null => 
 };
 
 const canCaptureNow = (state: GameState, unit: UnitState): boolean => {
-  if (unit.type !== 'INFANTRY') return false;
+  if (!UNIT_DEFINITIONS[unit.type].canCapture) return false;
   const key = toCoordKey(unit.position);
   const tile = state.map.tiles[key];
   if (!tile) return false;
@@ -45,8 +46,8 @@ const canCaptureNow = (state: GameState, unit: UnitState): boolean => {
 };
 
 const getNearestRemoteCaptureTargetDistance = (state: GameState, aiPlayer: PlayerId): number | null => {
-  const infantry = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'INFANTRY');
-  if (infantry.length === 0) {
+  const capturers = getAliveUnits(state, aiPlayer).filter((unit) => UNIT_DEFINITIONS[unit.type].canCapture);
+  if (capturers.length === 0) {
     return null;
   }
 
@@ -56,9 +57,9 @@ const getNearestRemoteCaptureTargetDistance = (state: GameState, aiPlayer: Playe
   }
 
   let best: number | null = null;
-  for (const unit of infantry) {
+  for (const unit of capturers) {
     for (const tile of targets) {
-      const turns = Math.ceil(manhattanDistance(unit.position, tile.coord) / Math.max(1, UNIT_DEFINITIONS.INFANTRY.moveRange));
+      const turns = Math.ceil(manhattanDistance(unit.position, tile.coord) / Math.max(1, UNIT_DEFINITIONS[unit.type].moveRange));
       if (turns >= 3 && (best === null || turns < best)) {
         best = turns;
       }
@@ -423,6 +424,33 @@ const getDroneFactoryOpenSlots = (state: GameState, coord: Coord): number => {
 const mapHasAirport = (state: GameState): boolean =>
   Object.values(state.map.tiles).some((tile) => tile.terrainType === 'AIRPORT');
 
+const mapHasSea = (state: GameState): boolean =>
+  Object.values(state.map.tiles).some((tile) => tile.terrainType === 'SEA');
+
+const getOwnedPorts = (state: GameState, aiPlayer: PlayerId): Coord[] =>
+  Object.values(state.map.tiles)
+    .filter((tile) => tile.terrainType === 'PORT' && tile.owner === aiPlayer)
+    .map((tile) => tile.coord);
+
+const getCapturableCoastalTargets = (state: GameState, aiPlayer: PlayerId): Coord[] =>
+  Object.values(state.map.tiles)
+    .filter((tile) => {
+      if (!CAPTURABLE_TERRAINS.has(tile.terrainType) || tile.owner === aiPlayer) {
+        return false;
+      }
+      const adjacent = [
+        { x: tile.coord.x, y: tile.coord.y - 1 },
+        { x: tile.coord.x + 1, y: tile.coord.y },
+        { x: tile.coord.x, y: tile.coord.y + 1 },
+        { x: tile.coord.x - 1, y: tile.coord.y },
+      ];
+      return adjacent.some((coord) => {
+        const adjacentTile = state.map.tiles[toCoordKey(coord)];
+        return adjacentTile?.terrainType === 'SEA' || adjacentTile?.terrainType === 'COAST' || adjacentTile?.terrainType === 'PORT';
+      });
+    })
+    .map((tile) => tile.coord);
+
 const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitType | null => {
   const canAfford = (type: UnitType): boolean =>
     state.players[aiPlayer].funds >= UNIT_DEFINITIONS[type].cost;
@@ -520,6 +548,61 @@ const selectDroneProductionUnitForTile = (
   return 'SUICIDE_DRONE';
 };
 
+const selectNavalProductionUnit = (state: GameState, aiPlayer: PlayerId): UnitType | null => {
+  if (!mapHasSea(state)) {
+    return null;
+  }
+
+  const canAfford = (type: UnitType): boolean =>
+    state.players[aiPlayer].funds >= UNIT_DEFINITIONS[type].cost;
+
+  const own = getAliveUnits(state, aiPlayer);
+  const enemy = getAliveUnits(state, getEnemyPlayer(aiPlayer));
+  const ownCounts = countUnitsByType(own);
+  const enemyCounts = countUnitsByType(enemy);
+  const ownedPorts = getOwnedPorts(state, aiPlayer);
+  const coastalTargets = getCapturableCoastalTargets(state, aiPlayer);
+  const transportableCargoCount = own.filter((unit) => (UNIT_DEFINITIONS.LANDER.cargoUnitTypes ?? []).includes(unit.type)).length;
+  const enemyAirCount = enemy.filter((unit) => UNIT_DEFINITIONS[unit.type].movementType === 'AIR').length;
+  const ownNavalCombatCount = Array.from(NAVAL_COMBAT_TYPES).reduce((sum, type) => sum + ownCounts[type], 0);
+  const enemyNavalCombatCount = Array.from(NAVAL_COMBAT_TYPES).reduce((sum, type) => sum + enemyCounts[type], 0);
+
+  if (ownedPorts.length === 0) {
+    return null;
+  }
+
+  if (ownCounts.DESTROYER === 0 && canAfford('DESTROYER')) {
+    return 'DESTROYER';
+  }
+
+  if (
+    coastalTargets.length > 0 &&
+    transportableCargoCount > 0 &&
+    ownCounts.LANDER === 0 &&
+    canAfford('LANDER')
+  ) {
+    return 'LANDER';
+  }
+
+  if (enemyAirCount > 0 && ownCounts.CARRIER === 0 && canAfford('CARRIER')) {
+    return 'CARRIER';
+  }
+
+  if (ownNavalCombatCount >= 2 && ownCounts.SUPPLY_SHIP === 0 && canAfford('SUPPLY_SHIP')) {
+    return 'SUPPLY_SHIP';
+  }
+
+  if (enemyNavalCombatCount > ownNavalCombatCount && canAfford('DESTROYER')) {
+    return 'DESTROYER';
+  }
+
+  if (coastalTargets.length > 0 && transportableCargoCount > ownCounts.LANDER && canAfford('LANDER')) {
+    return 'LANDER';
+  }
+
+  return null;
+};
+
 const selectAiProductionUnitForTile = (
   state: GameState,
   aiPlayer: PlayerId,
@@ -531,7 +614,9 @@ const selectAiProductionUnitForTile = (
 
   const easyPriorities: UnitType[] = tile.terrainType === 'AIRPORT'
     ? ['FIGHTER', 'ATTACKER', 'TRANSPORT_HELI']
-    : ['INFANTRY', 'TANK', 'RECON', 'TRANSPORT_TRUCK'];
+    : tile.terrainType === 'PORT'
+      ? ['DESTROYER', 'LANDER', 'SUPPLY_SHIP']
+      : ['INFANTRY', 'TANK', 'RECON', 'TRANSPORT_TRUCK'];
 
   if (difficulty === 'easy') {
     return easyPriorities.find(
@@ -563,6 +648,10 @@ const selectAiProductionUnitForTile = (
     return null;
   }
 
+  if (tile.terrainType === 'PORT') {
+    return selectNavalProductionUnit(state, aiPlayer);
+  }
+
   return shouldProduceTransport(state, aiPlayer, tile.terrainType) ?? selectNormalProductionUnit(state, aiPlayer);
 };
 
@@ -575,7 +664,7 @@ const produceForAi = (
   let working = state;
 
   const productionSites = Object.values(working.map.tiles)
-    .filter((tile) => tile.owner === aiPlayer && (tile.terrainType === 'FACTORY' || tile.terrainType === 'AIRPORT'))
+    .filter((tile) => tile.owner === aiPlayer && (tile.terrainType === 'FACTORY' || tile.terrainType === 'AIRPORT' || tile.terrainType === 'PORT'))
     .map((tile) => tile.coord);
 
   for (const coord of productionSites) {

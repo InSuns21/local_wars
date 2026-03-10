@@ -1,6 +1,7 @@
 ﻿import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { MAP_CATALOG } from '@data/maps';
 import { getSkirmishScenario } from '@data/skirmishMaps';
+import { isNavalUnitType } from '@core/rules/facilities';
 
 describe('createInitialGameState マップ読み込み', () => {
   it('mapIdを指定すると該当マップの盤面と初期配置を読み込む', () => {
@@ -39,8 +40,8 @@ describe('createInitialGameState マップ読み込み', () => {
 });
 
 describe('スカーミッシュマップ定義', () => {
-  it('MAP_CATALOGが21件あり、全IDが実マップ定義に存在する', () => {
-    expect(MAP_CATALOG).toHaveLength(21);
+  it('MAP_CATALOGが27件あり、全IDが実マップ定義に存在する', () => {
+    expect(MAP_CATALOG).toHaveLength(27);
 
     for (const meta of MAP_CATALOG) {
       const scenario = getSkirmishScenario(meta.id);
@@ -105,6 +106,101 @@ describe('スカーミッシュマップ定義', () => {
     expect(getSkirmishScenario('drone-factory-front')).not.toBeNull();
     expect(getSkirmishScenario('interceptor-belt')).not.toBeNull();
     expect(getSkirmishScenario('industrial-drone-raid')).not.toBeNull();
+  });
+
+  it('海戦向けマップ6種が追加されている', () => {
+    const islandLanding = getSkirmishScenario('island-landing');
+    const islandHopping = getSkirmishScenario('island-hopping');
+    const coastalCannonade = getSkirmishScenario('coastal-cannonade');
+    const combinedSeaFront = getSkirmishScenario('combined-sea-front');
+    const carrierStrike = getSkirmishScenario('carrier-strike');
+    const droneSeaFront = getSkirmishScenario('drone-sea-front');
+
+    expect(islandLanding).not.toBeNull();
+    expect(islandHopping).not.toBeNull();
+    expect(coastalCannonade).not.toBeNull();
+    expect(combinedSeaFront).not.toBeNull();
+    expect(carrierStrike).not.toBeNull();
+    expect(droneSeaFront).not.toBeNull();
+
+    expect(Object.values(islandLanding?.map.tiles ?? {}).some((tile) => tile.terrainType === 'COAST')).toBe(true);
+    expect(islandLanding?.map.tiles['5,6']?.terrainType).toBe('SEA');
+    expect(islandLanding?.map.tiles['6,6']?.terrainType).toBe('SEA');
+    expect(Object.values(islandHopping?.map.tiles ?? {}).filter((tile) => tile.terrainType === 'PORT').length).toBeGreaterThanOrEqual(5);
+    expect(islandHopping?.map.tiles['5,8']?.terrainType).toBe('SEA');
+    expect(islandHopping?.map.tiles['9,10']?.terrainType).toBe('SEA');
+    expect(islandHopping?.map.tiles['13,11']?.terrainType).toBe('SEA');
+    expect(islandHopping?.map.tiles['17,13']?.terrainType).toBe('SEA');
+    expect(Object.values(coastalCannonade?.map.tiles ?? {}).some((tile) => tile.terrainType === 'SEA')).toBe(true);
+    expect(Object.values(combinedSeaFront?.map.tiles ?? {}).some((tile) => tile.terrainType === 'AIRPORT')).toBe(true);
+    expect(Object.values(carrierStrike?.units ?? {}).some((unit) => unit.type === 'CARRIER')).toBe(true);
+    expect(Object.values(droneSeaFront?.units ?? {}).some((unit) => unit.type === 'COUNTER_DRONE_AA')).toBe(true);
+  });
+
+  it('CITY・FACTORY・AIRPORT・HQ は全マップで四方を海に囲まれない', () => {
+    const getAdjacentTiles = (scenario: NonNullable<ReturnType<typeof getSkirmishScenario>>, x: number, y: number) => [
+      scenario.map.tiles[`${x},${y - 1}`],
+      scenario.map.tiles[`${x + 1},${y}`],
+      scenario.map.tiles[`${x},${y + 1}`],
+      scenario.map.tiles[`${x - 1},${y}`],
+    ].filter((tile): tile is NonNullable<typeof tile> => Boolean(tile));
+
+    const mustNotBeSurroundedBySeaTerrains = new Set(['CITY', 'FACTORY', 'AIRPORT', 'HQ']);
+
+    for (const meta of MAP_CATALOG) {
+      const scenario = getSkirmishScenario(meta.id);
+      expect(scenario).not.toBeNull();
+      if (!scenario) continue;
+
+      for (const tile of Object.values(scenario.map.tiles)) {
+        if (!mustNotBeSurroundedBySeaTerrains.has(tile.terrainType)) continue;
+        const adjacentTiles = getAdjacentTiles(scenario, tile.coord.x, tile.coord.y);
+        expect(adjacentTiles).toHaveLength(4);
+        expect(adjacentTiles.every((adjacent) => adjacent.terrainType === 'SEA')).toBe(false);
+      }
+    }
+  });
+
+  it('海戦マップの港・海岸・海上初期配置が制約を満たす', () => {
+    const getAdjacentTiles = (scenario: NonNullable<ReturnType<typeof getSkirmishScenario>>, x: number, y: number) => [
+      scenario.map.tiles[`${x},${y - 1}`],
+      scenario.map.tiles[`${x + 1},${y}`],
+      scenario.map.tiles[`${x},${y + 1}`],
+      scenario.map.tiles[`${x - 1},${y}`],
+    ].filter((tile): tile is NonNullable<typeof tile> => Boolean(tile));
+
+    const isLandTile = (terrainType: string) => terrainType !== 'SEA';
+    const isNavalStagingTile = (terrainType: string | undefined) => terrainType === 'SEA' || terrainType === 'PORT';
+
+    for (const mapId of ['island-landing', 'island-hopping', 'coastal-cannonade', 'combined-sea-front', 'carrier-strike', 'drone-sea-front']) {
+      const scenario = getSkirmishScenario(mapId);
+      expect(scenario).not.toBeNull();
+      if (!scenario) continue;
+
+      for (const tile of Object.values(scenario.map.tiles)) {
+        const adjacentTiles = getAdjacentTiles(scenario, tile.coord.x, tile.coord.y);
+
+        if (tile.terrainType === 'PORT') {
+          expect(adjacentTiles.some((adjacent) => adjacent.terrainType === 'SEA')).toBe(true);
+          expect(adjacentTiles.some((adjacent) => isLandTile(adjacent.terrainType))).toBe(true);
+        }
+
+        if (tile.terrainType === 'COAST') {
+          const seaAdjacentCount = adjacentTiles.filter((adjacent) => adjacent.terrainType === 'SEA').length;
+          const coastAdjacentCount = adjacentTiles.filter((adjacent) => adjacent.terrainType === 'COAST').length;
+
+          expect(seaAdjacentCount).toBeGreaterThanOrEqual(1);
+          expect(seaAdjacentCount).toBeLessThan(3);
+          expect(coastAdjacentCount).toBeLessThan(3);
+          expect(adjacentTiles.some((adjacent) => isLandTile(adjacent.terrainType) && adjacent.terrainType !== 'COAST')).toBe(true);
+        }
+      }
+
+      for (const unit of Object.values(scenario.units)) {
+        if (!isNavalUnitType(unit.type)) continue;
+        expect(isNavalStagingTile(scenario.map.tiles[`${unit.position.x},${unit.position.y}`]?.terrainType)).toBe(true);
+      }
+    }
   });
 
   it('迎撃防衛線は前線に対ドローン防空車を初期配置し、中央工場をやや後方に置く', () => {

@@ -66,7 +66,7 @@ export type UnitDefinition = {
   canBombardProperties?: boolean;
   isStealth?: boolean;
   turnEndFuelCost?: number;
-  resupplyTarget?: 'GROUND' | 'AIR';
+  resupplyTarget?: 'GROUND' | 'AIR' | 'NAVAL';
   transportMode?: 'GROUND' | 'AIR' | 'NAVAL';
   cargoCapacity?: number;
   cargoUnitTypes?: UnitType[];

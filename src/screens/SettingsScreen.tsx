@@ -49,7 +49,7 @@ const PRESET_DESCRIPTIONS: Record<GameSettingsPreset, string> = {
 };
 
 const NUMERIC_FIELD_META: {
-  [K in 'initialFunds' | 'incomePerProperty' | 'incomeAirport' | 'incomePort' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq' | 'maxSupplyCharges' | 'facilityCaptureCostIncreasePercent' | 'maxFactoryDronesPerFactory' | 'droneInterceptionChancePercent' | 'droneInterceptionMaxPerTurn' | 'droneAiProductionRatioLimitPercent']: {
+  [K in 'initialFunds' | 'incomePerProperty' | 'incomeAirport' | 'incomePort' | 'hpRecoveryCity' | 'hpRecoveryFactory' | 'hpRecoveryHq' | 'maxSupplyCharges' | 'facilityCaptureCostIncreasePercent' | 'maxFactoryDronesPerFactory' | 'droneInterceptionChancePercent' | 'droneInterceptionMaxPerTurn' | 'droneAiProductionRatioLimitPercent' | 'carrierCargoFuelRecoveryPercent' | 'carrierCargoAmmoRecoveryPercent' | 'carrierCargoHpRecovery' | 'carrierCargoHpRecoveryAtPort']: {
     min: number;
     max: number;
     step: number;
@@ -162,6 +162,38 @@ const NUMERIC_FIELD_META: {
     defaultValue: DEFAULT_SETTINGS.droneAiProductionRatioLimitPercent,
     description: 'AIがドローンを混ぜる比率の上限です。高いほどドローン偏重になります。',
   },
+  carrierCargoFuelRecoveryPercent: {
+    min: 0,
+    max: 100,
+    step: 5,
+    recommendedRangeText: '推奨: 25-50',
+    defaultValue: DEFAULT_SETTINGS.carrierCargoFuelRecoveryPercent,
+    description: '空母に収容した航空ユニットの燃料回復率です。最小1保証で回復します。',
+  },
+  carrierCargoAmmoRecoveryPercent: {
+    min: 0,
+    max: 100,
+    step: 5,
+    recommendedRangeText: '推奨: 25-50',
+    defaultValue: DEFAULT_SETTINGS.carrierCargoAmmoRecoveryPercent,
+    description: '空母に収容した航空ユニットの弾薬回復率です。最小1保証で回復します。',
+  },
+  carrierCargoHpRecovery: {
+    min: 0,
+    max: 5,
+    step: 1,
+    recommendedRangeText: '推奨: 1-2',
+    defaultValue: DEFAULT_SETTINGS.carrierCargoHpRecovery,
+    description: '空母に収容した航空ユニットの通常時HP回復量です。',
+  },
+  carrierCargoHpRecoveryAtPort: {
+    min: 0,
+    max: 5,
+    step: 1,
+    recommendedRangeText: '推奨: 1-3',
+    defaultValue: DEFAULT_SETTINGS.carrierCargoHpRecoveryAtPort,
+    description: '空母が港に停泊している時の艦載機HP回復量です。',
+  },
 };
 
 const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
@@ -187,6 +219,10 @@ const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
   && left.droneInterceptionChancePercent === right.droneInterceptionChancePercent
   && left.droneInterceptionMaxPerTurn === right.droneInterceptionMaxPerTurn
   && left.droneAiProductionRatioLimitPercent === right.droneAiProductionRatioLimitPercent
+  && left.carrierCargoFuelRecoveryPercent === right.carrierCargoFuelRecoveryPercent
+  && left.carrierCargoAmmoRecoveryPercent === right.carrierCargoAmmoRecoveryPercent
+  && left.carrierCargoHpRecovery === right.carrierCargoHpRecovery
+  && left.carrierCargoHpRecoveryAtPort === right.carrierCargoHpRecoveryAtPort
 );
 
 const detectPreset = (settings: GameSettings): GameSettingsPreset => {
@@ -508,6 +544,66 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ initialSettings 
                     min: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.min,
                     max: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.max,
                     step: NUMERIC_FIELD_META.facilityCaptureCostIncreasePercent.step,
+                  }}
+                />
+
+                <TextField
+                  id="carrier-cargo-fuel-recovery-percent"
+                  label="空母内の燃料回復率（%）"
+                  type="number"
+                  value={settings.carrierCargoFuelRecoveryPercent}
+                  onChange={(e) => update('carrierCargoFuelRecoveryPercent', Number(e.target.value))}
+                  error={getNumericFieldStatus('carrierCargoFuelRecoveryPercent').error}
+                  helperText={getNumericFieldStatus('carrierCargoFuelRecoveryPercent').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.carrierCargoFuelRecoveryPercent.min,
+                    max: NUMERIC_FIELD_META.carrierCargoFuelRecoveryPercent.max,
+                    step: NUMERIC_FIELD_META.carrierCargoFuelRecoveryPercent.step,
+                  }}
+                />
+
+                <TextField
+                  id="carrier-cargo-ammo-recovery-percent"
+                  label="空母内の弾薬回復率（%）"
+                  type="number"
+                  value={settings.carrierCargoAmmoRecoveryPercent}
+                  onChange={(e) => update('carrierCargoAmmoRecoveryPercent', Number(e.target.value))}
+                  error={getNumericFieldStatus('carrierCargoAmmoRecoveryPercent').error}
+                  helperText={getNumericFieldStatus('carrierCargoAmmoRecoveryPercent').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.carrierCargoAmmoRecoveryPercent.min,
+                    max: NUMERIC_FIELD_META.carrierCargoAmmoRecoveryPercent.max,
+                    step: NUMERIC_FIELD_META.carrierCargoAmmoRecoveryPercent.step,
+                  }}
+                />
+
+                <TextField
+                  id="carrier-cargo-hp-recovery"
+                  label="空母内の艦載機HP回復量（通常時）"
+                  type="number"
+                  value={settings.carrierCargoHpRecovery}
+                  onChange={(e) => update('carrierCargoHpRecovery', Number(e.target.value))}
+                  error={getNumericFieldStatus('carrierCargoHpRecovery').error}
+                  helperText={getNumericFieldStatus('carrierCargoHpRecovery').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.carrierCargoHpRecovery.min,
+                    max: NUMERIC_FIELD_META.carrierCargoHpRecovery.max,
+                    step: NUMERIC_FIELD_META.carrierCargoHpRecovery.step,
+                  }}
+                />
+
+                <TextField
+                  id="carrier-cargo-hp-recovery-at-port"
+                  label="空母内の艦載機HP回復量（停泊時）"
+                  type="number"
+                  value={settings.carrierCargoHpRecoveryAtPort}
+                  onChange={(e) => update('carrierCargoHpRecoveryAtPort', Number(e.target.value))}
+                  error={getNumericFieldStatus('carrierCargoHpRecoveryAtPort').error}
+                  helperText={getNumericFieldStatus('carrierCargoHpRecoveryAtPort').helperText}
+                  inputProps={{
+                    min: NUMERIC_FIELD_META.carrierCargoHpRecoveryAtPort.min,
+                    max: NUMERIC_FIELD_META.carrierCargoHpRecoveryAtPort.max,
+                    step: NUMERIC_FIELD_META.carrierCargoHpRecoveryAtPort.step,
                   }}
                 />
 

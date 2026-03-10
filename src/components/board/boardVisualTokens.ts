@@ -22,6 +22,12 @@
     outline: 'inset 0 0 0 2px #2563eb',
     borderStyle: 'dashed' as const,
   },
+  moveReachableSea: {
+    label: '移動可能(海上)',
+    overlay: 'rgba(34,211,238,0.22)',
+    outline: 'inset 0 0 0 2px #ecfeff, inset 0 0 0 4px #06b6d4',
+    borderStyle: 'dashed' as const,
+  },
   attackRange: {
     label: '攻撃範囲',
     overlay: 'rgba(252,165,165,0.12)',

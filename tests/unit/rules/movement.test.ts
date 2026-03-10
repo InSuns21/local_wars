@@ -88,6 +88,22 @@ describe('移動ルール', () => {
     expect(tankRange).not.toContainEqual({ x: 1, y: 1 });
   });
 
+  it('海岸は地上・航空ユニットが進入できるが海上ユニットは進入できない', () => {
+    const map = makeMap();
+    map.tiles['1,0'] = { coord: { x: 1, y: 0 }, terrainType: 'COAST' };
+
+    expect(canEnterTile('COAST', 'FOOT')).toBe(true);
+    expect(canEnterTile('COAST', 'TREAD')).toBe(true);
+    expect(canEnterTile('COAST', 'WHEEL')).toBe(true);
+    expect(canEnterTile('COAST', 'AIR')).toBe(true);
+    expect(canEnterTile('COAST', 'NAVAL')).toBe(false);
+
+    expect(getMovementCost('COAST', 'FOOT')).toBe(1);
+    expect(getMovementCost('COAST', 'TREAD')).toBe(1);
+    expect(getMovementCost('COAST', 'WHEEL')).toBe(2);
+    expect(getMovementCost('COAST', 'NAVAL')).toBe(Number.POSITIVE_INFINITY);
+  });
+
   it('getPathCostは空経路で0を返し、非隣接マス遷移を弾く', () => {
     const map = makeMap();
     const unit = makeUnit({ type: 'TANK' });

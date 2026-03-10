@@ -91,6 +91,14 @@ const normalizeSettings = (value: unknown): GameSettings => {
       typeof value.droneInterceptionMaxPerTurn === 'number' ? value.droneInterceptionMaxPerTurn : DEFAULT_SETTINGS.droneInterceptionMaxPerTurn,
     droneAiProductionRatioLimitPercent:
       typeof value.droneAiProductionRatioLimitPercent === 'number' ? value.droneAiProductionRatioLimitPercent : DEFAULT_SETTINGS.droneAiProductionRatioLimitPercent,
+    carrierCargoFuelRecoveryPercent:
+      typeof value.carrierCargoFuelRecoveryPercent === 'number' ? value.carrierCargoFuelRecoveryPercent : DEFAULT_SETTINGS.carrierCargoFuelRecoveryPercent,
+    carrierCargoAmmoRecoveryPercent:
+      typeof value.carrierCargoAmmoRecoveryPercent === 'number' ? value.carrierCargoAmmoRecoveryPercent : DEFAULT_SETTINGS.carrierCargoAmmoRecoveryPercent,
+    carrierCargoHpRecovery:
+      typeof value.carrierCargoHpRecovery === 'number' ? value.carrierCargoHpRecovery : DEFAULT_SETTINGS.carrierCargoHpRecovery,
+    carrierCargoHpRecoveryAtPort:
+      typeof value.carrierCargoHpRecoveryAtPort === 'number' ? value.carrierCargoHpRecoveryAtPort : DEFAULT_SETTINGS.carrierCargoHpRecoveryAtPort,
   };
 };
 
@@ -131,6 +139,10 @@ const normalizeState = (state: GameState, settings: GameSettings): GameState => 
   droneInterceptionChancePercent: state.droneInterceptionChancePercent ?? settings.droneInterceptionChancePercent,
   droneInterceptionMaxPerTurn: state.droneInterceptionMaxPerTurn ?? settings.droneInterceptionMaxPerTurn,
   droneAiProductionRatioLimitPercent: state.droneAiProductionRatioLimitPercent ?? settings.droneAiProductionRatioLimitPercent,
+  carrierCargoFuelRecoveryPercent: state.carrierCargoFuelRecoveryPercent ?? settings.carrierCargoFuelRecoveryPercent,
+  carrierCargoAmmoRecoveryPercent: state.carrierCargoAmmoRecoveryPercent ?? settings.carrierCargoAmmoRecoveryPercent,
+  carrierCargoHpRecovery: state.carrierCargoHpRecovery ?? settings.carrierCargoHpRecovery,
+  carrierCargoHpRecoveryAtPort: state.carrierCargoHpRecoveryAtPort ?? settings.carrierCargoHpRecoveryAtPort,
   factoryProductionState: state.factoryProductionState ?? {},
 });
 

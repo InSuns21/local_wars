@@ -29,6 +29,10 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     fireEvent.change(screen.getByLabelText('工場のHP回復量（ターン開始時）'), { target: { value: '4' } });
     fireEvent.change(screen.getByLabelText('HQのHP回復量（ターン開始時）'), { target: { value: '6' } });
     fireEvent.change(screen.getByLabelText('補給ユニットの最大補給回数'), { target: { value: '7' } });
+    fireEvent.change(screen.getByLabelText('空母内の燃料回復率（%）'), { target: { value: '40' } });
+    fireEvent.change(screen.getByLabelText('空母内の弾薬回復率（%）'), { target: { value: '45' } });
+    fireEvent.change(screen.getByLabelText('空母内の艦載機HP回復量（通常時）'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('空母内の艦載機HP回復量（停泊時）'), { target: { value: '3' } });
     fireEvent.click(screen.getByLabelText('自爆ドローン有効'));
     fireEvent.change(screen.getByLabelText('工場ごとのドローン上限'), { target: { value: '5' } });
     fireEvent.change(screen.getByLabelText('対ドローン迎撃確率（%）'), { target: { value: '65' } });
@@ -52,6 +56,10 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(submitted.hpRecoveryFactory).toBe(4);
     expect(submitted.hpRecoveryHq).toBe(6);
     expect(submitted.maxSupplyCharges).toBe(7);
+    expect(submitted.carrierCargoFuelRecoveryPercent).toBe(40);
+    expect(submitted.carrierCargoAmmoRecoveryPercent).toBe(45);
+    expect(submitted.carrierCargoHpRecovery).toBe(2);
+    expect(submitted.carrierCargoHpRecoveryAtPort).toBe(3);
     expect(submitted.maxFactoryDronesPerFactory).toBe(5);
     expect(submitted.droneInterceptionChancePercent).toBe(65);
     expect(submitted.droneInterceptionMaxPerTurn).toBe(3);
@@ -81,6 +89,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(screen.getByLabelText('初期資金')).toHaveValue(15000);
     expect(screen.getByLabelText('1ターン収入（空港）')).toHaveValue(1200);
     expect(screen.getByLabelText('1ターン収入（港湾）')).toHaveValue(1200);
+    expect(screen.getByLabelText('空母内の燃料回復率（%）')).toHaveValue(50);
+    expect(screen.getByLabelText('空母内の艦載機HP回復量（停泊時）')).toHaveValue(1);
     expect(screen.getByLabelText('燃料消費あり')).not.toBeChecked();
     expect(screen.getByText('現在の状態: 初心者向け')).toBeInTheDocument();
   });
@@ -111,6 +121,8 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(screen.getByLabelText('初期資金')).toHaveValue(10000);
     expect(screen.getByLabelText('1ターン収入（空港）')).toHaveValue(1000);
     expect(screen.getByLabelText('1ターン収入（港湾）')).toHaveValue(1000);
+    expect(screen.getByLabelText('空母内の燃料回復率（%）')).toHaveValue(50);
+    expect(screen.getByLabelText('空母内の艦載機HP回復量（停泊時）')).toHaveValue(1);
     expect(screen.getByLabelText('燃料消費あり')).toBeChecked();
     expect(screen.getByLabelText('補給ユニットの最大補給回数')).toHaveValue(3);
     expect(screen.getByText('現在の状態: 標準')).toBeInTheDocument();
@@ -135,6 +147,10 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(screen.getByLabelText('初期資金')).toHaveAttribute('max', '50000');
     expect(screen.getByText(/標準値: 10000/)).toBeInTheDocument();
     expect(screen.getByText(/推奨: 8000-15000/)).toBeInTheDocument();
+    expect(screen.getByLabelText('空母内の燃料回復率（%）')).toHaveAttribute('min', '0');
+    expect(screen.getByLabelText('空母内の燃料回復率（%）')).toHaveAttribute('max', '100');
+    expect(screen.getByLabelText('空母内の艦載機HP回復量（停泊時）')).toHaveAttribute('min', '0');
+    expect(screen.getByLabelText('空母内の艦載機HP回復量（停泊時）')).toHaveAttribute('max', '5');
     expect(screen.queryByLabelText('工場ごとのドローン上限')).not.toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('自爆ドローン有効'));
     expect(screen.getByLabelText('工場ごとのドローン上限')).toHaveAttribute('min', '1');

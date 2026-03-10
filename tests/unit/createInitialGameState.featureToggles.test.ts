@@ -29,6 +29,10 @@ const baseSettings = {
   droneInterceptionChancePercent: 70,
   droneInterceptionMaxPerTurn: 2,
   droneAiProductionRatioLimitPercent: 50,
+  carrierCargoFuelRecoveryPercent: 50,
+  carrierCargoAmmoRecoveryPercent: 50,
+  carrierCargoHpRecovery: 1,
+  carrierCargoHpRecoveryAtPort: 1,
 };
 
 const buildScenario = (): SkirmishScenario => ({

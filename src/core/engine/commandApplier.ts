@@ -163,6 +163,9 @@ const getSupplyTargets = (state: GameState, unit: UnitState): UnitState[] => {
       if (resupplyTarget === 'AIR') {
         return isAirUnitType(target.type) && !isDroneUnitType(target.type);
       }
+      if (resupplyTarget === 'NAVAL') {
+        return isNavalUnitType(target.type);
+      }
       return !isAirUnitType(target.type) && !isNavalUnitType(target.type);
     });
 };
@@ -194,6 +197,18 @@ const getLoadTargets = (state: GameState, transport: UnitState): UnitState[] => 
     return [];
   }
 
+  if (transport.type === 'CARRIER') {
+    const currentTile = state.map.tiles[toCoordKey(transport.position)];
+    const hasFriendlyOperationalPortAccess = (currentTile?.terrainType === 'PORT' && currentTile.owner === transport.owner && isOperationalFacility(currentTile))
+      || getAdjacentCoords(transport.position).some((coord) => {
+        const tile = state.map.tiles[toCoordKey(coord)];
+        return tile?.terrainType === 'PORT' && tile.owner === transport.owner && isOperationalFacility(tile);
+      });
+    if (!hasFriendlyOperationalPortAccess) {
+      return [];
+    }
+  }
+
   return getAdjacentCoords(transport.position)
     .map((coord) => getUnitAt(state, coord))
     .filter((target): target is UnitState => Boolean(target && target.owner === transport.owner && target.id !== transport.id))
@@ -207,13 +222,27 @@ const getUnloadCoords = (state: GameState, transport: UnitState, cargoUnit: Unit
     return [];
   }
 
+  const transportTile = state.map.tiles[toCoordKey(transport.position)];
+
   return getAdjacentCoords(transport.position).filter((coord) => {
-    if (cargoUnit.type === 'INFANTRY' && transport.type === 'TRANSPORT_HELI') {
-      const tile = state.map.tiles[toCoordKey(coord)];
-      if (!tile || tile.terrainType === 'SEA') {
+    const tile = state.map.tiles[toCoordKey(coord)];
+    if (!tile) {
+      return false;
+    }
+
+    if (cargoUnit.type === 'INFANTRY' && transport.type === 'TRANSPORT_HELI' && tile.terrainType === 'SEA') {
+      return false;
+    }
+
+    if (transport.type === 'LANDER') {
+      if (transportTile?.terrainType === 'PORT') {
+        return getTerrainPassability(state, { ...cargoUnit, position: { ...transport.position } }, coord);
+      }
+      if (tile.terrainType !== 'COAST' && tile.terrainType !== 'PORT') {
         return false;
       }
     }
+
     return getTerrainPassability(state, { ...cargoUnit, position: { ...transport.position } }, coord);
   });
 };

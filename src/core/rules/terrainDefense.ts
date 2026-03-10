@@ -35,6 +35,7 @@ const terrainDefenseTable: Partial<Record<TerrainType, Partial<Record<UnitType, 
   CITY: buildGroundDefenseTable(0.75),
   FACTORY: buildGroundDefenseTable(0.75),
   HQ: buildGroundDefenseTable(0.7),
+  COAST: buildGroundDefenseTable(1.15),
 };
 
 export const getTerrainDefenseModifier = (

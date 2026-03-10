@@ -70,6 +70,10 @@ describe('saveSlots 追加カバレッジ', () => {
       droneInterceptionChancePercent: 70,
       droneInterceptionMaxPerTurn: 2,
       droneAiProductionRatioLimitPercent: 50,
+      carrierCargoFuelRecoveryPercent: 50,
+      carrierCargoAmmoRecoveryPercent: 50,
+      carrierCargoHpRecovery: 1,
+      carrierCargoHpRecoveryAtPort: 1,
     };
 
     upsertSaveSlot(1, { mapId: 'plains-clash', state, settings });

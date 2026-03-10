@@ -32,8 +32,58 @@ const getUnitRecoveryAmount = (state: GameState, terrainType: string): number =>
   if (terrainType === 'FACTORY') return Math.max(0, state.hpRecoveryFactory ?? 2);
   if (terrainType === 'HQ') return Math.max(0, state.hpRecoveryHq ?? 3);
   if (terrainType === 'AIRPORT') return Math.max(0, state.hpRecoveryFactory ?? 2);
+  if (terrainType === 'PORT') return Math.max(0, state.hpRecoveryFactory ?? 2);
   return 0;
 };
+
+const recoverCarrierCargoUnit = (
+  state: GameState,
+  cargoUnit: GameState['units'][string],
+  isDockedAtPort: boolean,
+  enableFuelSupply: boolean,
+  enableAmmoSupply: boolean,
+): GameState['units'][string] => {
+  const fuelPercent = Math.max(0, state.carrierCargoFuelRecoveryPercent ?? 50);
+  const ammoPercent = Math.max(0, state.carrierCargoAmmoRecoveryPercent ?? 50);
+  const hpRecovery = Math.max(
+    0,
+    isDockedAtPort ? (state.carrierCargoHpRecoveryAtPort ?? 1) : (state.carrierCargoHpRecovery ?? 1),
+  );
+  const definition = UNIT_DEFINITIONS[cargoUnit.type];
+  const fuelRecovery = Math.max(1, Math.floor((definition.maxFuel * fuelPercent) / 100));
+  const ammoRecovery = Math.max(1, Math.floor((definition.maxAmmo * ammoPercent) / 100));
+
+  return {
+    ...cargoUnit,
+    fuel: enableFuelSupply ? Math.min(definition.maxFuel, cargoUnit.fuel + fuelRecovery) : cargoUnit.fuel,
+    ammo: enableAmmoSupply ? Math.min(definition.maxAmmo, cargoUnit.ammo + ammoRecovery) : cargoUnit.ammo,
+    hp: Math.min(10, cargoUnit.hp + hpRecovery),
+  };
+};
+
+const recoverCarrierCargo = (
+  state: GameState,
+  units: Record<string, GameState['units'][string]>,
+  enableFuelSupply: boolean,
+  enableAmmoSupply: boolean,
+): Record<string, GameState['units'][string]> =>
+  Object.fromEntries(
+    Object.entries(units).map(([id, unit]) => {
+      if (unit.type !== 'CARRIER' || !unit.cargo || unit.cargo.length === 0) {
+        return [id, unit];
+      }
+
+      const tile = state.map.tiles[toCoordKey(unit.position)];
+      const isDockedAtPort = tile?.terrainType === 'PORT' && isOperationalFacility(tile) && tile.owner === unit.owner;
+      return [
+        id,
+        {
+          ...unit,
+          cargo: unit.cargo.map((cargoUnit) => recoverCarrierCargoUnit(state, cargoUnit, isDockedAtPort, enableFuelSupply, enableAmmoSupply)),
+        },
+      ];
+    }),
+  );
 
 const getPlayerIncome = (state: GameState, playerId: PlayerId): number =>
   Object.values(state.map.tiles)
@@ -134,9 +184,10 @@ export const nextTurnState = (state: GameState): GameState => {
   const enableFuelSupply = state.enableFuelSupply ?? true;
   const enableAmmoSupply = state.enableAmmoSupply ?? true;
   const unitsAfterTurnEndFuel = consumeTurnEndFuel(state, endedPlayerId, enableFuelSupply, enableAmmoSupply);
+  const unitsAfterCarrierRecovery = recoverCarrierCargo(state, unitsAfterTurnEndFuel, enableFuelSupply, enableAmmoSupply);
 
   const nextUnits = Object.fromEntries(
-    Object.entries(unitsAfterTurnEndFuel).map(([id, unit]) => {
+    Object.entries(unitsAfterCarrierRecovery).map(([id, unit]) => {
       if (unit.owner !== nextPlayerId) {
         return [id, unit];
       }
@@ -182,7 +233,7 @@ export const nextTurnState = (state: GameState): GameState => {
 
   const recoveredTiles = recoverPropertyCapturePointsOnTurnEnd(state, endedPlayerId);
   const destroyedAirIds = Object.keys(state.units).filter(
-    (id) => state.units[id].owner === endedPlayerId && isAirUnitType(state.units[id].type) && !unitsAfterTurnEndFuel[id],
+    (id) => state.units[id].owner === endedPlayerId && isAirUnitType(state.units[id].type) && !unitsAfterCarrierRecovery[id],
   );
 
   return {
