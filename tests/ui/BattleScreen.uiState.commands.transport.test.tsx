@@ -51,6 +51,8 @@ describe('BattleScreen UIテスト: コマンド操作(輸送)', () => {
           acted: false,
           loadedThisTurn: false,
           unloadedThisTurn: false,
+          loadsUsedThisTurn: 0,
+          unloadsUsedThisTurn: 0,
           movePointsRemaining: 0,
         };
         state.units.p2_tank.position = { x: 5, y: 5 };
@@ -74,7 +76,7 @@ describe('BattleScreen UIテスト: コマンド操作(輸送)', () => {
     expect(screen.getByRole('button', { name: '移動実行' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '搭載実行' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '降車実行' })).toBeEnabled();
-    expect(screen.getByText('搭載回数: 未使用 / 降車回数: 未使用')).toBeInTheDocument();
+    expect(screen.getByText('搭載回数: 0/2 / 降車回数: 0/2')).toBeInTheDocument();
   });
 
   it('そのターンに使用済みの搭載と降車は不活性になる', () => {
@@ -98,6 +100,8 @@ describe('BattleScreen UIテスト: コマンド操作(輸送)', () => {
           acted: false,
           loadedThisTurn: true,
           unloadedThisTurn: true,
+          loadsUsedThisTurn: 2,
+          unloadsUsedThisTurn: 2,
         };
         state.units.p2_tank.position = { x: 5, y: 5 };
         delete state.units.p1_inf;
@@ -119,6 +123,54 @@ describe('BattleScreen UIテスト: コマンド操作(輸送)', () => {
 
     expect(screen.getByRole('button', { name: '搭載実行' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '降車実行' })).toBeDisabled();
-    expect(screen.getByText('搭載回数: 使用済み / 降車回数: 使用済み')).toBeInTheDocument();
+    expect(screen.getByText('搭載回数: 2/2 / 降車回数: 2/2')).toBeInTheDocument();
+  });
+
+  it('このターンに搭載した cargo は降車できず、このターンに降車したユニットは搭載できない', () => {
+    renderBattleScreen({
+      mutateState: (state) => {
+        state.units.p1_tank = {
+          ...state.units.p1_tank,
+          type: 'TRANSPORT_TRUCK',
+          cargo: [
+            {
+              ...state.units.p1_inf,
+              id: 'cargo_inf_new',
+              position: { x: 2, y: 2 },
+              moved: true,
+              acted: true,
+              loadedIntoCargoThisTurn: true,
+              lastMovePath: [],
+            },
+          ],
+          ammo: 0,
+          position: { x: 2, y: 2 },
+          moved: false,
+          acted: false,
+          loadsUsedThisTurn: 0,
+          unloadsUsedThisTurn: 0,
+        };
+        delete state.units.p1_inf;
+        state.units.p1_recon = {
+          ...state.units.p2_inf,
+          id: 'p1_recon',
+          owner: 'P1',
+          type: 'RECON',
+          position: { x: 2, y: 1 },
+          moved: true,
+          acted: true,
+          unloadedFromCargoThisTurn: true,
+          lastMovePath: [],
+        };
+        state.units.p2_tank.position = { x: 5, y: 5 };
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 3,2' }));
+
+    expect(screen.getByRole('button', { name: '搭載実行' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '降車実行' })).toBeDisabled();
+    expect(screen.getByText('降車候補: なし')).toBeInTheDocument();
   });
 });

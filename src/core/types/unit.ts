@@ -41,6 +41,10 @@ export type UnitState = {
   cargo?: UnitState[];
   loadedThisTurn?: boolean;
   unloadedThisTurn?: boolean;
+  loadedIntoCargoThisTurn?: boolean;
+  unloadedFromCargoThisTurn?: boolean;
+  loadsUsedThisTurn?: number;
+  unloadsUsedThisTurn?: number;
   interceptsUsedThisTurn?: number;
   originFactoryCoord?: Coord;
   position: Coord;

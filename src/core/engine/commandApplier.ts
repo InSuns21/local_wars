@@ -213,12 +213,13 @@ const getLoadTargets = (state: GameState, transport: UnitState): UnitState[] => 
     .map((coord) => getUnitAt(state, coord))
     .filter((target): target is UnitState => Boolean(target && target.owner === transport.owner && target.id !== transport.id))
     .filter((target) => target.hp > 0)
+    .filter((target) => !wasUnloadedFromCargoThisTurn(target))
     .filter((target) => !isTransportUnitType(target.type))
     .filter((target) => canTransportUnitTypeCarry(transport.type, target.type));
 };
 
 const getUnloadCoords = (state: GameState, transport: UnitState, cargoUnit: UnitState | null): Coord[] => {
-  if (!cargoUnit) {
+  if (!cargoUnit || wasLoadedIntoCargoThisTurn(cargoUnit)) {
     return [];
   }
 
@@ -254,6 +255,11 @@ const deleteUnitWithCargo = (state: GameState, unitId: string): void => {
   }
   delete state.units[unitId];
 };
+
+const getLoadsUsedThisTurn = (transport: UnitState): number => transport.loadsUsedThisTurn ?? (transport.loadedThisTurn ? 1 : 0);
+const getUnloadsUsedThisTurn = (transport: UnitState): number => transport.unloadsUsedThisTurn ?? (transport.unloadedThisTurn ? 1 : 0);
+const wasLoadedIntoCargoThisTurn = (unit: UnitState | null | undefined): boolean => Boolean(unit?.loadedIntoCargoThisTurn);
+const wasUnloadedFromCargoThisTurn = (unit: UnitState | null | undefined): boolean => Boolean(unit?.unloadedFromCargoThisTurn);
 
 const getVisibleEnemyCoordKeys = (state: GameState, unit: UnitState): Set<string> => {
   const visibleEnemyIds = (state.fogOfWar ?? false)
@@ -773,7 +779,8 @@ const applyLoadCommand = (
   }
   if (transport.acted) return { ok: false, reason: 'この輸送ユニットは既に行動済みです。' };
   if (!isTransportUnitType(transport.type)) return { ok: false, reason: '輸送ユニットではありません。' };
-  if (transport.loadedThisTurn) return { ok: false, reason: '搭載は1ターンに1回までです。' };
+  const loadActionLimit = getTransportCapacity(transport.type);
+  if (getLoadsUsedThisTurn(transport) >= loadActionLimit) return { ok: false, reason: `搭載は1ターンに${loadActionLimit}回までです。` };
   if (manhattanDistance(transport.position, cargoUnit.position) !== 1) {
     return { ok: false, reason: '搭載対象は隣接している必要があります。' };
   }
@@ -786,7 +793,8 @@ const applyLoadCommand = (
   state.units[transport.id] = {
     ...transport,
     loadedThisTurn: true,
-    cargo: [...(transport.cargo ?? []), cloneUnit({ ...cargoUnit, moved: true, acted: true, lastMovePath: [] })],
+    loadsUsedThisTurn: getLoadsUsedThisTurn(transport) + 1,
+    cargo: [...(transport.cargo ?? []), cloneUnit({ ...cargoUnit, moved: true, acted: true, loadedIntoCargoThisTurn: true, unloadedFromCargoThisTurn: false, lastMovePath: [] })],
   };
   delete state.units[cargoUnit.id];
 
@@ -804,12 +812,14 @@ const applyUnloadCommand = (
   if (transport.owner !== state.currentPlayerId) return { ok: false, reason: '自軍ユニットのみ降車できます。' };
   if (!isTransportUnitType(transport.type)) return { ok: false, reason: '輸送ユニットではありません。' };
   if (transport.acted) return { ok: false, reason: 'この輸送ユニットは既に行動済みです。' };
-  if (transport.unloadedThisTurn) return { ok: false, reason: '降車は1ターンに1回までです。' };
+  const unloadActionLimit = getTransportCapacity(transport.type);
+  if (getUnloadsUsedThisTurn(transport) >= unloadActionLimit) return { ok: false, reason: `降車は1ターンに${unloadActionLimit}回までです。` };
 
   const cargoIndex = (transport.cargo ?? []).findIndex((cargoUnit) => cargoUnit.id === command.cargoUnitId);
   if (cargoIndex < 0) return { ok: false, reason: '搭載ユニットが見つかりません。' };
 
   const cargoUnit = transport.cargo?.[cargoIndex] ?? null;
+  if (wasLoadedIntoCargoThisTurn(cargoUnit)) return { ok: false, reason: 'このターンに搭載したユニットは降車できません。' };
   const unloadCoords = getUnloadCoords(state, transport, cargoUnit);
   if (!unloadCoords.some((coord) => coord.x === command.to.x && coord.y === command.to.y)) {
     return { ok: false, reason: 'そのタイルには降車できません。' };
@@ -820,6 +830,7 @@ const applyUnloadCommand = (
   state.units[transport.id] = {
     ...transport,
     unloadedThisTurn: true,
+    unloadsUsedThisTurn: getUnloadsUsedThisTurn(transport) + 1,
     cargo: remainingCargo,
   };
   state.units[cargoUnit!.id] = {
@@ -827,6 +838,8 @@ const applyUnloadCommand = (
     position: { ...command.to },
     moved: true,
     acted: true,
+    loadedIntoCargoThisTurn: false,
+    unloadedFromCargoThisTurn: true,
     movePointsRemaining: 0,
     lastMovePath: [],
   };
@@ -905,6 +918,10 @@ const applyProduceUnitCommand = (
     cargo: undefined,
     loadedThisTurn: false,
     unloadedThisTurn: false,
+    loadedIntoCargoThisTurn: false,
+    unloadedFromCargoThisTurn: false,
+    loadsUsedThisTurn: 0,
+    unloadsUsedThisTurn: 0,
     interceptsUsedThisTurn: 0,
     originFactoryCoord: isDroneProduction ? { ...command.factoryCoord } : undefined,
     position: deployCoord,

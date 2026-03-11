@@ -219,6 +219,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     selectedUnit && selectedUnit.owner === gameState.currentPlayerId,
   );
   const selectedUnitAlerts = selectedUnit ? getUnitResourceAlerts(selectedUnit) : [];
+  const getLoadsUsedThisTurn = (unit: UnitState | null): number => (unit ? (unit.loadsUsedThisTurn ?? (unit.loadedThisTurn ? 1 : 0)) : 0);
+  const getUnloadsUsedThisTurn = (unit: UnitState | null): number => (unit ? (unit.unloadsUsedThisTurn ?? (unit.unloadedThisTurn ? 1 : 0)) : 0);
+  const wasLoadedIntoCargoThisTurn = (unit: UnitState | null | undefined): boolean => Boolean(unit?.loadedIntoCargoThisTurn);
+  const wasUnloadedFromCargoThisTurn = (unit: UnitState | null | undefined): boolean => Boolean(unit?.unloadedFromCargoThisTurn);
 
   const playSe = (id: SoundEffectId): void => {
     onPlaySoundEffect?.(id);
@@ -446,6 +450,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
     return adjacentOffsets
       .map((offset) => gameState.units[aliveUnitByTile.get(toCoordKey({ x: selectedUnit.position.x + offset.x, y: selectedUnit.position.y + offset.y })) ?? ""])
       .filter((unit): unit is UnitState => Boolean(unit && unit.owner === selectedUnit.owner && unit.id !== selectedUnit.id))
+      .filter((unit) => !wasUnloadedFromCargoThisTurn(unit))
       .filter((unit) => !UNIT_DEFINITIONS[unit.type].transportMode)
       .filter((unit) => (definition.cargoUnitTypes ?? []).includes(unit.type));
   }, [aliveUnitByTile, canControlSelectedUnit, gameState.map.tiles, gameState.units, selectedUnit]);
@@ -455,7 +460,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       return [];
     }
     const cargoUnit = (selectedUnit.cargo ?? []).find((unit) => unit.id === unloadCargoUnitId);
-    if (!cargoUnit) {
+    if (!cargoUnit || wasLoadedIntoCargoThisTurn(cargoUnit)) {
       return [];
     }
 
@@ -609,7 +614,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       !isGameOver &&
       selectedUnit &&
       !selectedUnit.acted &&
-      !selectedUnit.loadedThisTurn &&
+      getLoadsUsedThisTurn(selectedUnit) < (UNIT_DEFINITIONS[selectedUnit.type].cargoCapacity ?? 0) &&
       loadableAdjacentUnits.length > 0,
   );
 
@@ -618,7 +623,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       !isGameOver &&
       selectedUnit &&
       !selectedUnit.acted &&
-      !selectedUnit.unloadedThisTurn &&
+      getUnloadsUsedThisTurn(selectedUnit) < (UNIT_DEFINITIONS[selectedUnit.type].cargoCapacity ?? 0) &&
       unloadCargoUnitId &&
       unloadCandidateTiles.length > 0,
   );
@@ -751,8 +756,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       setUnloadCargoUnitId("");
       return;
     }
+    const preferredCargoUnit = cargoUnits.find((unit) => !wasLoadedIntoCargoThisTurn(unit)) ?? cargoUnits[0];
     if (!cargoUnits.some((unit) => unit.id === unloadCargoUnitId)) {
-      setUnloadCargoUnitId(cargoUnits[0].id);
+      setUnloadCargoUnitId(preferredCargoUnit.id);
+      return;
+    }
+    if (unloadCargoUnitId && wasLoadedIntoCargoThisTurn(cargoUnits.find((unit) => unit.id === unloadCargoUnitId))) {
+      setUnloadCargoUnitId(preferredCargoUnit.id);
     }
   }, [selectedUnit, unloadCargoUnitId]);
 
@@ -1386,7 +1396,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                   {UNIT_DEFINITIONS[selectedUnit.type].transportMode && (
                     <Paper variant="outlined" sx={{ p: 1 }}>
                       <Typography variant="caption" color="text.secondary">搭載/降車回数</Typography>
-                      <Typography>{`${selectedUnit.loadedThisTurn ? 1 : 0}/1 ・ ${selectedUnit.unloadedThisTurn ? 1 : 0}/1`}</Typography>
+                      <Typography>{`${getLoadsUsedThisTurn(selectedUnit)}/${UNIT_DEFINITIONS[selectedUnit.type].cargoCapacity ?? 0} ・ ${getUnloadsUsedThisTurn(selectedUnit)}/${UNIT_DEFINITIONS[selectedUnit.type].cargoCapacity ?? 0}`}</Typography>
                     </Paper>
                   )}
                   {UNIT_DEFINITIONS[selectedUnit.type].transportMode && (
@@ -1462,7 +1472,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                       </NativeSelect>
                     </FormControl>
                     <Typography variant="body2">
-                      搭載回数: {selectedUnit?.loadedThisTurn ? '使用済み' : '未使用'} / 降車回数: {selectedUnit?.unloadedThisTurn ? '使用済み' : '未使用'}
+                      搭載回数: {`${getLoadsUsedThisTurn(selectedUnit)}/${UNIT_DEFINITIONS[selectedUnit?.type ?? 'TRANSPORT_TRUCK'].cargoCapacity ?? 0}`} / 降車回数: {`${getUnloadsUsedThisTurn(selectedUnit)}/${UNIT_DEFINITIONS[selectedUnit?.type ?? 'TRANSPORT_TRUCK'].cargoCapacity ?? 0}`}
                     </Typography>
                     <Typography variant="body2">
                       降車候補: {unloadCandidateTiles.length > 0 ? unloadCandidateTiles.map((coord) => `${coord.x},${coord.y}`).join(' / ') : 'なし'}

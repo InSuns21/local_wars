@@ -119,6 +119,13 @@ const recoverPropertyCapturePointsOnTurnEnd = (state: GameState, endedPlayerId: 
   );
 };
 
+const resetTransportTransferFlags = (unit: GameState['units'][string]): GameState['units'][string] => ({
+  ...unit,
+  loadedIntoCargoThisTurn: false,
+  unloadedFromCargoThisTurn: false,
+  cargo: unit.cargo?.map(resetTransportTransferFlags),
+});
+
 const consumeTurnEndFuel = (
   state: GameState,
   endedPlayerId: PlayerId,
@@ -193,11 +200,13 @@ export const nextTurnState = (state: GameState): GameState => {
       }
 
       const nextUnit = {
-        ...unit,
+        ...resetTransportTransferFlags(unit),
         moved: false,
         acted: false,
         loadedThisTurn: false,
         unloadedThisTurn: false,
+        loadsUsedThisTurn: 0,
+        unloadsUsedThisTurn: 0,
         interceptsUsedThisTurn: 0,
         movePointsRemaining: undefined,
         lastMovePath: [],
