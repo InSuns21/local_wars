@@ -115,6 +115,25 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     expect(cityTile.getAttribute('title') ?? '').toContain('拠点耐久: 10/10');
   });
 
+  it('選択ユニットの低燃料・残弾僅少は左バーで警告表示する', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      fuel: 10,
+      ammo: 1,
+    };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
+
+    expect(screen.getByText('燃料警戒')).toBeInTheDocument();
+    expect(screen.getByText('残り10以下')).toBeInTheDocument();
+    expect(screen.getByText('弾薬警戒')).toBeInTheDocument();
+    expect(screen.getByText('残り1以下')).toBeInTheDocument();
+  });
+
   it('敵方ログ表示設定がOFFのとき、経過ログに敵方の行動は表示されない', () => {
     const state = createInitialGameState();
     state.humanPlayerSide = 'P1';

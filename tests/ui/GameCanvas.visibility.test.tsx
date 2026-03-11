@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 import { GameCanvas } from '@/components/board/GameCanvas';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
@@ -122,5 +122,66 @@ describe('GameCanvas UIテスト: ステルス可視', () => {
     );
 
     expect(screen.getByTestId('unit-icon-STEALTH_BOMBER')).toBeInTheDocument();
+  });
+
+  it('低燃料と残弾僅少のユニットには盤面上で警告チップを表示する', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      fuel: 10,
+      ammo: 1,
+      position: { x: 1, y: 2 },
+    };
+
+    render(
+      <GameCanvas
+        gameState={state}
+        selectedUnitId={null}
+        selectedTile={null}
+        previewPath={[]}
+        moveRangeTiles={[]}
+        attackRangeTiles={[]}
+        supplyRangeTiles={[]}
+        highlightedTargetUnitId={null}
+        onSelectUnit={() => {}}
+        onSelectTile={() => {}}
+      />,
+    );
+
+    const tile = screen.getByRole('button', { name: 'タイル 1,2' });
+    expect(tile).toHaveAttribute('data-unit-alerts', 'fuel-low,ammo-low');
+    expect(within(tile).getByText('燃料')).toBeInTheDocument();
+    expect(within(tile).getByText('弾切れ前')).toBeInTheDocument();
+  });
+
+  it('ドローンは残弾1でも弾薬警告を出さず、燃料警告だけを表示する', () => {
+    const state = createInitialGameState();
+    state.units.p1_inf = {
+      ...state.units.p1_inf,
+      type: 'SUICIDE_DRONE',
+      fuel: 10,
+      ammo: 1,
+      position: { x: 0, y: 2 },
+    };
+
+    render(
+      <GameCanvas
+        gameState={state}
+        selectedUnitId={null}
+        selectedTile={null}
+        previewPath={[]}
+        moveRangeTiles={[]}
+        attackRangeTiles={[]}
+        supplyRangeTiles={[]}
+        highlightedTargetUnitId={null}
+        onSelectUnit={() => {}}
+        onSelectTile={() => {}}
+      />,
+    );
+
+    const tile = screen.getByRole('button', { name: 'タイル 0,2' });
+    expect(tile).toHaveAttribute('data-unit-alerts', 'fuel-low');
+    expect(within(tile).getByText('燃料')).toBeInTheDocument();
+    expect(within(tile).queryByText('弾切れ前')).not.toBeInTheDocument();
   });
 });

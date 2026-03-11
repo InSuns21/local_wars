@@ -41,6 +41,7 @@ import type { Coord } from "@core/types/game";
 import type { GameState } from "@core/types/state";
 import type { UnitState, UnitType } from "@core/types/unit";
 import { manhattanDistance, toCoordKey } from "@/utils/coord";
+import { getUnitResourceAlerts, UNIT_RESOURCE_ALERT_META } from "@/utils/unitResourceAlerts";
 import { getMoveSoundEffectId, type SoundEffectId } from "@services/soundEffects";
 
 export const battleStore = createGameStore(createInitialGameState());
@@ -131,6 +132,7 @@ const getActionLabel = (action: GameState["actionLog"][number]["action"]): strin
     case "END_TURN":
       return "ターン終了";
     case "AIR_FUEL_DEPLETION":
+    case "NAVAL_FUEL_DEPLETION":
       return "燃料切れ";
     case "FOG_ENCOUNTER":
       return "遭遇戦";
@@ -216,6 +218,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const canControlSelectedUnit = Boolean(
     selectedUnit && selectedUnit.owner === gameState.currentPlayerId,
   );
+  const selectedUnitAlerts = selectedUnit ? getUnitResourceAlerts(selectedUnit) : [];
 
   const playSe = (id: SoundEffectId): void => {
     onPlaySoundEffect?.(id);
@@ -1315,10 +1318,54 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                   <Paper variant="outlined" sx={{ p: 1 }}>
                     <Typography variant="caption" color="text.secondary">燃料</Typography>
                     <Typography>{selectedUnit.fuel}</Typography>
+                    {selectedUnitAlerts.includes('fuel-low') && (
+                      <Box sx={{ mt: 0.5 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'inline-flex',
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            bgcolor: UNIT_RESOURCE_ALERT_META['fuel-low'].bgColor,
+                            color: UNIT_RESOURCE_ALERT_META['fuel-low'].fgColor,
+                            border: `1px solid ${UNIT_RESOURCE_ALERT_META['fuel-low'].borderColor}`,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {UNIT_RESOURCE_ALERT_META['fuel-low'].shortLabel}
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block', mt: 0.25 }}>
+                          {UNIT_RESOURCE_ALERT_META['fuel-low'].helperText}
+                        </Typography>
+                      </Box>
+                    )}
                   </Paper>
                   <Paper variant="outlined" sx={{ p: 1 }}>
                     <Typography variant="caption" color="text.secondary">弾薬</Typography>
                     <Typography>{selectedUnit.ammo}</Typography>
+                    {selectedUnitAlerts.includes('ammo-low') && (
+                      <Box sx={{ mt: 0.5 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'inline-flex',
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            bgcolor: UNIT_RESOURCE_ALERT_META['ammo-low'].bgColor,
+                            color: UNIT_RESOURCE_ALERT_META['ammo-low'].fgColor,
+                            border: `1px solid ${UNIT_RESOURCE_ALERT_META['ammo-low'].borderColor}`,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {UNIT_RESOURCE_ALERT_META['ammo-low'].shortLabel}
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block', mt: 0.25 }}>
+                          {UNIT_RESOURCE_ALERT_META['ammo-low'].helperText}
+                        </Typography>
+                      </Box>
+                    )}
                   </Paper>
                   <Paper variant="outlined" sx={{ p: 1 }}>
                     <Typography variant="caption" color="text.secondary">座標</Typography>

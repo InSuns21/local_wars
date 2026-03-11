@@ -8,6 +8,7 @@ import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 import { toCoordKey } from '@/utils/coord';
+import { getUnitResourceAlerts, UNIT_RESOURCE_ALERT_META } from '@/utils/unitResourceAlerts';
 import { TERRAIN_TEXTURES, UNIT_GLYPH_PATHS, UNIT_ICON_EXTERNAL_PATHS } from './boardArt';
 import { BOARD_VISUAL_TOKENS } from './boardVisualTokens';
 
@@ -442,6 +443,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   ? '味'
                   : '敵'
                 : null;
+              const unitResourceAlerts = isVisible && unit ? getUnitResourceAlerts(unit) : [];
               const unitHpLabel = isVisible && unit ? 'HP ' + unit.hp : null;
               const propertyDurabilityLabel =
                 isVisible && isCapturableProperty(tile?.terrainType)
@@ -519,6 +521,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   data-outline-layer-count={String(outlineLayers.length + (isSupplyRange ? 1 : 0))}
                   data-unit-hp={unitHpLabel ?? 'NONE'}
                   data-property-durability={propertyDurabilityLabel ?? 'NONE'}
+                  data-unit-alerts={unitResourceAlerts.join(',') || 'none'}
                   aria-label={'タイル ' + x + ',' + y}
                 >
                   {isVisible && unit ? (
@@ -672,22 +675,54 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                       {facilityStatusLabel}
                     </span>
                   ) : null}
-                  {ownerBadge && isVisible ? (
+                  {(ownerBadge && isVisible) || unitResourceAlerts.length > 0 ? (
                     <span
                       style={{
                         position: 'absolute',
                         top: Math.max(3, Math.round(3 * zoom)),
                         right: Math.max(3, Math.round(3 * zoom)),
-                        fontSize: badgeFontSize,
-                        fontWeight: 800,
-                        padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(2, Math.round(3 * zoom))}px`,
-                        borderRadius: 3,
-                        background: ownerBadgeToken.badgeBg,
-                        color: ownerBadgeToken.badgeColor,
-                        border: `1px solid ${ownerBadgeToken.borderColor}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-end',
+                        gap: Math.max(2, Math.round(2 * zoom)),
+                        zIndex: 4,
                       }}
                     >
-                      {ownerBadge}
+                      {ownerBadge && isVisible ? (
+                        <span
+                          style={{
+                            fontSize: badgeFontSize,
+                            fontWeight: 800,
+                            padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(2, Math.round(3 * zoom))}px`,
+                            borderRadius: 3,
+                            background: ownerBadgeToken.badgeBg,
+                            color: ownerBadgeToken.badgeColor,
+                            border: `1px solid ${ownerBadgeToken.borderColor}`,
+                          }}
+                        >
+                          {ownerBadge}
+                        </span>
+                      ) : null}
+                      {unitResourceAlerts.map((alertKind) => {
+                        const alertMeta = UNIT_RESOURCE_ALERT_META[alertKind];
+                        return (
+                          <span
+                            key={alertKind}
+                            style={{
+                              fontSize: badgeFontSize,
+                              fontWeight: 800,
+                              padding: `${Math.max(1, Math.round(zoom))}px ${Math.max(2, Math.round(3 * zoom))}px`,
+                              borderRadius: 3,
+                              background: alertMeta.bgColor,
+                              color: alertMeta.fgColor,
+                              border: `1px solid ${alertMeta.borderColor}`,
+                              lineHeight: 1.1,
+                            }}
+                          >
+                            {alertMeta.chipLabel}
+                          </span>
+                        );
+                      })}
                     </span>
                   ) : null}
                 </button>
