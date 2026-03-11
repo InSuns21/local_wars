@@ -436,6 +436,79 @@ describe('turnEngine 航空燃料処理', () => {
     expect(next.units.p1_tank).toBeDefined();
     expect(next.units.p1_tank.fuel).toBe(1);
   });
+
+  it('潜水艦は待機時に燃料を2消費する', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'SUBMARINE',
+      position: { x: 2, y: 2 },
+      fuel: 4,
+      ammo: 4,
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeDefined();
+    expect(next.units.p1_tank.fuel).toBe(2);
+  });
+
+  it('港外で燃料切れした潜水艦はターン終了時に沈没しログが残る', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'SUBMARINE',
+      position: { x: 2, y: 2 },
+      fuel: 2,
+      ammo: 4,
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeUndefined();
+    expect(next.actionLog.some((entry) => entry.action === 'NAVAL_FUEL_DEPLETION' && entry.detail?.includes('p1_tank') && entry.detail?.includes('沈没'))).toBe(true);
+  });
+
+  it('港上の潜水艦は燃料0でもターン終了時補給で沈没せず満タンになる', () => {
+    const state = createInitialGameState();
+    state.map.tiles['0,2'] = {
+      coord: { x: 0, y: 2 },
+      terrainType: 'PORT',
+      owner: 'P1',
+      capturePoints: 20,
+      operational: true,
+    };
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'SUBMARINE',
+      position: { x: 0, y: 2 },
+      fuel: 0,
+      ammo: 1,
+      owner: 'P1',
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeDefined();
+    expect(next.units.p1_tank.fuel).toBe(65);
+    expect(next.units.p1_tank.ammo).toBe(4);
+  });
+
+  it('他の海上ユニットは燃料0でもターン終了時に沈没しない', () => {
+    const state = createInitialGameState();
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      type: 'DESTROYER',
+      position: { x: 2, y: 2 },
+      fuel: 0,
+      ammo: 1,
+    };
+
+    const next = nextTurnState(state);
+
+    expect(next.units.p1_tank).toBeDefined();
+    expect(next.units.p1_tank.fuel).toBe(0);
+  });
 });
 
 describe('turnEngine HP回復処理', () => {

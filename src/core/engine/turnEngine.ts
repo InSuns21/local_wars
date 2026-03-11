@@ -6,6 +6,7 @@ import { getTileCaptureTarget } from '@core/rules/facilities';
 import {
   getTurnEndFuelCost,
   isAirUnitType,
+  isFuelDepletionFatalUnitType,
   isOperationalFacility,
   isSupplyChargeRefillTileForUnit,
   isSupplyTileForUnit,
@@ -135,19 +136,9 @@ const consumeTurnEndFuel = (
 
     const tile = state.map.tiles[toCoordKey(unit.position)];
     const shouldRefillSupplyCharges = isSupplyChargeRefillTileForUnit(tile, unit);
-
-    if (!isAirUnitType(unit.type)) {
-      nextUnits[id] = {
-        ...unit,
-        interceptsUsedThisTurn: 0,
-        supplyCharges: shouldRefillSupplyCharges ? maxSupplyCharges : unit.supplyCharges,
-      };
-      continue;
-    }
-
     const fuelCost = getTurnEndFuelCost(unit.type);
-    const consumedFuel = Math.max(0, unit.fuel - fuelCost);
     const canResupply = isSupplyTileForUnit(tile, unit);
+    const consumedFuel = Math.max(0, unit.fuel - fuelCost);
 
     if (canResupply) {
       nextUnits[id] = {
@@ -161,7 +152,16 @@ const consumeTurnEndFuel = (
       continue;
     }
 
-    if (consumedFuel <= 0) {
+    if (fuelCost === 0) {
+      nextUnits[id] = {
+        ...unit,
+        interceptsUsedThisTurn: 0,
+        supplyCharges: shouldRefillSupplyCharges ? maxSupplyCharges : unit.supplyCharges,
+      };
+      continue;
+    }
+
+    if (isFuelDepletionFatalUnitType(unit.type) && consumedFuel <= 0) {
       continue;
     }
 
@@ -232,9 +232,9 @@ export const nextTurnState = (state: GameState): GameState => {
   };
 
   const recoveredTiles = recoverPropertyCapturePointsOnTurnEnd(state, endedPlayerId);
-  const destroyedAirIds = Object.keys(state.units).filter(
-    (id) => state.units[id].owner === endedPlayerId && isAirUnitType(state.units[id].type) && !unitsAfterCarrierRecovery[id],
-  );
+  const destroyedFuelDepletionUnits = Object.entries(state.units)
+    .filter(([id, unit]) => unit.owner === endedPlayerId && isFuelDepletionFatalUnitType(unit.type) && !unitsAfterCarrierRecovery[id])
+    .map(([id, unit]) => ({ id, type: unit.type }));
 
   return {
     ...state,
@@ -248,14 +248,14 @@ export const nextTurnState = (state: GameState): GameState => {
     units: nextUnits,
     players: nextPlayers,
     factoryProductionState: {},
-    actionLog: destroyedAirIds.length > 0
+    actionLog: destroyedFuelDepletionUnits.length > 0
       ? [
           ...state.actionLog,
-          ...destroyedAirIds.map((unitId) => ({
+          ...destroyedFuelDepletionUnits.map(({ id, type }) => ({
             turn: state.turn,
             playerId: endedPlayerId,
-            action: 'AIR_FUEL_DEPLETION',
-            detail: `${unitId} は燃料切れで消滅`,
+            action: isAirUnitType(type) ? 'AIR_FUEL_DEPLETION' : 'NAVAL_FUEL_DEPLETION',
+            detail: `${id} は燃料切れで${type === 'SUBMARINE' ? '沈没' : '消滅'}`,
           })),
         ]
       : state.actionLog,

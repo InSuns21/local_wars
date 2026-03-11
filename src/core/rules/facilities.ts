@@ -51,6 +51,7 @@ export const canTransportUnitTypeCarry = (transportType: UnitType, cargoType: Un
   (UNIT_DEFINITIONS[transportType].cargoUnitTypes ?? []).includes(cargoType);
 
 export const getTurnEndFuelCost = (unitType: UnitType): number => UNIT_DEFINITIONS[unitType].turnEndFuelCost ?? 0;
+export const isFuelDepletionFatalUnitType = (unitType: UnitType): boolean => isAirUnitType(unitType) || unitType === 'SUBMARINE';
 
 export const canUnitProduceAtTile = (unitType: UnitType, tile: TileState | undefined): boolean => {
   if (!tile) return false;

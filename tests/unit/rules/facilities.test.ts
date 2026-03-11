@@ -14,6 +14,7 @@ import {
   getTurnEndFuelCost,
   isAirUnitType,
   isBombardableTerrain,
+  isFuelDepletionFatalUnitType,
   isCapturableTerrain,
   isFacilityTargetInRange,
   isNavalUnitType,
@@ -115,7 +116,11 @@ describe('facilities rules', () => {
     expect(canTransportUnitTypeCarry('LANDER', 'FIGHTER')).toBe(false);
     expect(getTurnEndFuelCost('FIGHTER')).toBe(1);
     expect(getTurnEndFuelCost('STEALTH_BOMBER')).toBe(2);
+    expect(getTurnEndFuelCost('SUBMARINE')).toBe(2);
     expect(getTurnEndFuelCost('INFANTRY')).toBe(0);
+    expect(isFuelDepletionFatalUnitType('FIGHTER')).toBe(true);
+    expect(isFuelDepletionFatalUnitType('SUBMARINE')).toBe(true);
+    expect(isFuelDepletionFatalUnitType('DESTROYER')).toBe(false);
   });
 
   it('拠点ごとの生産可否を判定できる', () => {
