@@ -1476,6 +1476,47 @@ describe('commandApplier 統合テスト', () => {
     expect(supplied.state.units.p1_tank.fuel).toBe(10);
   });
 
+  it('空母は港に隣接していなくても隣接航空ユニットを収容できる', () => {
+    const state = createInitialGameState();
+    state.map.tiles['5,5'] = { coord: { x: 5, y: 5 }, terrainType: 'SEA' };
+    state.map.tiles['5,4'] = { coord: { x: 5, y: 4 }, terrainType: 'SEA' };
+    state.units.p1_carrier = {
+      id: 'p1_carrier',
+      owner: 'P1',
+      type: 'CARRIER',
+      hp: 10,
+      fuel: 99,
+      ammo: 4,
+      position: { x: 5, y: 5 },
+      moved: false,
+      acted: false,
+      cargo: [],
+      lastMovePath: [],
+    };
+    state.units.p1_tank = {
+      ...state.units.p1_tank,
+      owner: 'P1',
+      type: 'FIGHTER',
+      fuel: 80,
+      ammo: 6,
+      position: { x: 5, y: 4 },
+      moved: false,
+      acted: false,
+      lastMovePath: [],
+    };
+    state.units.p2_tank.position = { x: 8, y: 8 };
+
+    const loaded = applyCommand(
+      state,
+      { type: 'LOAD', transportUnitId: 'p1_carrier', cargoUnitId: 'p1_tank' },
+      { rng: () => 0.5 },
+    );
+
+    expect(loaded.result.ok).toBe(true);
+    expect(loaded.state.units.p1_tank).toBeUndefined();
+    expect(loaded.state.units.p1_carrier.cargo?.map((unit) => unit.id)).toEqual(['p1_tank']);
+  });
+
   it('港では海上ユニットを生産できる', () => {
     const state = createInitialGameState();
     state.players.P1.funds = 40000;

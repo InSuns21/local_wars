@@ -423,23 +423,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       return [];
     }
 
-    if (selectedUnit.type === 'CARRIER') {
-      const currentTile = gameState.map.tiles[toCoordKey(selectedUnit.position)];
-      const hasFriendlyOperationalPortAccess = (currentTile?.terrainType === 'PORT' && currentTile.owner === selectedUnit.owner && isOperationalFacility(currentTile))
-        || [
-          { x: 0, y: -1 },
-          { x: 1, y: 0 },
-          { x: 0, y: 1 },
-          { x: -1, y: 0 },
-        ].some((offset) => {
-          const tile = gameState.map.tiles[toCoordKey({ x: selectedUnit.position.x + offset.x, y: selectedUnit.position.y + offset.y })];
-          return tile?.terrainType === 'PORT' && tile.owner === selectedUnit.owner && isOperationalFacility(tile);
-        });
-      if (!hasFriendlyOperationalPortAccess) {
-        return [];
-      }
-    }
-
     const adjacentOffsets = [
       { x: 0, y: -1 },
       { x: 1, y: 0 },

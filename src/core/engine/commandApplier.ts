@@ -197,18 +197,6 @@ const getLoadTargets = (state: GameState, transport: UnitState): UnitState[] => 
     return [];
   }
 
-  if (transport.type === 'CARRIER') {
-    const currentTile = state.map.tiles[toCoordKey(transport.position)];
-    const hasFriendlyOperationalPortAccess = (currentTile?.terrainType === 'PORT' && currentTile.owner === transport.owner && isOperationalFacility(currentTile))
-      || getAdjacentCoords(transport.position).some((coord) => {
-        const tile = state.map.tiles[toCoordKey(coord)];
-        return tile?.terrainType === 'PORT' && tile.owner === transport.owner && isOperationalFacility(tile);
-      });
-    if (!hasFriendlyOperationalPortAccess) {
-      return [];
-    }
-  }
-
   return getAdjacentCoords(transport.position)
     .map((coord) => getUnitAt(state, coord))
     .filter((target): target is UnitState => Boolean(target && target.owner === transport.owner && target.id !== transport.id))
