@@ -39,6 +39,7 @@ describe('saveSlots 正規化', () => {
     expect(slot?.state.humanPlayerSide).toBe(DEFAULT_SETTINGS.humanPlayerSide);
     expect(slot?.state.aiDifficulty).toBe(DEFAULT_SETTINGS.aiDifficulty);
     expect(slot?.state.incomePerProperty).toBe(DEFAULT_SETTINGS.incomePerProperty);
+    expect(slot?.state.enemyMemory).toEqual({});
   });
 
   it('不正なデータは空スロット扱いにする', () => {

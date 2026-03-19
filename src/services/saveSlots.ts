@@ -1,4 +1,4 @@
-import type { GameState } from '@core/types/state';
+import type { EnemyMemoryEntry, GameState } from '@core/types/state';
 import { DEFAULT_SETTINGS, type GameSettings } from '@/app/types';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 
@@ -35,6 +35,18 @@ const normalizeSettings = (value: unknown): GameSettings => {
       value.aiDifficulty === 'easy' || value.aiDifficulty === 'normal' || value.aiDifficulty === 'hard'
         ? value.aiDifficulty
         : DEFAULT_SETTINGS.aiDifficulty,
+    selectedAiProfile:
+      value.selectedAiProfile === 'auto'
+      || value.selectedAiProfile === 'adaptive'
+      || value.selectedAiProfile === 'balanced'
+      || value.selectedAiProfile === 'captain'
+      || value.selectedAiProfile === 'hunter'
+      || value.selectedAiProfile === 'turtle'
+      || value.selectedAiProfile === 'sieger'
+      || value.selectedAiProfile === 'drone_swarm'
+      || value.selectedAiProfile === 'stealth_strike'
+        ? value.selectedAiProfile
+        : DEFAULT_SETTINGS.selectedAiProfile,
     humanPlayerSide:
       value.humanPlayerSide === 'P1' || value.humanPlayerSide === 'P2'
         ? value.humanPlayerSide
@@ -117,10 +129,40 @@ const normalizeUnit = (unit: GameState['units'][string], maxSupplyCharges: numbe
   cargo: unit.cargo?.map((cargoUnit) => normalizeUnit(cargoUnit, maxSupplyCharges)),
 });
 
+const normalizeEnemyMemory = (value: unknown): GameState['enemyMemory'] => {
+  if (!isRecord(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([unitId, entry]) => {
+      if (!isRecord(entry) || !isRecord(entry.position)) return [];
+      const x = entry.position.x;
+      const y = entry.position.y;
+      if (typeof x !== 'number' || typeof y !== 'number') return [];
+      if (typeof entry.lastSeenTurn !== 'number' || typeof entry.hpEstimate !== 'number' || typeof entry.confidence !== 'number') return [];
+      if (typeof entry.type !== 'string' || !Object.prototype.hasOwnProperty.call(UNIT_DEFINITIONS, entry.type)) return [];
+
+      return [[
+        unitId,
+        {
+          unitId,
+          position: { x, y },
+          lastSeenTurn: entry.lastSeenTurn,
+          type: entry.type as EnemyMemoryEntry['type'],
+          hpEstimate: entry.hpEstimate,
+          confidence: entry.confidence,
+        },
+      ]];
+    }),
+  );
+};
+
 const normalizeState = (state: GameState, settings: GameSettings): GameState => ({
   ...state,
   humanPlayerSide: state.humanPlayerSide ?? settings.humanPlayerSide,
   aiDifficulty: state.aiDifficulty ?? settings.aiDifficulty,
+  selectedAiProfile: state.selectedAiProfile ?? settings.selectedAiProfile ?? DEFAULT_SETTINGS.selectedAiProfile,
+  resolvedAiProfile: state.resolvedAiProfile,
+  enemyMemory: normalizeEnemyMemory(state.enemyMemory),
   incomePerProperty: state.incomePerProperty ?? settings.incomePerProperty,
   incomeAirport: state.incomeAirport ?? settings.incomeAirport,
   incomePort: state.incomePort ?? settings.incomePort,

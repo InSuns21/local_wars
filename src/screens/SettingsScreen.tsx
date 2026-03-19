@@ -24,6 +24,7 @@ import {
   type GameSettings,
   type GameSettingsPreset,
   type HumanPlayerSide,
+  type SelectedAiProfile,
 } from '@/app/types';
 
 type SettingsScreenProps = {
@@ -46,6 +47,18 @@ const PRESET_DESCRIPTIONS: Record<GameSettingsPreset, string> = {
   advanced: '索敵あり・強いAIで、判断量が増える設定です。',
   drone: '自爆ドローンと迎撃防空を有効にした専用ルールです。',
   custom: '個別変更中です。必要な項目だけ調整できます。',
+};
+
+const AI_PROFILE_DESCRIPTIONS: Record<SelectedAiProfile, string> = {
+  auto: '対局開始時に有効な傾向からランダムに選びます。',
+  adaptive: '数ターンごとや戦況変化で傾向を切り替える可変型です。',
+  balanced: '標準型。占領、戦闘、防御をバランスよく判断します。',
+  captain: '占領重視。施設確保と歩兵護衛を優先します。',
+  hunter: '撃破重視。キル確や高額目標の排除を狙います。',
+  turtle: '防衛重視。危険回避と守りの隊形を優先します。',
+  sieger: '砲兵線重視。前衛と後衛の陣形でじわじわ押し上げます。',
+  drone_swarm: 'ドローン重視。自爆ドローンと本隊連携で崩します。',
+  stealth_strike: '隠密打撃重視。ステルス機や潜水艦の奇襲を狙います。',
 };
 
 const NUMERIC_FIELD_META: {
@@ -198,6 +211,7 @@ const NUMERIC_FIELD_META: {
 
 const matchesSettings = (left: GameSettings, right: GameSettings): boolean => (
   left.aiDifficulty === right.aiDifficulty
+  && (left.selectedAiProfile ?? DEFAULT_SETTINGS.selectedAiProfile) === (right.selectedAiProfile ?? DEFAULT_SETTINGS.selectedAiProfile)
   && left.humanPlayerSide === right.humanPlayerSide
   && left.fogOfWar === right.fogOfWar
   && left.initialFunds === right.initialFunds
@@ -362,6 +376,28 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ initialSettings 
                   <option value="hard">つよい</option>
                 </NativeSelect>
               </FormControl>
+
+              <FormControl fullWidth>
+                <InputLabel variant="standard" htmlFor="ai-profile">AIの思考傾向</InputLabel>
+                <NativeSelect
+                  inputProps={{ id: 'ai-profile' }}
+                  value={settings.selectedAiProfile ?? DEFAULT_SETTINGS.selectedAiProfile}
+                  onChange={(e) => update('selectedAiProfile', e.target.value as SelectedAiProfile)}
+                >
+                  <option value="auto">おまかせ</option>
+                  <option value="adaptive">可変</option>
+                  <option value="balanced">標準</option>
+                  <option value="captain">占領重視</option>
+                  <option value="hunter">撃破重視</option>
+                  <option value="turtle">防衛重視</option>
+                  <option value="sieger">砲兵戦線</option>
+                  <option value="drone_swarm">ドローン重視</option>
+                  <option value="stealth_strike">隠密打撃</option>
+                </NativeSelect>
+              </FormControl>
+              <Typography variant="body2" color="text.secondary">
+                {AI_PROFILE_DESCRIPTIONS[settings.selectedAiProfile ?? DEFAULT_SETTINGS.selectedAiProfile ?? 'auto']}
+              </Typography>
 
               <FormControl fullWidth>
                 <InputLabel variant="standard" htmlFor="human-player-side">人間が担当する陣営</InputLabel>

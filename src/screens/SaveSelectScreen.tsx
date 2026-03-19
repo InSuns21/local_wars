@@ -33,6 +33,23 @@ const getMapLabel = (mapId: string): string => MAP_CATALOG.find((map) => map.id 
 const summarizeSettings = (settings: GameSettings): string => {
   const parts = [
     `AI:${settings.aiDifficulty === 'easy' ? 'よわい' : settings.aiDifficulty === 'hard' ? 'つよい' : 'ふつう'}`,
+    `傾向:${
+      settings.selectedAiProfile === 'adaptive'
+        ? '可変'
+        : settings.selectedAiProfile === 'captain'
+          ? '占領'
+          : settings.selectedAiProfile === 'hunter'
+            ? '撃破'
+            : settings.selectedAiProfile === 'turtle'
+              ? '防衛'
+              : settings.selectedAiProfile === 'sieger'
+                ? '砲兵'
+                : settings.selectedAiProfile === 'drone_swarm'
+                  ? 'ドローン'
+                  : settings.selectedAiProfile === 'stealth_strike'
+                    ? '隠密'
+                    : 'おまかせ'
+    }`,
     `担当:${settings.humanPlayerSide}`,
     settings.fogOfWar ? '索敵あり' : '索敵なし',
   ];

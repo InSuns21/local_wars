@@ -67,7 +67,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
 
       if (command.type === 'END_TURN') {
         const humanSide = current.humanPlayerSide ?? 'P1';
-        const aiDifficulty = (current.aiDifficulty ?? 'normal') === 'easy' ? 'easy' : 'normal';
+        const aiDifficulty = current.aiDifficulty ?? 'normal';
         let guard = 0;
 
         while (!nextState.winner && nextState.currentPlayerId !== humanSide && guard < 8) {
@@ -183,7 +183,6 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
     },
     setGameState: (state) => set({ gameState: cloneState(state), history: [], selectedTile: null, previousSelectedPath: null }),
   }));
-
 
 
 

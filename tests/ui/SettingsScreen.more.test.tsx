@@ -18,6 +18,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     render(<SettingsScreen onConfirm={onConfirm} onBack={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('AIの強さ'), { target: { value: 'hard' } });
+    fireEvent.change(screen.getByLabelText('AIの思考傾向'), { target: { value: 'sieger' } });
     fireEvent.change(screen.getByLabelText('人間が担当する陣営'), { target: { value: 'P2' } });
     fireEvent.click(screen.getByLabelText('索敵あり'));
     fireEvent.click(screen.getByRole('button', { name: /詳細設定/ }));
@@ -46,6 +47,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
     const submitted = onConfirm.mock.calls[0][0];
     expect(submitted.aiDifficulty).toBe('hard');
+    expect(submitted.selectedAiProfile).toBe('sieger');
     expect(submitted.humanPlayerSide).toBe('P2');
     expect(submitted.fogOfWar).toBe(true);
     expect(submitted.initialFunds).toBe(12345);

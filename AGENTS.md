@@ -2,9 +2,10 @@
 
 このファイルは、このリポジトリのドキュメント目次であり、運用ルールの入口です。詳細本文は個別ファイルに分離し、`docs/` を正式な記録システムとして扱います。
 
-## Shell
-- Use PowerShell
-- Use encoding utf-8
+## FILE/IO
+file/ioについては,
+`AGENTS_FILE_IO.md`
+に従う。
 
 ## 必ず守る
 - ファイルの読み込み・書き込みでは Filesystem MCP の利用を優先すること

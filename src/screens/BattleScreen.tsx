@@ -22,6 +22,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { BoardLegend } from "@components/board/BoardLegend";
 import { createGameStore, type GameStoreState } from "@store/gameStore";
 import { GameCanvas } from "@components/board/GameCanvas";
+import type { ResolvedAiProfile, SelectedAiProfile } from "@/app/types";
 import { createInitialGameState } from "@core/engine/createInitialGameState";
 import { UNIT_DEFINITIONS } from "@core/engine/unitDefinitions";
 import { getEnemyUnits, getPathCost } from "@core/rules/movement";
@@ -72,6 +73,30 @@ const DRONE_FOCUSED_MAP_IDS = new Set([
   "interceptor-belt",
   "industrial-drone-raid",
 ]);
+
+const AI_PROFILE_LABELS: Record<SelectedAiProfile | ResolvedAiProfile, string> = {
+  auto: "おまかせ",
+  adaptive: "可変",
+  balanced: "標準",
+  captain: "占領",
+  hunter: "撃破",
+  turtle: "防衛",
+  sieger: "砲兵",
+  drone_swarm: "ドローン",
+  stealth_strike: "隠密",
+};
+
+const formatAiProfileSummary = (
+  selectedAiProfile?: SelectedAiProfile,
+  resolvedAiProfile?: ResolvedAiProfile,
+): string => {
+  const selected = selectedAiProfile ?? "auto";
+  if ((selected === "auto" || selected === "adaptive") && resolvedAiProfile) {
+    return `${AI_PROFILE_LABELS[selected]}→${AI_PROFILE_LABELS[resolvedAiProfile]}`;
+  }
+
+  return AI_PROFILE_LABELS[resolvedAiProfile ?? selected];
+};
 
 const getIncomeForTile = (state: GameState, terrainType: string): number => {
   if (terrainType === "CITY" || terrainType === "FACTORY" || terrainType === "HQ") {
@@ -283,6 +308,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const currentPlayerFunds = gameState.players[gameState.currentPlayerId].funds;
   const selectedUnitCost = UNIT_DEFINITIONS[produceUnitType].cost;
   const isDroneFocusedMap = DRONE_FOCUSED_MAP_IDS.has(gameState.mapId ?? "");
+  const enemyAiProfileSummary = formatAiProfileSummary(
+    gameState.selectedAiProfile,
+    gameState.resolvedAiProfile,
+  );
 
   const aliveUnitByTile = useMemo(() => {
     const map = new Map<string, string>();
@@ -1164,6 +1193,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           </Typography>
           <Typography>
             {"自軍収入"}: +{humanIncome}/{"ターン"}
+          </Typography>
+          <Typography>
+            {"敵AI傾向"}: {enemyAiProfileSummary}
           </Typography>
 
           <Button

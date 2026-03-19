@@ -2,6 +2,15 @@ import type { ActionLogEntry, Coord, GamePhase, PlayerId } from './game';
 import type { MapState } from './map';
 import type { UnitState } from './unit';
 
+export type EnemyMemoryEntry = {
+  unitId: string;
+  position: Coord;
+  lastSeenTurn: number;
+  type: UnitState['type'];
+  hpEstimate: number;
+  confidence: number;
+};
+
 export type PlayerState = {
   id: PlayerId;
   funds: number;
@@ -13,6 +22,9 @@ export type GameState = {
   currentPlayerId: PlayerId;
   humanPlayerSide?: 'P1' | 'P2';
   aiDifficulty?: 'easy' | 'normal' | 'hard';
+  selectedAiProfile?: 'auto' | 'adaptive' | 'balanced' | 'captain' | 'hunter' | 'turtle' | 'sieger' | 'drone_swarm' | 'stealth_strike';
+  resolvedAiProfile?: 'balanced' | 'captain' | 'hunter' | 'turtle' | 'sieger' | 'drone_swarm' | 'stealth_strike';
+  enemyMemory?: Record<string, EnemyMemoryEntry>;
   fogOfWar?: boolean;
   enableFuelSupply?: boolean;
   enableAmmoSupply?: boolean;

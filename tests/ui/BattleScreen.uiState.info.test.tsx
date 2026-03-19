@@ -48,6 +48,17 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     expect(screen.getByText('自軍収入: +4000/ターン')).toBeInTheDocument();
   });
 
+  it('トップバーで確定した敵AI傾向を確認できる', () => {
+    const state = createInitialGameState();
+    state.selectedAiProfile = 'adaptive';
+    state.resolvedAiProfile = 'captain';
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    expect(screen.getByText('敵AI傾向: 可変→占領')).toBeInTheDocument();
+  });
+
   it('可視マスでは地形/ユニット詳細ツールチップが表示される', () => {
     const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
     render(<BattleScreen useStore={store} />);

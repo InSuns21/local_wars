@@ -29,6 +29,7 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
     return {
       ...state,
       units: applySupplyChargeDefaults(state, state.maxSupplyCharges ?? 4),
+      enemyMemory: state.enemyMemory ?? {},
     };
   }
 
@@ -43,10 +44,12 @@ const applyFeatureToggles = (state: GameState, settings?: GameSettings): GameSta
       tiles: { ...state.map.tiles },
     },
     units: applySupplyChargeDefaults({ ...state, units: { ...state.units } }, settings.maxSupplyCharges),
+    enemyMemory: state.enemyMemory ?? {},
     factoryProductionState: {},
     incomePerProperty: settings.incomePerProperty,
     incomeAirport: settings.incomeAirport,
     incomePort: settings.incomePort,
+    selectedAiProfile: settings.selectedAiProfile ?? state.selectedAiProfile ?? 'auto',
     hpRecoveryCity: settings.hpRecoveryCity,
     hpRecoveryFactory: settings.hpRecoveryFactory,
     hpRecoveryHq: settings.hpRecoveryHq,
@@ -177,6 +180,9 @@ export const createInitialGameState = (options: GameInitializationOptions = {}):
     currentPlayerId: startPlayer,
     humanPlayerSide: startPlayer,
     aiDifficulty: options.settings?.aiDifficulty ?? 'normal',
+    selectedAiProfile: options.settings?.selectedAiProfile ?? 'auto',
+    resolvedAiProfile: undefined,
+    enemyMemory: {},
     fogOfWar: options.settings?.fogOfWar ?? false,
     enableFuelSupply: options.settings?.enableFuelSupply ?? true,
     enableAmmoSupply: options.settings?.enableAmmoSupply ?? true,

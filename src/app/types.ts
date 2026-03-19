@@ -1,9 +1,12 @@
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
+export type ResolvedAiProfile = 'balanced' | 'captain' | 'hunter' | 'turtle' | 'sieger' | 'drone_swarm' | 'stealth_strike';
+export type SelectedAiProfile = ResolvedAiProfile | 'auto' | 'adaptive';
 export type HumanPlayerSide = 'P1' | 'P2';
 export type GameSettingsPreset = 'standard' | 'beginner' | 'advanced' | 'drone' | 'custom';
 
 export type GameSettings = {
   aiDifficulty: AiDifficulty;
+  selectedAiProfile?: SelectedAiProfile;
   humanPlayerSide: HumanPlayerSide;
   fogOfWar: boolean;
   initialFunds: number;
@@ -38,6 +41,7 @@ export const isDroneFocusedMapId = (mapId: string): boolean =>
 
 export const DEFAULT_SETTINGS: GameSettings = {
   aiDifficulty: 'normal',
+  selectedAiProfile: 'auto',
   humanPlayerSide: 'P1',
   fogOfWar: false,
   initialFunds: 10000,

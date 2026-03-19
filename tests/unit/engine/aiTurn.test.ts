@@ -49,7 +49,7 @@ const makeUnit = (overrides: Partial<UnitState> & Pick<UnitState, 'id' | 'owner'
   };
 };
 
-const createAiState = (difficulty: 'easy' | 'normal'): GameState => {
+const createAiState = (difficulty: 'easy' | 'normal' | 'hard'): GameState => {
   const state = createInitialGameState({
     settings: {
       ...BASE_SETTINGS,
@@ -75,6 +75,16 @@ describe('aiターンの挙動テスト', () => {
     const state = createAiState('normal');
 
     const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+
+    expect(next.currentPlayerId).toBe('P1');
+    expect(next.turn).toBe(2);
+    expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'END_TURN')).toBe(true);
+  });
+
+  it('Hard難易度でAI手番を正常に実行できる', () => {
+    const state = createAiState('hard');
+
+    const next = runAiTurn(state, { difficulty: 'hard', deps: { rng: () => 0.5 } });
 
     expect(next.currentPlayerId).toBe('P1');
     expect(next.turn).toBe(2);
@@ -253,7 +263,109 @@ describe('aiターンの挙動テスト', () => {
     expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(true);
   });
 
-  it('Normalは港を所有している海戦マップで海上ユニットを生産する', () => {
+  it('auto傾向は無効候補を除いて解決される', () => {
+    const state = createAiState('hard');
+    state.selectedAiProfile = 'auto';
+    state.enableSuicideDrones = false;
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'PLAIN' };
+    state.map.tiles['4,2'] = { coord: { x: 4, y: 2 }, terrainType: 'PLAIN' };
+    state.map.tiles['0,1'] = { coord: { x: 0, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['4,3'] = { coord: { x: 4, y: 3 }, terrainType: 'PLAIN' };
+    state.players.P2.funds = 0;
+
+    const next = runAiTurn(state, { difficulty: 'hard', deps: { rng: () => 0.99 } });
+
+    expect(next.resolvedAiProfile).toBeDefined();
+    expect(next.resolvedAiProfile).not.toBe('drone_swarm');
+    expect(next.resolvedAiProfile).not.toBe('stealth_strike');
+  });
+
+  it('FoWありでは不可視の敵航空だけでは対空生産に寄らない', () => {
+    const state = createAiState('normal');
+    state.fogOfWar = true;
+    state.players.P2.funds = 9000;
+    state.units = {
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 0, y: 4 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 1, y: 4 }, moved: true, acted: true }),
+      p2_inf_3: makeUnit({ id: 'p2_inf_3', owner: 'P2', type: 'INFANTRY', position: { x: 2, y: 4 }, moved: true, acted: true }),
+      p2_inf_4: makeUnit({ id: 'p2_inf_4', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 4 }, moved: true, acted: true }),
+      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 4, y: 0 } }),
+    };
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+    expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(false);
+  });
+
+  it('adaptive rerolls when facility deficit is detected', () => {
+    const state = createAiState('hard');
+    state.turn = 2;
+    state.selectedAiProfile = 'adaptive';
+    state.resolvedAiProfile = 'hunter';
+    state.players.P2.funds = 0;
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType) && tile.owner === 'P2') {
+        tile.owner = undefined;
+      }
+    }
+
+    const next = runAiTurn(state, { difficulty: 'hard', deps: { rng: () => 0.3 } });
+
+    expect(next.resolvedAiProfile).toBe('captain');
+  });
+
+  it('records visible enemies into enemyMemory under FoW', () => {
+    const state = createAiState('normal');
+    state.fogOfWar = true;
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_inf: makeUnit({ id: 'p2_inf', owner: 'P2', type: 'INFANTRY', position: { x: 0, y: 0 }, moved: true, acted: true }),
+      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 4, y: 4 } }),
+    };
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+
+    expect(next.enemyMemory?.p1_bomber).toMatchObject({
+      unitId: 'p1_bomber',
+      type: 'BOMBER',
+      lastSeenTurn: 1,
+      confidence: 1,
+    });
+    expect(next.enemyMemory?.p1_bomber?.position).toEqual({ x: 4, y: 4 });
+  });
+
+  it('uses remembered invisible air threats for anti-air production', () => {
+    const state = createAiState('normal');
+    state.fogOfWar = true;
+    state.players.P2.funds = 9000;
+    state.units = {
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 0, y: 4 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 1, y: 4 }, moved: true, acted: true }),
+      p2_inf_3: makeUnit({ id: 'p2_inf_3', owner: 'P2', type: 'INFANTRY', position: { x: 2, y: 4 }, moved: true, acted: true }),
+      p2_inf_4: makeUnit({ id: 'p2_inf_4', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 4 }, moved: true, acted: true }),
+      p2_inf_5: makeUnit({ id: 'p2_inf_5', owner: 'P2', type: 'INFANTRY', position: { x: 0, y: 3 }, moved: true, acted: true }),
+      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 4, y: 0 } }),
+    };
+    state.enemyMemory = {
+      p1_bomber: {
+        unitId: 'p1_bomber',
+        position: { x: 4, y: 0 },
+        lastSeenTurn: 1,
+        type: 'BOMBER',
+        hpEstimate: 10,
+        confidence: 0.8,
+      },
+    };
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+    expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(true);
+  });
+
+  it('Normal AI produces naval units on sea maps when it owns a port', () => {
     const state = createInitialGameState({
       mapId: 'island-landing',
       settings: {
@@ -278,7 +390,7 @@ describe('aiターンの挙動テスト', () => {
     expect(produceLogs.some((log) => /^(DESTROYER|LANDER|CARRIER|SUPPLY_SHIP)/.test(log.detail ?? ''))).toBe(true);
   });
 
-  it('Normalは海戦マップで駆逐艦が足りないとき港から駆逐艦を優先生産する', () => {
+  it('Normal AI prioritizes producing a destroyer from ports on naval maps', () => {
     const state = createInitialGameState({
       mapId: 'carrier-strike',
       settings: {
@@ -308,3 +420,4 @@ describe('aiターンの挙動テスト', () => {
     expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT' && log.detail?.startsWith('DESTROYER'))).toBe(true);
   });
 });
+
