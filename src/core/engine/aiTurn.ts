@@ -71,6 +71,9 @@ const LIGHT_TRANSPORTABLE_TYPES = new Set<UnitType>(['INFANTRY', 'RECON', 'ANTI_
 const HIGH_VALUE_TYPES = new Set<UnitType>(['HEAVY_TANK', 'BATTLESHIP', 'CARRIER', 'STEALTH_BOMBER', 'BOMBER', 'MISSILE_AA']);
 const FRONTLINE_TYPES = new Set<UnitType>(['TANK', 'HEAVY_TANK', 'ANTI_TANK', 'ANTI_AIR', 'DESTROYER']);
 const SCOUT_TYPES = new Set<UnitType>(['RECON']);
+const INFANTRY_TYPES = new Set<UnitType>(['INFANTRY', 'AIR_DEFENSE_INFANTRY']);
+const ARMOR_TYPES = new Set<UnitType>(['TANK', 'HEAVY_TANK', 'ANTI_TANK', 'ANTI_AIR', 'FLAK_TANK', 'MISSILE_AA', 'COUNTER_DRONE_AA']);
+const NAVAL_SUPPORT_TYPES = new Set<UnitType>(['SUPPLY_SHIP', 'LANDER']);
 const DRONE_STRIKE_TARGETS = new Set<UnitType>(['ARTILLERY', 'MISSILE_AA', 'FLAK_TANK', 'COUNTER_DRONE_AA', 'FIGHTER', 'BOMBER', 'ATTACKER', 'STEALTH_BOMBER', 'CARRIER', 'BATTLESHIP']);
 const DRONE_COUNTER_TYPES = new Set<UnitType>(['COUNTER_DRONE_AA', 'ANTI_AIR', 'FLAK_TANK', 'MISSILE_AA', 'FIGHTER']);
 const SUBMARINE_COUNTER_TYPES = new Set<UnitType>(['DESTROYER', 'CARRIER', 'ATTACKER', 'BATTLESHIP']);
@@ -664,6 +667,8 @@ const scoreAttackTarget = (
     score += 8 * weights.antiAirBias;
   }
 
+  const targetTile = state.map.tiles[toCoordKey(target.position)];
+
   if (attacker.type === 'SUICIDE_DRONE') {
     if (DRONE_STRIKE_TARGETS.has(target.type) || HIGH_VALUE_TYPES.has(target.type) || UNIT_DEFINITIONS[target.type].movementType === 'AIR') {
       score += 18 * weights.droneBias;
@@ -676,6 +681,19 @@ const scoreAttackTarget = (
 
   if (attacker.type === 'COUNTER_DRONE_AA' && (target.type === 'SUICIDE_DRONE' || UNIT_DEFINITIONS[target.type].movementType === 'AIR')) {
     score += 12 * weights.antiAirBias;
+    score += 8 * weights.droneBias;
+  }
+
+  if (NAVAL_COMBAT_TYPES.has(attacker.type)) {
+    if (NAVAL_COMBAT_TYPES.has(target.type) || NAVAL_SUPPORT_TYPES.has(target.type)) {
+      score += 8 * weights.navalBias;
+    }
+    if (attacker.type === 'DESTROYER' && target.type === 'SUBMARINE') {
+      score += 12 * weights.navalBias;
+    }
+    if (attacker.type === 'BATTLESHIP' && targetTile && CAPTURABLE_TERRAINS.has(targetTile.terrainType)) {
+      score += 5 * weights.navalBias;
+    }
   }
 
   if (attacker.type === 'SUBMARINE') {
@@ -698,7 +716,6 @@ const scoreAttackTarget = (
     }
   }
 
-  const targetTile = state.map.tiles[toCoordKey(target.position)];
   if (target.type === 'INFANTRY' && targetTile && CAPTURABLE_TERRAINS.has(targetTile.terrainType) && targetTile.owner === attacker.owner) {
     score += 14 * weights.captureBias;
   }
@@ -841,6 +858,37 @@ const evaluateMoveScore = (
     score += 1.5 * weights.scoutBias;
   }
 
+  if (tile) {
+    if (INFANTRY_TYPES.has(unit.type) || UNIT_DEFINITIONS[unit.type].canCapture) {
+      if (tile.terrainType === 'CITY') score += 4 * weights.captureBias;
+      if (tile.terrainType === 'FOREST' || tile.terrainType === 'MOUNTAIN') score += 3 * weights.safetyBias;
+      if (tile.terrainType === 'HQ' || tile.terrainType === 'FACTORY') score += 2 * weights.captureBias;
+    }
+
+    if (ARMOR_TYPES.has(unit.type)) {
+      if (tile.terrainType === 'PLAIN') score += 2.5 * weights.killBias;
+      if (tile.terrainType === 'ROAD') score += 2 * weights.killBias;
+      if (tile.terrainType === 'FOREST' || tile.terrainType === 'MOUNTAIN') score -= 2 * weights.safetyBias;
+    }
+
+    if (INDIRECT_SUPPORT_UNITS.has(unit.type)) {
+      if (tile.terrainType === 'CITY' || tile.terrainType === 'FOREST') score += 3 * weights.artilleryBias;
+    }
+
+    if (SCOUT_TYPES.has(unit.type) && (tile.terrainType === 'ROAD' || tile.terrainType === 'PLAIN')) {
+      score += 3 * weights.scoutBias;
+    }
+
+    if (UNIT_DEFINITIONS[unit.type].movementType === 'AIR' && tile.terrainType === 'AIRPORT') {
+      score += 4 * weights.stealthBias;
+    }
+
+    if (UNIT_DEFINITIONS[unit.type].movementType === 'NAVAL') {
+      if (tile.terrainType === 'SEA' || tile.terrainType === 'COAST') score += 2 * weights.navalBias;
+      if (tile.terrainType === 'PORT') score += 5 * weights.navalBias;
+    }
+  }
+
   if (HIGH_VALUE_TYPES.has(unit.type) && threat.lethalThreats > 0) {
     score -= 16 * weights.safetyBias;
   }
@@ -922,6 +970,16 @@ const evaluateMoveScore = (
   }
   if (profile === 'turtle' && tile?.owner === unit.owner && CAPTURABLE_TERRAINS.has(tile.terrainType)) {
     score += 6;
+  }
+
+  if (UNIT_DEFINITIONS[unit.type].movementType === 'NAVAL') {
+    const nearbyNavalAllies = nearbyAllies.filter((ally) => UNIT_DEFINITIONS[ally.type].movementType === 'NAVAL');
+    if (nearbyNavalAllies.length > 0) {
+      score += Math.min(2, nearbyNavalAllies.length) * 3 * weights.navalBias;
+    }
+    if (enemyHq && hqDist <= 6) {
+      score += (7 - hqDist) * weights.navalBias;
+    }
   }
 
   if (profile === 'drone_swarm') {
@@ -1343,39 +1401,29 @@ export const runAiTurn = (state: GameState, options: AiTurnOptions): GameState =
     const unit = working.units[unitId];
     if (!unit || unit.owner !== aiPlayer || unit.hp <= 0) continue;
 
-    if (options.difficulty !== 'easy') {
-      const supplied = trySupply(working, unitId, options.deps);
-      if (supplied !== working) {
-        working = supplied;
-        continue;
-      }
+    const captured = tryCapture(working, unitId, options.deps);
+    if (captured !== working) {
+      working = captured;
+      continue;
     }
 
-    if (options.difficulty !== 'easy') {
-      const captured = tryCapture(working, unitId, options.deps);
-      if (captured !== working) {
-        working = captured;
-        continue;
-      }
-    }
+    const readyUnit = working.units[unitId];
+    if (!readyUnit || readyUnit.owner !== aiPlayer || readyUnit.hp <= 0) continue;
 
-    const firstAttackTarget = selectBestAttackTarget(working, unit, options.difficulty, resolvedProfile, options.deps.rng);
+    const firstAttackTarget = selectBestAttackTarget(working, readyUnit, options.difficulty, resolvedProfile, options.deps.rng);
     if (firstAttackTarget) {
-      const attackApplied = applyCommand(working, { type: 'ATTACK', attackerId: unit.id, defenderId: firstAttackTarget.id }, options.deps);
+      const attackApplied = applyCommand(working, { type: 'ATTACK', attackerId: readyUnit.id, defenderId: firstAttackTarget.id }, options.deps);
       if (attackApplied.result.ok) {
         working = refreshEnemyMemory(attackApplied.state, aiPlayer);
         continue;
       }
     }
 
-    if (options.difficulty === 'easy') {
-      const unitAfterAttack = working.units[unitId];
-      if (unitAfterAttack && !unitAfterAttack.acted && canCaptureNow(working, unitAfterAttack)) {
-        const captureApplied = applyCommand(working, { type: 'CAPTURE', unitId: unitAfterAttack.id }, options.deps);
-        if (captureApplied.result.ok) {
-          working = refreshEnemyMemory(captureApplied.state, aiPlayer);
-          continue;
-        }
+    if (options.difficulty !== 'easy') {
+      const supplied = trySupply(working, unitId, options.deps);
+      if (supplied !== working) {
+        working = supplied;
+        continue;
       }
     }
 
@@ -1393,26 +1441,19 @@ export const runAiTurn = (state: GameState, options: AiTurnOptions): GameState =
     const movedUnit = working.units[unitId];
     if (!movedUnit || movedUnit.hp <= 0) continue;
 
-    if (options.difficulty !== 'easy') {
-      const suppliedAfterMove = trySupply(working, unitId, options.deps);
-      if (suppliedAfterMove !== working) {
-        working = suppliedAfterMove;
-        continue;
-      }
+    const capturedAfterMove = tryCapture(working, unitId, options.deps);
+    if (capturedAfterMove !== working) {
+      working = capturedAfterMove;
+      continue;
     }
 
-    if (options.difficulty !== 'easy') {
-      const capturedAfterMove = tryCapture(working, unitId, options.deps);
-      if (capturedAfterMove !== working) {
-        working = capturedAfterMove;
-        continue;
-      }
-    }
+    const postCaptureUnit = working.units[unitId];
+    if (!postCaptureUnit || postCaptureUnit.hp <= 0) continue;
 
-    if (!movedUnit.acted) {
-      const attackTarget = selectBestAttackTarget(working, movedUnit, options.difficulty, resolvedProfile, options.deps.rng);
+    if (!postCaptureUnit.acted) {
+      const attackTarget = selectBestAttackTarget(working, postCaptureUnit, options.difficulty, resolvedProfile, options.deps.rng);
       if (attackTarget) {
-        const attackApplied = applyCommand(working, { type: 'ATTACK', attackerId: movedUnit.id, defenderId: attackTarget.id }, options.deps);
+        const attackApplied = applyCommand(working, { type: 'ATTACK', attackerId: postCaptureUnit.id, defenderId: attackTarget.id }, options.deps);
         if (attackApplied.result.ok) {
           working = refreshEnemyMemory(attackApplied.state, aiPlayer);
           continue;
@@ -1420,13 +1461,11 @@ export const runAiTurn = (state: GameState, options: AiTurnOptions): GameState =
       }
     }
 
-    if (options.difficulty === 'easy') {
-      const movedUnitAfterAttack = working.units[unitId];
-      if (movedUnitAfterAttack && !movedUnitAfterAttack.acted && canCaptureNow(working, movedUnitAfterAttack)) {
-        const captureApplied = applyCommand(working, { type: 'CAPTURE', unitId: movedUnitAfterAttack.id }, options.deps);
-        if (captureApplied.result.ok) {
-          working = refreshEnemyMemory(captureApplied.state, aiPlayer);
-        }
+    if (options.difficulty !== 'easy') {
+      const suppliedAfterMove = trySupply(working, unitId, options.deps);
+      if (suppliedAfterMove !== working) {
+        working = suppliedAfterMove;
+        continue;
       }
     }
   }

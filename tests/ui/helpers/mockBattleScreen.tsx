@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { GameState } from '@core/types/state';
+import type { ResolvedAiProfile, SelectedAiProfile } from '@/app/types';
 import type { SoundEffectId } from '@services/soundEffects';
 
 type MockBattleScreenProps = {
@@ -9,6 +10,30 @@ type MockBattleScreenProps = {
   onReturnToTitle?: () => void;
   onOpenTutorial?: () => void;
   onPlaySoundEffect?: (id: SoundEffectId) => void;
+};
+
+const AI_PROFILE_LABELS: Record<SelectedAiProfile | ResolvedAiProfile, string> = {
+  auto: 'おまかせ',
+  adaptive: '可変',
+  balanced: '標準',
+  captain: '占領',
+  hunter: '撃破',
+  turtle: '防衛',
+  sieger: '砲兵',
+  drone_swarm: 'ドローン',
+  stealth_strike: '隠密',
+};
+
+const formatAiProfileSummary = (
+  selectedAiProfile?: SelectedAiProfile,
+  resolvedAiProfile?: ResolvedAiProfile,
+): string => {
+  const selected = selectedAiProfile ?? 'auto';
+  if ((selected === 'auto' || selected === 'adaptive') && resolvedAiProfile) {
+    return `${AI_PROFILE_LABELS[selected]}→${AI_PROFILE_LABELS[resolvedAiProfile]}`;
+  }
+
+  return AI_PROFILE_LABELS[resolvedAiProfile ?? selected];
 };
 
 export const BattleScreen: React.FC<MockBattleScreenProps> = ({
@@ -29,6 +54,10 @@ export const BattleScreen: React.FC<MockBattleScreenProps> = ({
 
   const maxTileX = Math.max(0, gameState.map.width - 1);
   const maxTileY = Math.max(0, gameState.map.height - 1);
+  const enemyAiProfileSummary = formatAiProfileSummary(
+    gameState.selectedAiProfile,
+    gameState.resolvedAiProfile,
+  );
 
   if (gameState.winner) {
     return (
@@ -45,6 +74,7 @@ export const BattleScreen: React.FC<MockBattleScreenProps> = ({
       <h1>LOCAL WARS</h1>
       <p>ターン: {gameState.turn}</p>
       <p>手番: {gameState.currentPlayerId}</p>
+      <p>敵AI傾向: {enemyAiProfileSummary}</p>
       <button type="button" onClick={() => setShowOtherMenu((prev) => !prev)}>その他</button>
       {showOtherMenu ? (
         <div>

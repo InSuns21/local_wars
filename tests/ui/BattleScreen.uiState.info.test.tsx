@@ -1,5 +1,5 @@
 ﻿import '@testing-library/jest-dom';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
 jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
 jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
@@ -55,6 +55,26 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
 
     const store = createGameStore(state, { rng: () => 0.5 });
     render(<BattleScreen useStore={store} />);
+
+    expect(screen.getByText('敵AI傾向: 可変→占領')).toBeInTheDocument();
+  });
+
+  it('adaptiveの再抽選結果が変わるとトップバー表示も更新される', () => {
+    const state = createInitialGameState();
+    state.selectedAiProfile = 'adaptive';
+    state.resolvedAiProfile = 'hunter';
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    expect(screen.getByText('敵AI傾向: 可変→撃破')).toBeInTheDocument();
+
+    act(() => {
+      store.getState().setGameState({
+        ...store.getState().gameState,
+        resolvedAiProfile: 'captain',
+      });
+    });
 
     expect(screen.getByText('敵AI傾向: 可変→占領')).toBeInTheDocument();
   });

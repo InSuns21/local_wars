@@ -420,6 +420,7 @@ describe('aiターンの挙動テスト', () => {
     expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT' && log.detail?.startsWith('DESTROYER'))).toBe(true);
   });
 
+
   it('drone_swarmは自爆ドローンで高価値の航空目標を優先する', () => {
     const state = createAiState('normal');
     state.enableSuicideDrones = true;
@@ -436,6 +437,7 @@ describe('aiターンの挙動テスト', () => {
     expect(next.units.p1_bomber?.hp ?? 0).toBeLessThan(10);
     expect(next.units.p1_inf?.hp ?? 10).toBe(10);
   });
+
 
   it('stealth_strikeは低燃料のステルス爆撃機を空港へ戻そうとする', () => {
     const state = createAiState('hard');
