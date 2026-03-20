@@ -419,5 +419,79 @@ describe('aiターンの挙動テスト', () => {
 
     expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT' && log.detail?.startsWith('DESTROYER'))).toBe(true);
   });
+
+  it('drone_swarmは自爆ドローンで高価値の航空目標を優先する', () => {
+    const state = createAiState('normal');
+    state.enableSuicideDrones = true;
+    state.selectedAiProfile = 'drone_swarm';
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_drone: makeUnit({ id: 'p2_drone', owner: 'P2', type: 'SUICIDE_DRONE', position: { x: 2, y: 2 } }),
+      p1_inf: makeUnit({ id: 'p1_inf', owner: 'P1', type: 'INFANTRY', position: { x: 2, y: 1 } }),
+      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 3, y: 2 } }),
+    };
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+
+    expect(next.units.p1_bomber?.hp ?? 0).toBeLessThan(10);
+    expect(next.units.p1_inf?.hp ?? 10).toBe(10);
+  });
+
+  it('stealth_strikeは低燃料のステルス爆撃機を空港へ戻そうとする', () => {
+    const state = createAiState('hard');
+    state.selectedAiProfile = 'stealth_strike';
+    state.players.P2.funds = 0;
+    state.map.tiles['0,4'] = { coord: { x: 0, y: 4 }, terrainType: 'AIRPORT', owner: 'P2', capturePoints: 20 };
+    state.units = {
+      p2_stealth: makeUnit({ id: 'p2_stealth', owner: 'P2', type: 'STEALTH_BOMBER', position: { x: 4, y: 1 }, fuel: 24 }),
+    };
+
+    const before = manhattanDistance(state.units.p2_stealth.position, { x: 0, y: 4 });
+    const next = runAiTurn(state, { difficulty: 'hard', deps: { rng: () => 0.5 } });
+    const stealth = next.units.p2_stealth;
+
+    expect(stealth).toBeDefined();
+    expect(manhattanDistance(stealth.position, { x: 0, y: 4 })).toBeLessThan(before);
+  });
+
+  it('stealth_strikeは低燃料の潜水艦を港へ戻そうとする', () => {
+    const state = createAiState('normal');
+    state.selectedAiProfile = 'stealth_strike';
+    state.players.P2.funds = 0;
+    state.map.tiles['0,4'] = { coord: { x: 0, y: 4 }, terrainType: 'PORT', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,4'] = { coord: { x: 1, y: 4 }, terrainType: 'SEA' };
+    state.map.tiles['2,4'] = { coord: { x: 2, y: 4 }, terrainType: 'SEA' };
+    state.map.tiles['3,4'] = { coord: { x: 3, y: 4 }, terrainType: 'SEA' };
+    state.units = {
+      p2_sub: makeUnit({ id: 'p2_sub', owner: 'P2', type: 'SUBMARINE', position: { x: 3, y: 4 }, fuel: 26 }),
+    };
+
+    const before = manhattanDistance(state.units.p2_sub.position, { x: 0, y: 4 });
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const submarine = next.units.p2_sub;
+
+    expect(submarine).toBeDefined();
+    expect(manhattanDistance(submarine.position, { x: 0, y: 4 })).toBeLessThan(before);
+  });
+
+  it('Hardは次ターンに壊滅しやすい悪い攻撃を見送る', () => {
+    const createTradeTrapState = (difficulty: 'normal' | 'hard') => {
+      const state = createAiState(difficulty);
+      state.players.P2.funds = 0;
+      state.units = {
+        p2_heavy: makeUnit({ id: 'p2_heavy', owner: 'P2', type: 'HEAVY_TANK', position: { x: 2, y: 2 } }),
+        p1_inf: makeUnit({ id: 'p1_inf', owner: 'P1', type: 'INFANTRY', position: { x: 2, y: 1 } }),
+        p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 3, y: 2 } }),
+        p1_anti: makeUnit({ id: 'p1_anti', owner: 'P1', type: 'ANTI_TANK', position: { x: 1, y: 2 } }),
+      };
+      return state;
+    };
+
+    const normalNext = runAiTurn(createTradeTrapState('normal'), { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const hardNext = runAiTurn(createTradeTrapState('hard'), { difficulty: 'hard', deps: { rng: () => 0.5 } });
+
+    expect(normalNext.actionLog.some((log) => log.playerId === 'P2' && log.action === 'ATTACK')).toBe(true);
+    expect(hardNext.actionLog.some((log) => log.playerId === 'P2' && log.action === 'ATTACK')).toBe(false);
+  });
 });
 
