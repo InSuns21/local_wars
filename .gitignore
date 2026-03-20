@@ -4,3 +4,4 @@
 node_modules
 tmp
 .codex/tmp/
+.codex_tmp_*.json

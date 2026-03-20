@@ -51,8 +51,9 @@ For `patch`, `apply-edits`, and `write-batch`:
 
 - Prefer `--stdin-file <file>` over inline shell JSON when JSON includes non-ASCII text.
 - Prefer `--stdin-file <file>` when inline arguments may hit shell or command-length limits.
-- Always store temporary JSON input files under `.codex/tmp/`.
-- Prefer stable filenames such as `.codex/tmp/apply-edits.json`, `.codex/tmp/patch.json`, or `.codex/tmp/write-batch.json`.
+- Prefer temporary JSON input files under `.codex/tmp/` when the environment allows creating files there.
+- If direct temp-file creation under `.codex/tmp/` fails in this environment, use repo-root fallback filenames that start with `.codex_tmp_`.
+- Prefer stable fallback filenames such as `.codex_tmp_apply-edits.json`, `.codex_tmp_patch.json`, or `.codex_tmp_write-batch.json`.
 - Reuse or overwrite existing temp files when safe instead of creating scattered one-off temp files.
 - Always check `node C:\tools\codex-fswrap\bin\cfs.mjs <command> --help` before constructing JSON input.
 - Use `--dry-run` before broad edits when possible.
