@@ -46,6 +46,7 @@ Powershellを使った読み書きでは文字コードutf8を必ず明示する
 - [docs/product-specs/screen-flow.md](docs/product-specs/screen-flow.md): 現行画面遷移とモーダル仕様
 - [docs/product-specs/gameplay-flow.md](docs/product-specs/gameplay-flow.md): 開始、対局、保存、再開の体験フロー
 - [docs/product-specs/ai-thinking-routines.md](docs/product-specs/ai-thinking-routines.md): CPU の難易度、思考傾向、補給、FoW、ドローン戦を含む思考ルーチン仕様
+- [docs/product-specs/ai-visible-turn-playback.md](docs/product-specs/ai-visible-turn-playback.md): AI ターン中の可視行動再生、新規視認、ターン開始サマリーの確定仕様
 - [docs/product-specs/transport-units.md](docs/product-specs/transport-units.md): 輸送車、輸送ヘリ、搭載と降車の草案仕様
 - [docs/product-specs/suicide-drones-and-counter-drone.md](docs/product-specs/suicide-drones-and-counter-drone.md): 自爆ドローン、対ドローン防空車、防空歩兵の草案仕様
 - [docs/product-specs/naval-units-and-ports.md](docs/product-specs/naval-units-and-ports.md): 海上ユニット、港湾、海戦マップの草案仕様
