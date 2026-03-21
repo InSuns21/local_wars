@@ -1,6 +1,7 @@
 import type { ResolvedAiProfile } from '@/app/types';
 import { toCoordKey, manhattanDistance } from '@/utils/coord';
 import { applyCommand, type CommandDeps } from '@core/engine/commandApplier';
+import { applyNightmareWeightMultipliers, type AiProfileWeights } from '@core/engine/aiNightmareTuning';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { canUnitProduceAtTile } from '@core/rules/facilities';
 import { getReachableTiles, findMovePath } from '@core/rules/movement';
@@ -39,20 +40,6 @@ type ThreatEstimate = {
   incomingMax: number;
 };
 
-type ProfileWeights = {
-  captureBias: number;
-  killBias: number;
-  safetyBias: number;
-  hqPressureBias: number;
-  artilleryBias: number;
-  antiAirBias: number;
-  droneBias: number;
-  stealthBias: number;
-  navalBias: number;
-  supplyBias: number;
-  scoutBias: number;
-};
-
 type AdaptiveBattleSignals = {
   hqThreat: boolean;
   mainForceLoss: boolean;
@@ -86,7 +73,7 @@ const MEMORY_MIN_CONFIDENCE = 0.2;
 const MEMORY_STRATEGIC_CONFIDENCE = 0.35;
 const MEMORY_DECAY_PER_TURN = 0.2;
 const HQ_THREAT_DISTANCE = 3;
-const AI_PROFILES: Record<ResolvedAiProfile, ProfileWeights> = {
+const AI_PROFILES: Record<ResolvedAiProfile, AiProfileWeights> = {
   balanced: { captureBias: 1, killBias: 1, safetyBias: 1, hqPressureBias: 1, artilleryBias: 1, antiAirBias: 1, droneBias: 1, stealthBias: 1, navalBias: 1, supplyBias: 1, scoutBias: 1 },
   captain: { captureBias: 1.45, killBias: 0.95, safetyBias: 1.05, hqPressureBias: 1.2, artilleryBias: 0.9, antiAirBias: 1, droneBias: 0.9, stealthBias: 0.9, navalBias: 1, supplyBias: 1.1, scoutBias: 1.1 },
   hunter: { captureBias: 0.75, killBias: 1.4, safetyBias: 0.95, hqPressureBias: 1.05, artilleryBias: 1.05, antiAirBias: 1, droneBias: 1.1, stealthBias: 1.05, navalBias: 1, supplyBias: 0.9, scoutBias: 0.95 },
@@ -95,6 +82,9 @@ const AI_PROFILES: Record<ResolvedAiProfile, ProfileWeights> = {
   drone_swarm: { captureBias: 0.95, killBias: 1.15, safetyBias: 0.9, hqPressureBias: 1, artilleryBias: 0.9, antiAirBias: 1.05, droneBias: 1.6, stealthBias: 0.8, navalBias: 0.9, supplyBias: 0.9, scoutBias: 1 },
   stealth_strike: { captureBias: 0.85, killBias: 1.25, safetyBias: 1.1, hqPressureBias: 0.95, artilleryBias: 0.95, antiAirBias: 1, droneBias: 0.9, stealthBias: 1.6, navalBias: 1.25, supplyBias: 1.2, scoutBias: 1.05 },
 };
+
+const getProfileWeights = (profile: ResolvedAiProfile, difficulty: AiDifficulty): AiProfileWeights =>
+  applyNightmareWeightMultipliers(AI_PROFILES[profile], profile, difficulty);
 
 const getEnemyPlayer = (playerId: PlayerId): PlayerId => (playerId === 'P1' ? 'P2' : 'P1');
 
@@ -576,12 +566,13 @@ const scoreHardForwardPlan = (
   unit: UnitState,
   coord: Coord,
   enemyHq: Coord | null,
+  difficulty: AiDifficulty,
   profile: ResolvedAiProfile,
   attackTarget: UnitState | null,
   threat: ThreatEstimate,
   nearbyAllies: UnitState[],
 ): number => {
-  const weights = AI_PROFILES[profile];
+  const weights = getProfileWeights(profile, difficulty);
   let score = 0;
 
   if (attackTarget) {
@@ -619,7 +610,7 @@ const scoreAttackTarget = (
   difficulty: AiDifficulty,
   profile: ResolvedAiProfile,
 ): number => {
-  const weights = AI_PROFILES[profile];
+  const weights = getProfileWeights(profile, difficulty);
   const forecast = forecastCombat(attacker, target);
   const damage = forecast.attackerToDefender.max;
   const retaliation = forecast.defenderToAttacker?.max ?? 0;
@@ -815,7 +806,7 @@ const evaluateMoveScore = (
   profile: ResolvedAiProfile,
   rng: () => number,
 ): number => {
-  const weights = AI_PROFILES[profile];
+  const weights = getProfileWeights(profile, difficulty);
   const tile = state.map.tiles[toCoordKey(to)];
   const movedUnit: UnitState = { ...unit, position: to };
   const nearestEnemyDist = enemies.length > 0 ? Math.min(...enemies.map((enemy) => manhattanDistance(to, enemy.position))) : 6;
@@ -1084,7 +1075,7 @@ const evaluateMoveScore = (
   }
 
   if (isAdvancedAiDifficulty(difficulty)) {
-    score += scoreHardForwardPlan(state, unit, to, enemyHq, profile, attackTarget, threat, nearbyAllies);
+    score += scoreHardForwardPlan(state, unit, to, enemyHq, difficulty, profile, attackTarget, threat, nearbyAllies);
     if (isNightmareAiDifficulty(difficulty)) {
       score -= threat.incomingMax * 0.9 * weights.safetyBias;
       score -= threat.attackers * 2.5 * weights.safetyBias;
@@ -1211,7 +1202,7 @@ const getCapturableCoastalTargets = (state: GameState, aiPlayer: PlayerId): Coor
     .map((tile) => tile.coord);
 
 const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile: ResolvedAiProfile, difficulty: AiDifficulty): UnitType | null => {
-  const weights = AI_PROFILES[profile];
+  const weights = getProfileWeights(profile, difficulty);
   const canAfford = (type: UnitType): boolean => state.players[aiPlayer].funds >= UNIT_DEFINITIONS[type].cost;
 
   const own = getAliveUnits(state, aiPlayer);

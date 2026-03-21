@@ -43,6 +43,11 @@ const {
   renderSelfPlayMarkdown,
   runSelfPlaySeries,
 } = require('../src/core/analysis/selfPlay.ts');
+const {
+  buildNightmareAutotunePlan,
+  renderNightmareAutotuneMarkdown,
+  serializeNightmareTuningConfig,
+} = require('../src/core/analysis/selfPlayAutoTune.ts');
 
 const parseArgs = (argv) => {
   const args = {};
@@ -69,7 +74,7 @@ const parseBoolean = (value, fallback) => {
 const fileTimestamp = () => new Date().toISOString().replace(/[:]/g, '-').replace(/\..+$/, '');
 
 const args = parseArgs(process.argv.slice(2));
-const report = runSelfPlaySeries({
+const runConfig = {
   maps: (args.maps ? String(args.maps).split(',') : ['plains-clash']).map((item) => item.trim()).filter(Boolean),
   matchCount: args.matches ? Number(args.matches) : 20,
   maxTurns: args['max-turns'] ? Number(args['max-turns']) : 60,
@@ -90,36 +95,57 @@ const report = runSelfPlaySeries({
       selectedAiProfile: args['right-profile'] ? String(args['right-profile']) : 'balanced',
     },
   },
-});
+};
 
 const outputDir = path.resolve(repoRoot, args['output-dir'] ? String(args['output-dir']) : path.join('docs', 'generated', 'self-play'));
-const prefix = args.prefix ? String(args.prefix) : `${fileTimestamp()}_${report.config.participants.left.label}-vs-${report.config.participants.right.label}`;
+const prefix = args.prefix ? String(args.prefix) : `${fileTimestamp()}_${runConfig.participants.left.label}-vs-${runConfig.participants.right.label}`;
+const tuningFilePath = path.resolve(repoRoot, 'src', 'core', 'engine', 'aiNightmareTuning.ts');
 fs.mkdirSync(outputDir, { recursive: true });
 
-const reportJsonPath = path.join(outputDir, `${prefix}.json`);
-const reportMdPath = path.join(outputDir, `${prefix}.md`);
-fs.writeFileSync(reportJsonPath, JSON.stringify(report, null, 2), 'utf8');
-fs.writeFileSync(reportMdPath, renderSelfPlayMarkdown(report), 'utf8');
+const beforeReport = runSelfPlaySeries(runConfig);
+const beforeProposal = buildSelfPlayImprovementProposal(beforeReport);
+const autotunePlan = buildNightmareAutotunePlan(beforeReport, undefined, beforeProposal);
+const autotuneMarkdown = renderNightmareAutotuneMarkdown(autotunePlan);
 
-console.log(`JSON: ${path.relative(repoRoot, reportJsonPath)}`);
-console.log(`Markdown: ${path.relative(repoRoot, reportMdPath)}`);
+const beforeJsonPath = path.join(outputDir, `${prefix}.before.json`);
+const beforeMdPath = path.join(outputDir, `${prefix}.before.md`);
+const beforeProposalMdPath = path.join(outputDir, `${prefix}.before.proposal.md`);
+const autotuneMdPath = path.join(outputDir, `${prefix}.autotune.md`);
+fs.writeFileSync(beforeJsonPath, JSON.stringify(beforeReport, null, 2), 'utf8');
+fs.writeFileSync(beforeMdPath, renderSelfPlayMarkdown(beforeReport), 'utf8');
+fs.writeFileSync(beforeProposalMdPath, renderSelfPlayImprovementProposalMarkdown(beforeProposal), 'utf8');
+fs.writeFileSync(autotuneMdPath, autotuneMarkdown, 'utf8');
 
-let comparison;
-if (args.baseline) {
-  const before = JSON.parse(fs.readFileSync(path.resolve(repoRoot, String(args.baseline)), 'utf8'));
-  comparison = compareSelfPlayReports(before, report);
+const previousTuningFile = fs.readFileSync(tuningFilePath, 'utf8');
+fs.writeFileSync(tuningFilePath, serializeNightmareTuningConfig(autotunePlan.nextConfig), 'utf8');
+
+try {
+  const afterReport = runSelfPlaySeries(runConfig);
+  const comparison = compareSelfPlayReports(beforeReport, afterReport);
+  const afterProposal = buildSelfPlayImprovementProposal(afterReport, comparison);
+
+  const afterJsonPath = path.join(outputDir, `${prefix}.after.json`);
+  const afterMdPath = path.join(outputDir, `${prefix}.after.md`);
+  const afterProposalMdPath = path.join(outputDir, `${prefix}.after.proposal.md`);
   const comparisonJsonPath = path.join(outputDir, `${prefix}.compare.json`);
   const comparisonMdPath = path.join(outputDir, `${prefix}.compare.md`);
+
+  fs.writeFileSync(afterJsonPath, JSON.stringify(afterReport, null, 2), 'utf8');
+  fs.writeFileSync(afterMdPath, renderSelfPlayMarkdown(afterReport), 'utf8');
+  fs.writeFileSync(afterProposalMdPath, renderSelfPlayImprovementProposalMarkdown(afterProposal), 'utf8');
   fs.writeFileSync(comparisonJsonPath, JSON.stringify(comparison, null, 2), 'utf8');
   fs.writeFileSync(comparisonMdPath, renderSelfPlayComparisonMarkdown(comparison), 'utf8');
+
+  console.log(`Before JSON: ${path.relative(repoRoot, beforeJsonPath)}`);
+  console.log(`Before Markdown: ${path.relative(repoRoot, beforeMdPath)}`);
+  console.log(`Before Proposal Markdown: ${path.relative(repoRoot, beforeProposalMdPath)}`);
+  console.log(`Autotune Markdown: ${path.relative(repoRoot, autotuneMdPath)}`);
+  console.log(`After JSON: ${path.relative(repoRoot, afterJsonPath)}`);
+  console.log(`After Markdown: ${path.relative(repoRoot, afterMdPath)}`);
+  console.log(`After Proposal Markdown: ${path.relative(repoRoot, afterProposalMdPath)}`);
   console.log(`Compare JSON: ${path.relative(repoRoot, comparisonJsonPath)}`);
   console.log(`Compare Markdown: ${path.relative(repoRoot, comparisonMdPath)}`);
+} catch (error) {
+  fs.writeFileSync(tuningFilePath, previousTuningFile, 'utf8');
+  throw error;
 }
-
-const proposal = buildSelfPlayImprovementProposal(report, comparison);
-const proposalJsonPath = path.join(outputDir, `${prefix}.proposal.json`);
-const proposalMdPath = path.join(outputDir, `${prefix}.proposal.md`);
-fs.writeFileSync(proposalJsonPath, JSON.stringify(proposal, null, 2), 'utf8');
-fs.writeFileSync(proposalMdPath, renderSelfPlayImprovementProposalMarkdown(proposal), 'utf8');
-console.log(`Proposal JSON: ${path.relative(repoRoot, proposalJsonPath)}`);
-console.log(`Proposal Markdown: ${path.relative(repoRoot, proposalMdPath)}`);
