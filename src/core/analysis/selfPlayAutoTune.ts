@@ -74,6 +74,15 @@ const addAdjustment = (
   adjustments[key] = round((adjustments[key] ?? 1) + delta);
 };
 
+const hasSevereStall = (report: SelfPlaySeriesReport, participantId: SelfPlayParticipantId): boolean => {
+  const aggregate = report.aggregate.participants[participantId];
+  return aggregate.stallMatchRate >= 0.5
+    || aggregate.averageInactiveTurnRate >= 0.4
+    || (report.aggregate.turnLimitRate >= 0.8
+      && aggregate.averagePropertyCaptures < 1
+      && aggregate.averageProductionCount < 1);
+};
+
 const buildDecision = (
   report: SelfPlaySeriesReport,
   comparison: SelfPlayComparisonReport | undefined,
@@ -88,6 +97,20 @@ const buildDecision = (
   const targetProfile = detectTargetProfile(report, participantId);
   if (!targetProfile) {
     return null;
+  }
+
+  if (hasSevereStall(report, participantId)) {
+    return {
+      participantId,
+      label: config.label,
+      selectedProfile: config.selectedAiProfile,
+      targetProfile,
+      reasons: [
+        'stall detector が強い停滞を検出したため、重み調整より先に自己対戦の停止要因を解消します。',
+        `停滞率 ${round(report.aggregate.participants[participantId].averageInactiveTurnRate * 100, 1)}% / stall試合率 ${round(report.aggregate.participants[participantId].stallMatchRate * 100, 1)}%`,
+      ],
+      adjustments: {},
+    };
   }
 
   const aggregate = report.aggregate.participants[participantId];
@@ -235,7 +258,7 @@ const renderAdjustments = (adjustments: WeightAdjustments): string =>
   WEIGHT_KEYS
     .filter((key) => adjustments[key] != null)
     .map((key) => `${key}x${adjustments[key]}`)
-    .join(', ');
+    .join(', ') || '調整保留';
 
 export const renderNightmareAutotuneMarkdown = (plan: NightmareAutotunePlan): string => [
   '# nightmare autotune 提案',

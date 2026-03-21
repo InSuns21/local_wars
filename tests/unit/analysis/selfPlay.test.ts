@@ -81,6 +81,27 @@ describe('selfPlay', () => {
     expect(markdown).toContain('対空応答率');
   });
 
+  it('stall detectorで停滞指標を集計できる', () => {
+    const report = runSelfPlaySeries({
+      maps: ['plains-clash'],
+      matchCount: 4,
+      maxTurns: 8,
+      seed: 50,
+      fogOfWar: true,
+      participants,
+    });
+
+    const left = report.aggregate.participants.left;
+    expect(left.averageInactiveTurnRate).toBeGreaterThanOrEqual(0);
+    expect(left.averageLongestInactiveStreak).toBeGreaterThanOrEqual(0);
+    expect(left.stallMatchRate).toBeGreaterThanOrEqual(0);
+    expect(report.matches[0].stall.turnActivities.length).toBeGreaterThan(0);
+
+    const markdown = renderSelfPlayMarkdown(report);
+    expect(markdown).toContain('平均停滞ターン率');
+    expect(markdown).toContain('stall要因候補');
+  });
+
   it('Markdownレポートを生成できる', () => {
     const report = runSelfPlaySeries({
       maps: ['plains-clash'],

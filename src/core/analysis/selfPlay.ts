@@ -44,6 +44,28 @@ export type SelfPlayThreatResponseSnapshot = {
   hadSubCounter: boolean;
 };
 
+export type SelfPlayTurnActivity = {
+  turn: number;
+  participantId: SelfPlayParticipantId;
+  side: SelfPlaySide;
+  moveCount: number;
+  attackCount: number;
+  captureCount: number;
+  productionCount: number;
+  fogEncounterCount: number;
+  activeActionCount: number;
+  isStalledTurn: boolean;
+};
+
+export type SelfPlayMatchStallSummary = {
+  suspected: boolean;
+  longestInactiveStreaks: Record<SelfPlayParticipantId, number>;
+  inactiveTurnCounts: Record<SelfPlayParticipantId, number>;
+  inactiveTurnRates: Record<SelfPlayParticipantId, number>;
+  reasons: string[];
+  turnActivities: SelfPlayTurnActivity[];
+};
+
 export type SelfPlayParticipantMatchSummary = {
   label: string;
   side: SelfPlaySide;
@@ -80,6 +102,7 @@ export type SelfPlayMatchResult = {
   victoryReason: VictoryReason | 'TURN_LIMIT' | null;
   participants: Record<SelfPlayParticipantId, SelfPlayParticipantMatchSummary>;
   majorEvents: Array<{ turn: number; playerId: PlayerId; action: string; detail?: string }>;
+  stall: SelfPlayMatchStallSummary;
 };
 
 export type SelfPlayParticipantAggregate = {
@@ -114,6 +137,10 @@ export type SelfPlayParticipantAggregate = {
   compositionShares: SelfPlayCompositionShares;
   mapWinRateSpread: number;
   sideWinRateGap: number;
+  averageInactiveTurnRate: number;
+  averageLongestInactiveStreak: number;
+  stallMatchRate: number;
+  suspectedStallReasons: string[];
   resolvedProfileBreakdown: Array<{
     profile: string;
     matches: number;
@@ -180,6 +207,9 @@ export type SelfPlayParticipantComparison = {
   antiSubResponseRateDelta: number;
   mapWinRateSpreadDelta: number;
   sideWinRateGapDelta: number;
+  averageInactiveTurnRateDelta: number;
+  averageLongestInactiveStreakDelta: number;
+  stallMatchRateDelta: number;
 };
 
 export type SelfPlayComparisonReport = {
@@ -214,6 +244,7 @@ export type SelfPlayImprovementProposal = {
 
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
 const IMPORTANT_ACTIONS = new Set(['CAPTURE', 'ATTACK', 'ATTACK_TILE', 'FOG_ENCOUNTER', 'PRODUCE_UNIT']);
+const ACTIVE_ACTIONS = new Set(['MOVE_UNIT', 'CAPTURE', 'ATTACK', 'ATTACK_TILE', 'FOG_ENCOUNTER', 'PRODUCE_UNIT']);
 const HIGH_VALUE_TYPES = new Set<UnitType>(['HEAVY_TANK', 'BATTLESHIP', 'CARRIER', 'STEALTH_BOMBER', 'BOMBER', 'MISSILE_AA']);
 const SCOUT_TYPES = new Set<UnitType>(['RECON']);
 const SUPPORT_TYPES = new Set<UnitType>(['SUPPLY_TRUCK', 'AIR_TANKER', 'SUPPLY_SHIP']);
@@ -358,6 +389,12 @@ const normalizeCompositionShares = (value?: Partial<SelfPlayCompositionShares>):
   other: value?.other ?? 0,
 });
 
+const normalizeRecord = <K extends string>(keys: readonly K[], value?: Partial<Record<K, number>>): Record<K, number> =>
+  keys.reduce<Record<K, number>>((result, key) => {
+    result[key] = value?.[key] ?? 0;
+    return result;
+  }, {} as Record<K, number>);
+
 const getParticipantAggregate = (
   report: SelfPlaySeriesReport,
   participantId: SelfPlayParticipantId,
@@ -395,6 +432,10 @@ const getParticipantAggregate = (
     compositionShares: normalizeCompositionShares(aggregate?.compositionShares),
     mapWinRateSpread: aggregate?.mapWinRateSpread ?? 0,
     sideWinRateGap: aggregate?.sideWinRateGap ?? 0,
+    averageInactiveTurnRate: aggregate?.averageInactiveTurnRate ?? 0,
+    averageLongestInactiveStreak: aggregate?.averageLongestInactiveStreak ?? 0,
+    stallMatchRate: aggregate?.stallMatchRate ?? 0,
+    suspectedStallReasons: aggregate?.suspectedStallReasons ?? [],
     resolvedProfileBreakdown: aggregate?.resolvedProfileBreakdown ?? [],
   };
 };
@@ -464,6 +505,85 @@ const buildParticipantMatchSummary = (
   };
 };
 
+const summarizeTurnActivity = (
+  entries: GameState['actionLog'],
+  turn: number,
+  side: SelfPlaySide,
+  participantId: SelfPlayParticipantId,
+): SelfPlayTurnActivity => {
+  const moveCount = entries.filter((entry) => entry.action === 'MOVE_UNIT').length;
+  const attackCount = entries.filter((entry) => entry.action === 'ATTACK' || entry.action === 'ATTACK_TILE').length;
+  const captureCount = entries.filter((entry) => entry.action === 'CAPTURE').length;
+  const productionCount = entries.filter((entry) => entry.action === 'PRODUCE_UNIT').length;
+  const fogEncounterCount = entries.filter((entry) => entry.action === 'FOG_ENCOUNTER').length;
+  const activeActionCount = entries.filter((entry) => ACTIVE_ACTIONS.has(entry.action)).length;
+  return {
+    turn,
+    participantId,
+    side,
+    moveCount,
+    attackCount,
+    captureCount,
+    productionCount,
+    fogEncounterCount,
+    activeActionCount,
+    isStalledTurn: activeActionCount === 0,
+  };
+};
+
+const buildMatchStallSummary = (
+  turnActivities: SelfPlayTurnActivity[],
+  participants: Record<SelfPlayParticipantId, SelfPlayParticipantMatchSummary>,
+): SelfPlayMatchStallSummary => {
+  const ids: SelfPlayParticipantId[] = ['left', 'right'];
+  const longestInactiveStreaks = normalizeRecord(ids, {});
+  const inactiveTurnCounts = normalizeRecord(ids, {});
+  const inactiveTurnRates = normalizeRecord(ids, {});
+  const reasonCounts = new Map<string, number>();
+
+  for (const participantId of ids) {
+    const ownTurns = turnActivities.filter((activity) => activity.participantId === participantId);
+    let currentStreak = 0;
+    for (const activity of ownTurns) {
+      if (activity.isStalledTurn) {
+        inactiveTurnCounts[participantId] += 1;
+        currentStreak += 1;
+        longestInactiveStreaks[participantId] = Math.max(longestInactiveStreaks[participantId], currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    }
+    inactiveTurnRates[participantId] = round(rate(inactiveTurnCounts[participantId], ownTurns.length));
+
+    const summary = participants[participantId];
+    if (longestInactiveStreaks[participantId] >= 5) {
+      reasonCounts.set('主要行動ゼロの連続ターンが長い', (reasonCounts.get('主要行動ゼロの連続ターンが長い') ?? 0) + 1);
+    }
+    if (summary.productionCount === 0 && summary.funds >= 30000) {
+      reasonCounts.set('資金を抱えたまま生産できていない', (reasonCounts.get('資金を抱えたまま生産できていない') ?? 0) + 1);
+    }
+    if (summary.propertyCaptureCount === 0) {
+      reasonCounts.set('占領完了が発生していない', (reasonCounts.get('占領完了が発生していない') ?? 0) + 1);
+    }
+    if (ownTurns.length > 0 && ownTurns.every((activity) => activity.moveCount === 0)) {
+      reasonCounts.set('移動行動が観測されていない', (reasonCounts.get('移動行動が観測されていない') ?? 0) + 1);
+    }
+  }
+
+  const reasons = Array.from(reasonCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([reason]) => reason);
+
+  return {
+    suspected: reasons.length > 0,
+    longestInactiveStreaks,
+    inactiveTurnCounts,
+    inactiveTurnRates,
+    reasons,
+    turnActivities,
+  };
+};
+
 export const runSelfPlayMatch = (
   config: Omit<SelfPlaySeriesConfig, 'matchCount' | 'maps' | 'swapSidesEveryMatch' | 'seed'> & {
     mapId: string;
@@ -483,21 +603,31 @@ export const runSelfPlayMatch = (
     settings: createSelfPlaySettings(config.fogOfWar, config.baseSettings),
   });
   let state = JSON.parse(JSON.stringify(initialState)) as GameState;
+  const turnActivities: SelfPlayTurnActivity[] = [];
 
   while (!state.winner && state.turn <= config.maxTurns) {
     const side = state.currentPlayerId;
     const participantId = sideAssignments[side];
     const participant = config.participants[participantId];
+    const previousActionLogLength = state.actionLog.length;
     const nextState = runAiTurn(buildTurnState(state, side, participant, resolvedProfiles[participantId]), {
       difficulty: participant.difficulty,
       deps: { rng },
     });
     resolvedProfiles[participantId] = (nextState.resolvedAiProfile ?? null) as ResolvedSelfPlayProfile | null;
+    const newEntries = nextState.actionLog
+      .slice(previousActionLogLength)
+      .filter((entry) => entry.turn === state.turn && entry.playerId === side);
+    turnActivities.push(summarizeTurnActivity(newEntries, state.turn, side, participantId));
     state = JSON.parse(JSON.stringify(nextState)) as GameState;
   }
 
   const leftSide: SelfPlaySide = sideAssignments.P1 === 'left' ? 'P1' : 'P2';
   const rightSide: SelfPlaySide = sideAssignments.P1 === 'right' ? 'P1' : 'P2';
+  const participantSummaries = {
+    left: buildParticipantMatchSummary(state, initialState, leftSide, config.participants.left, resolvedProfiles.left),
+    right: buildParticipantMatchSummary(state, initialState, rightSide, config.participants.right, resolvedProfiles.right),
+  };
 
   return {
     matchIndex: config.matchIndex,
@@ -510,14 +640,12 @@ export const runSelfPlayMatch = (
     winnerParticipantId: state.winner ? sideAssignments[state.winner] : null,
     winnerSide: state.winner,
     victoryReason: state.winner ? (state.victoryReason ?? null) : 'TURN_LIMIT',
-    participants: {
-      left: buildParticipantMatchSummary(state, initialState, leftSide, config.participants.left, resolvedProfiles.left),
-      right: buildParticipantMatchSummary(state, initialState, rightSide, config.participants.right, resolvedProfiles.right),
-    },
+    participants: participantSummaries,
     majorEvents: state.actionLog
       .filter((entry) => IMPORTANT_ACTIONS.has(entry.action))
       .slice(-8)
       .map((entry) => ({ turn: entry.turn, playerId: entry.playerId, action: entry.action, detail: entry.detail })),
+    stall: buildMatchStallSummary(turnActivities, participantSummaries),
   };
 };
 
@@ -582,10 +710,20 @@ export const runSelfPlaySeries = (config: SelfPlaySeriesConfig): SelfPlaySeriesR
     const totalSupportAvailable = summaries.reduce((sum, summary) => sum + summary.supportAvailable, 0);
     const totalSupportSurvivors = summaries.reduce((sum, summary) => sum + summary.supportSurvivorCount, 0);
     const mapWinRates = mapBreakdown.filter((item) => item.matches > 0).map((item) => item.winRates[participantId]);
+    const averageInactiveTurnRate = round(average(matches.map((match) => match.stall.inactiveTurnRates[participantId])));
+    const averageLongestInactiveStreak = round(average(matches.map((match) => match.stall.longestInactiveStreaks[participantId])));
+    const stallMatchRate = round(rate(matches.filter((match) =>
+      match.stall.longestInactiveStreaks[participantId] >= 5 || match.stall.inactiveTurnRates[participantId] >= 0.6).length, matches.length));
     const resolvedProfileCounts = new Map<string, number>();
+    const reasonCounts = new Map<string, number>();
     for (const summary of summaries) {
       const key = summary.resolvedAiProfile ?? summary.selectedAiProfile;
       resolvedProfileCounts.set(key, (resolvedProfileCounts.get(key) ?? 0) + 1);
+    }
+    for (const match of matches) {
+      for (const reason of match.stall.reasons) {
+        reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+      }
     }
     return {
       label: config.participants[participantId].label,
@@ -629,6 +767,10 @@ export const runSelfPlaySeries = (config: SelfPlaySeriesConfig): SelfPlaySeriesR
       },
       mapWinRateSpread: mapWinRates.length === 0 ? 0 : round(Math.max(...mapWinRates) - Math.min(...mapWinRates)),
       sideWinRateGap: round(Math.abs(rate(firstPlayerWins, firstMatches.length) - rate(secondPlayerWins, secondMatches.length))),
+      averageInactiveTurnRate,
+      averageLongestInactiveStreak,
+      stallMatchRate,
+      suspectedStallReasons: Array.from(reasonCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([reason]) => reason),
       resolvedProfileBreakdown: Array.from(resolvedProfileCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .map(([profile, count]) => ({ profile, matches: count })),
@@ -695,6 +837,9 @@ export const compareSelfPlayReports = (before: SelfPlaySeriesReport, after: Self
         antiSubResponseRateDelta: round(afterLeft.responseRates.antiSub.rate - beforeLeft.responseRates.antiSub.rate),
         mapWinRateSpreadDelta: round(afterLeft.mapWinRateSpread - beforeLeft.mapWinRateSpread),
         sideWinRateGapDelta: round(afterLeft.sideWinRateGap - beforeLeft.sideWinRateGap),
+        averageInactiveTurnRateDelta: round(afterLeft.averageInactiveTurnRate - beforeLeft.averageInactiveTurnRate),
+        averageLongestInactiveStreakDelta: round(afterLeft.averageLongestInactiveStreak - beforeLeft.averageLongestInactiveStreak),
+        stallMatchRateDelta: round(afterLeft.stallMatchRate - beforeLeft.stallMatchRate),
       },
       right: {
         label: afterRight.label,
@@ -714,6 +859,9 @@ export const compareSelfPlayReports = (before: SelfPlaySeriesReport, after: Self
         antiSubResponseRateDelta: round(afterRight.responseRates.antiSub.rate - beforeRight.responseRates.antiSub.rate),
         mapWinRateSpreadDelta: round(afterRight.mapWinRateSpread - beforeRight.mapWinRateSpread),
         sideWinRateGapDelta: round(afterRight.sideWinRateGap - beforeRight.sideWinRateGap),
+        averageInactiveTurnRateDelta: round(afterRight.averageInactiveTurnRate - beforeRight.averageInactiveTurnRate),
+        averageLongestInactiveStreakDelta: round(afterRight.averageLongestInactiveStreak - beforeRight.averageLongestInactiveStreak),
+        stallMatchRateDelta: round(afterRight.stallMatchRate - beforeRight.stallMatchRate),
       },
     },
   };
@@ -731,6 +879,8 @@ const renderParticipantAggregateLines = (participant: SelfPlayParticipantAggrega
   `- 平均占領完了回数: ${participant.averagePropertyCaptures} / 平均生産回数: ${participant.averageProductionCount}`,
   `- 高額撃破: ${participant.averageHighValueEnemyUnitsDestroyed} / 高額損失: ${participant.averageHighValueUnitsLost} / 高額収支: ${participant.averageHighValueTradeBalance}`,
   `- 平均低補給残存数: ${participant.averageLowSupplyUnitCount} / 平均HQ制圧ターン: ${formatNullableTurn(participant.averageHqCaptureTurn)}`,
+  `- 平均停滞ターン率: ${formatPercent(participant.averageInactiveTurnRate)} / 平均最長停滞連続: ${participant.averageLongestInactiveStreak} / stall試合率: ${formatPercent(participant.stallMatchRate)}`,
+  `- stall要因候補: ${participant.suspectedStallReasons.length > 0 ? participant.suspectedStallReasons.join(', ') : '顕著な停滞なし'}`,
   `- 偵察生存率: ${formatPercent(participant.scoutSurvivalRate)} / 補給生存率: ${formatPercent(participant.supportSurvivalRate)}`,
   `- 対空応答率: ${formatResponseRate(participant.responseRates.antiAir)}`,
   `- 対ドローン応答率: ${formatResponseRate(participant.responseRates.antiDrone)}`,
@@ -788,8 +938,10 @@ export const renderSelfPlayComparisonMarkdown = (comparison: SelfPlayComparisonR
   '',
   '## 参加者差分',
   `- ${comparison.participants.left.label}: 勝率差=${formatPercent(comparison.participants.left.winRateDelta)} / 先手差=${formatPercent(comparison.participants.left.firstPlayerWinRateDelta)} / 後手差=${formatPercent(comparison.participants.left.secondPlayerWinRateDelta)} / 高額収支差=${comparison.participants.left.averageHighValueTradeBalanceDelta} / 低補給差=${comparison.participants.left.averageLowSupplyUnitCountDelta}`,
+  `- ${comparison.participants.left.label}: 停滞率差=${formatPercent(comparison.participants.left.averageInactiveTurnRateDelta)} / 最長停滞差=${comparison.participants.left.averageLongestInactiveStreakDelta} / stall試合差=${formatPercent(comparison.participants.left.stallMatchRateDelta)}`,
   `- ${comparison.participants.left.label}: 偵察差=${formatPercent(comparison.participants.left.scoutSurvivalRateDelta)} / 補給差=${formatPercent(comparison.participants.left.supportSurvivalRateDelta)} / 対空差=${formatPercent(comparison.participants.left.antiAirResponseRateDelta)} / 対ドローン差=${formatPercent(comparison.participants.left.antiDroneResponseRateDelta)} / 対潜差=${formatPercent(comparison.participants.left.antiSubResponseRateDelta)}`,
   `- ${comparison.participants.right.label}: 勝率差=${formatPercent(comparison.participants.right.winRateDelta)} / 先手差=${formatPercent(comparison.participants.right.firstPlayerWinRateDelta)} / 後手差=${formatPercent(comparison.participants.right.secondPlayerWinRateDelta)} / 高額収支差=${comparison.participants.right.averageHighValueTradeBalanceDelta} / 低補給差=${comparison.participants.right.averageLowSupplyUnitCountDelta}`,
+  `- ${comparison.participants.right.label}: 停滞率差=${formatPercent(comparison.participants.right.averageInactiveTurnRateDelta)} / 最長停滞差=${comparison.participants.right.averageLongestInactiveStreakDelta} / stall試合差=${formatPercent(comparison.participants.right.stallMatchRateDelta)}`,
   `- ${comparison.participants.right.label}: 偵察差=${formatPercent(comparison.participants.right.scoutSurvivalRateDelta)} / 補給差=${formatPercent(comparison.participants.right.supportSurvivalRateDelta)} / 対空差=${formatPercent(comparison.participants.right.antiAirResponseRateDelta)} / 対ドローン差=${formatPercent(comparison.participants.right.antiDroneResponseRateDelta)} / 対潜差=${formatPercent(comparison.participants.right.antiSubResponseRateDelta)}`,
   '',
 ].join('\n');
@@ -873,6 +1025,15 @@ export const buildSelfPlayImprovementProposal = (
     if (aggregate.averagePropertyCaptures < 1 && report.aggregate.turnLimitRate > 0.25) {
       concerns.push(`平均占領完了回数 ${aggregate.averagePropertyCaptures} に対してターン上限率 ${formatPercent(report.aggregate.turnLimitRate)} が高く、締め切り性能が弱いです。`);
       recommendations.push('占領役の温存と HQ 圧力の両立を見直し、中盤以降の施設圧迫を強める。');
+    }
+
+    if (aggregate.stallMatchRate >= 0.5 || aggregate.averageInactiveTurnRate >= 0.4) {
+      concerns.push(`stall試合率 ${formatPercent(aggregate.stallMatchRate)} / 平均停滞ターン率 ${formatPercent(aggregate.averageInactiveTurnRate)} で、自己対戦中の行動停止が目立ちます。`);
+      recommendations.push('調整前に stall detector の内訳を確認し、移動・生産・占領のどこで止まっているかを優先的に切り分ける。');
+      if (aggregate.suspectedStallReasons.length > 0) {
+        recommendations.push(`主な stall 要因候補: ${aggregate.suspectedStallReasons.join(' / ')}`);
+      }
+      nextExperiments.push('1試合分の turnActivities を確認し、最初に主要行動ゼロが連続し始めるターンを特定する。');
     }
 
     if (deltas?.winRateDelta != null) {
