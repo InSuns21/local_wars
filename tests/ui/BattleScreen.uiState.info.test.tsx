@@ -230,22 +230,47 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
       p1_tank: { ...state.units.p1_tank, position: { x: 2, y: 1 } },
     };
 
-
     const store = createGameStore(state, { rng: () => 0.5 });
     render(<BattleScreen useStore={store} />);
-
 
     act(() => {
       store.getState().endTurn();
     });
 
-
     expect(screen.getByText('敵軍行動中...')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'スキップ' }));
 
-
     expect(screen.queryByText('敵軍行動中...')).not.toBeInTheDocument();
     expect(screen.getByText('手番: P1')).toBeInTheDocument();
+  });
+
+  it('AI再生中の可視移動は盤面へ逐次反映される', () => {
+    const state = createInitialGameState();
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_tank: { ...state.units.p2_tank, position: { x: 0, y: 4 } },
+      p1_tank: { ...state.units.p1_tank, position: { x: 4, y: 0 } },
+    };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    act(() => {
+      store.getState().endTurn();
+    });
+
+    expect(store.getState().aiPlaybackEvents.filter((event) => event.type === 'move').length).toBeGreaterThan(1);
+
+    const firstPos = { ...store.getState().gameState.units.p2_tank.position };
+    expect(within(screen.getByRole('button', { name: `タイル ${firstPos.x},${firstPos.y}` })).getByText('TANK')).toBeInTheDocument();
+
+    act(() => {
+      store.getState().stepAiPlayback();
+    });
+
+    const secondPos = store.getState().gameState.units.p2_tank.position;
+    expect(secondPos).not.toEqual(firstPos);
+    expect(within(screen.getByRole('button', { name: `タイル ${secondPos.x},${secondPos.y}` })).getByText('TANK')).toBeInTheDocument();
   });
 });
 

@@ -1404,6 +1404,75 @@ const createPlaybackEvent = (
   durationMs,
 });
 
+const getVisiblePlaybackTileKeys = (before: GameState, after: GameState, viewer: PlayerId): Set<string> => {
+  const visibleTileKeys = new Set<string>(getVisibleTileCoordKeys(before, viewer));
+  for (const key of getVisibleTileCoordKeys(after, viewer)) {
+    visibleTileKeys.add(key);
+  }
+  return visibleTileKeys;
+};
+
+const buildMovePlaybackState = (
+  after: GameState,
+  unitId: string,
+  position: Coord,
+  traversedPath: Coord[],
+): GameState | null => {
+  const displayState = cloneGameState(after);
+  const movedUnit = displayState.units[unitId];
+  if (!movedUnit) {
+    return null;
+  }
+
+  movedUnit.position = { ...position };
+  movedUnit.lastMovePath = traversedPath.map((coord) => ({ ...coord }));
+
+  return displayState;
+};
+
+const collectMovePlaybackEvents = (
+  before: GameState,
+  after: GameState,
+  unitId: string,
+): VisibleAiPlaybackEvent[] => {
+  const viewer = getPlaybackViewer(before);
+  const beforeUnit = before.units[unitId];
+  const afterUnit = after.units[unitId];
+  if (!beforeUnit || !afterUnit) return [];
+
+  const path = afterUnit.lastMovePath ?? [];
+  if (path.length === 0) return [];
+
+  const visibleTileKeys = getVisiblePlaybackTileKeys(before, after, viewer);
+  const startedVisible = visibleTileKeys.has(toCoordKey(beforeUnit.position));
+  const stepEntries = path
+    .map((coord, index) => ({ coord, index }))
+    .filter(({ coord, index }) => visibleTileKeys.has(toCoordKey(coord)) || (startedVisible && index === 0));
+
+  if (stepEntries.length === 0) return [];
+
+  const events: VisibleAiPlaybackEvent[] = [];
+  stepEntries.forEach(({ coord, index }, stepIndex) => {
+    const displayState = buildMovePlaybackState(after, unitId, coord, path.slice(0, index + 1));
+    if (!displayState) {
+      return;
+    }
+
+    events.push(
+      createPlaybackEvent(
+        'move',
+        `${getOwnerLabel(viewer, afterUnit.owner)}${UNIT_DEFINITIONS[afterUnit.type].label}が移動`,
+        displayState,
+        coord,
+        unitId,
+        stepIndex === stepEntries.length - 1 ? 320 : 240,
+      ),
+    );
+  });
+
+  return events;
+};
+
 const collectAttackPlaybackEvents = (
   before: GameState,
   after: GameState,
@@ -1574,7 +1643,9 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
     if (move) {
       const moveApplied = applyCommand(working, { type: 'MOVE_UNIT', unitId: movable.id, to: move.to, path: move.path }, options.deps);
       if (moveApplied.result.ok) {
-        working = refreshEnemyMemory(moveApplied.state, aiPlayer);
+        const nextState = refreshEnemyMemory(moveApplied.state, aiPlayer);
+        playbackEvents.push(...collectMovePlaybackEvents(working, nextState, movable.id));
+        working = nextState;
       }
     }
 

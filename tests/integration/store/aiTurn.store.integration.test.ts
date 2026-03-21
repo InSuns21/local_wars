@@ -262,4 +262,35 @@ describe('store AI手番統合', () => {
     expect(next.currentPlayerId).toBe('P1');
     expect(next.units.p1_tank.hp).toBeLessThan(10);
   });
+
+  it('可視移動では再生中の中間位置がstoreへ順に反映される', () => {
+    const initial = createInitialGameState({
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+      },
+    });
+    initial.players.P2.funds = 0;
+    initial.units = {
+      p2_tank: makeUnit({ id: 'p2_tank', owner: 'P2', type: 'TANK', position: { x: 0, y: 4 } }),
+      p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 4, y: 0 } }),
+    };
+
+    const store = createGameStore(initial, { rng: () => 0.5 });
+    const result = store.getState().endTurn();
+
+    expect(result.ok).toBe(true);
+    expect(store.getState().aiPlaybackStatus).toBe('running');
+    expect(store.getState().currentAiPlaybackEvent?.type).toBe('move');
+    expect(store.getState().aiPlaybackEvents.filter((event) => event.type === 'move').length).toBeGreaterThan(1);
+
+    const firstPos = { ...store.getState().gameState.units.p2_tank.position };
+    store.getState().stepAiPlayback();
+    const secondPos = store.getState().gameState.units.p2_tank.position;
+
+    expect(secondPos).not.toEqual(firstPos);
+
+    store.getState().skipAiPlayback();
+    expect(store.getState().gameState.currentPlayerId).toBe('P1');
+  });
 });

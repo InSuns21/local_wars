@@ -511,6 +511,22 @@ describe('aiターンの挙動テスト', () => {
     expect(result.finalState.units.p1_tank.hp).toBeLessThan(10);
   });
 
+  it('可視移動では1マスずつ再生イベントを生成する', () => {
+    const state = createAiState('normal');
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_tank: makeUnit({ id: 'p2_tank', owner: 'P2', type: 'TANK', position: { x: 0, y: 4 } }),
+      p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 4, y: 0 } }),
+    };
+
+    const result = runAiTurnWithPlayback(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const moveEvents = result.playbackEvents.filter((event) => event.type === 'move');
+
+    expect(moveEvents.length).toBeGreaterThan(1);
+    expect(moveEvents[0]?.displayState.units.p2_tank.position).not.toEqual(state.units.p2_tank.position);
+    expect(moveEvents[moveEvents.length - 1]?.displayState.units.p2_tank.position).toEqual(result.finalState.units.p2_tank.position);
+  });
+
   it('可視占領では占領と施設変化の再生イベントを生成する', () => {
     const state = createAiState('normal');
     state.players.P2.funds = 0;
