@@ -374,6 +374,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ initialSettings 
                   <option value="easy">よわい</option>
                   <option value="normal">ふつう</option>
                   <option value="hard">つよい</option>
+                  <option value="nightmare">めちゃつよ</option>
                 </NativeSelect>
               </FormControl>
 

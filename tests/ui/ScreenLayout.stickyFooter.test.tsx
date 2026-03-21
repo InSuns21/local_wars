@@ -1,10 +1,12 @@
-﻿import '@testing-library/jest-dom';
+import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
+import { DEFAULT_SETTINGS } from '@/app/types';
 import { MapSelectScreen } from '@/screens/MapSelectScreen';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { SaveSelectScreen } from '@/screens/SaveSelectScreen';
 import { CreditsScreen } from '@/screens/CreditsScreen';
 import { TutorialScreen } from '@/screens/TutorialScreen';
+import { createInitialGameState } from '@core/engine/createInitialGameState';
 import type { SaveSlotsRecord } from '@/services/saveSlots';
 
 const expectStickyLayout = (
@@ -63,6 +65,39 @@ describe('Screen layout: 内容スクロール + 固定フッター', () => {
     );
 
     expectStickyLayout('save-select-scroll-content', 'save-select-footer');
+  });
+
+  it('セーブ選択画面でnightmare難易度をめちゃつよ表示する', () => {
+    const nightmareSettings = {
+      ...DEFAULT_SETTINGS,
+      aiDifficulty: 'nightmare' as const,
+      selectedAiProfile: 'captain' as const,
+    };
+    const slots: SaveSlotsRecord = {
+      '1': {
+        slotId: 1,
+        updatedAt: '2026-03-21T00:00:00.000Z',
+        mapId: 'plains-clash',
+        settings: nightmareSettings,
+        state: createInitialGameState({ mapId: 'plains-clash', settings: nightmareSettings }),
+      },
+      '2': null,
+      '3': null,
+    };
+
+    render(
+      <SaveSelectScreen
+        slots={slots}
+        selectedSlotId={1}
+        onSelectSlot={() => {}}
+        onConfirmLoad={() => {}}
+        onDelete={() => {}}
+        onBack={() => {}}
+      />,
+    );
+
+    expect(screen.getByText(/設定: AI:めちゃつよ/)).toBeInTheDocument();
+    expect(screen.getByText(/傾向:占領/)).toBeInTheDocument();
   });
 
   it('クレジット画面', () => {

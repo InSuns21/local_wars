@@ -49,7 +49,7 @@ const makeUnit = (overrides: Partial<UnitState> & Pick<UnitState, 'id' | 'owner'
   };
 };
 
-const createAiState = (difficulty: 'easy' | 'normal' | 'hard'): GameState => {
+const createAiState = (difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'): GameState => {
   const state = createInitialGameState({
     settings: {
       ...BASE_SETTINGS,
@@ -85,6 +85,16 @@ describe('aiターンの挙動テスト', () => {
     const state = createAiState('hard');
 
     const next = runAiTurn(state, { difficulty: 'hard', deps: { rng: () => 0.5 } });
+
+    expect(next.currentPlayerId).toBe('P1');
+    expect(next.turn).toBe(2);
+    expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'END_TURN')).toBe(true);
+  });
+
+  it('Nightmare難易度でAI手番を正常に実行できる', () => {
+    const state = createAiState('nightmare');
+
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
 
     expect(next.currentPlayerId).toBe('P1');
     expect(next.turn).toBe(2);
@@ -478,7 +488,7 @@ describe('aiターンの挙動テスト', () => {
   });
 
   it('Hardは次ターンに壊滅しやすい悪い攻撃を見送る', () => {
-    const createTradeTrapState = (difficulty: 'normal' | 'hard') => {
+    const createTradeTrapState = (difficulty: 'normal' | 'hard' | 'nightmare') => {
       const state = createAiState(difficulty);
       state.players.P2.funds = 0;
       state.units = {
@@ -492,9 +502,11 @@ describe('aiターンの挙動テスト', () => {
 
     const normalNext = runAiTurn(createTradeTrapState('normal'), { difficulty: 'normal', deps: { rng: () => 0.5 } });
     const hardNext = runAiTurn(createTradeTrapState('hard'), { difficulty: 'hard', deps: { rng: () => 0.5 } });
+    const nightmareNext = runAiTurn(createTradeTrapState('nightmare'), { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
 
     expect(normalNext.actionLog.some((log) => log.playerId === 'P2' && log.action === 'ATTACK')).toBe(true);
     expect(hardNext.actionLog.some((log) => log.playerId === 'P2' && log.action === 'ATTACK')).toBe(false);
+    expect(nightmareNext.actionLog.some((log) => log.playerId === 'P2' && log.action === 'ATTACK')).toBe(false);
   });
   it('可視戦闘では攻撃と自軍被害の再生イベントを生成する', () => {
     const state = createAiState('normal');

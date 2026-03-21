@@ -7,6 +7,7 @@
 - [gameplay-flow.md](gameplay-flow.md): 開始、対局、保存、再開までの体験フロー
 - [ai-thinking-routines.md](ai-thinking-routines.md): CPU の難易度、思考傾向、補給、FoW、ドローン戦を含む思考ルーチン仕様
 - [ai-visible-turn-playback.md](ai-visible-turn-playback.md): AI ターン中の可視行動再生、新規視認、ターン開始サマリーの確定仕様
+- [ai-self-play-improvement-loop.md](ai-self-play-improvement-loop.md): AI 同士の自己対戦、レポート読解、改修、再検証を反復する改善ループの草案仕様
 - [air-units-and-airport.md](air-units-and-airport.md): 航空ユニット、空港、ステルス、施設爆撃の実装済み仕様
 - [support-units-and-resupply.md](support-units-and-resupply.md): 補給車、空中補給機、補給コマンドの確定仕様
 - [transport-units.md](transport-units.md): 輸送車、輸送ヘリ、搭載と降車の草案仕様

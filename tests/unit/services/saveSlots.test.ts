@@ -1,4 +1,4 @@
-﻿import { DEFAULT_SETTINGS } from '@/app/types';
+import { DEFAULT_SETTINGS } from '@/app/types';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { getAllSaveSlots, getSaveSlot } from '@services/saveSlots';
 
@@ -40,6 +40,46 @@ describe('saveSlots 正規化', () => {
     expect(slot?.state.aiDifficulty).toBe(DEFAULT_SETTINGS.aiDifficulty);
     expect(slot?.state.incomePerProperty).toBe(DEFAULT_SETTINGS.incomePerProperty);
     expect(slot?.state.enemyMemory).toEqual({});
+  });
+
+  it('nightmare 難易度を含む設定と状態を正規化して復元できる', () => {
+    const nightmareSettings = {
+      ...DEFAULT_SETTINGS,
+      aiDifficulty: 'nightmare' as const,
+      humanPlayerSide: 'P2' as const,
+      fogOfWar: true,
+      initialFunds: 16000,
+    };
+    const nightmareState = createInitialGameState({
+      mapId: 'river-crossing',
+      settings: nightmareSettings,
+    });
+    nightmareState.aiDifficulty = 'nightmare';
+    nightmareState.humanPlayerSide = 'P2';
+
+    localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        '1': {
+          slotId: 1,
+          updatedAt: '2026-03-21T00:00:00.000Z',
+          mapId: 'river-crossing',
+          settings: nightmareSettings,
+          state: nightmareState,
+        },
+        '2': null,
+        '3': null,
+      }),
+    );
+
+    const slot = getSaveSlot(1);
+
+    expect(slot).not.toBeNull();
+    expect(slot?.settings.aiDifficulty).toBe('nightmare');
+    expect(slot?.state.aiDifficulty).toBe('nightmare');
+    expect(slot?.settings.humanPlayerSide).toBe('P2');
+    expect(slot?.state.humanPlayerSide).toBe('P2');
+    expect(slot?.settings.fogOfWar).toBe(true);
   });
 
   it('不正なデータは空スロット扱いにする', () => {

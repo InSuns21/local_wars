@@ -32,7 +32,7 @@ const getMapLabel = (mapId: string): string => MAP_CATALOG.find((map) => map.id 
 
 const summarizeSettings = (settings: GameSettings): string => {
   const parts = [
-    `AI:${settings.aiDifficulty === 'easy' ? 'よわい' : settings.aiDifficulty === 'hard' ? 'つよい' : 'ふつう'}`,
+    `AI:${settings.aiDifficulty === 'easy' ? 'よわい' : settings.aiDifficulty === 'nightmare' ? 'めちゃつよ' : settings.aiDifficulty === 'hard' ? 'つよい' : 'ふつう'}`,
     `傾向:${
       settings.selectedAiProfile === 'adaptive'
         ? '可変'

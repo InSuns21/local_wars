@@ -1,4 +1,4 @@
-export type AiDifficulty = 'easy' | 'normal' | 'hard';
+export type AiDifficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
 export type ResolvedAiProfile = 'balanced' | 'captain' | 'hunter' | 'turtle' | 'sieger' | 'drone_swarm' | 'stealth_strike';
 export type SelectedAiProfile = ResolvedAiProfile | 'auto' | 'adaptive';
 export type HumanPlayerSide = 'P1' | 'P2';

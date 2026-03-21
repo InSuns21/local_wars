@@ -93,6 +93,25 @@ describe('store AI手番統合', () => {
     expect(next.resolvedAiProfile).toBe('captain');
   });
 
+  it('nightmare設定でもAI手番が自動進行する', () => {
+    const initial = createInitialGameState({
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'nightmare',
+        selectedAiProfile: 'captain',
+      },
+    });
+
+    const store = createGameStore(initial, { rng: () => 0.5 });
+    const result = store.getState().endTurn();
+    const next = finalizePlayback(store);
+
+    expect(result.ok).toBe(true);
+    expect(next.currentPlayerId).toBe('P1');
+    expect(next.resolvedAiProfile).toBe('captain');
+    expect(next.aiDifficulty).toBe('nightmare');
+  });
+
   it('adaptiveは人間ターン終了後のAIターン開始時にだけ再抽選する', () => {
     const initial = createInitialGameState({
       settings: {

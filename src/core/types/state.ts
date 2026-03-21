@@ -21,7 +21,7 @@ export type GameState = {
   turn: number;
   currentPlayerId: PlayerId;
   humanPlayerSide?: 'P1' | 'P2';
-  aiDifficulty?: 'easy' | 'normal' | 'hard';
+  aiDifficulty?: 'easy' | 'normal' | 'hard' | 'nightmare';
   selectedAiProfile?: 'auto' | 'adaptive' | 'balanced' | 'captain' | 'hunter' | 'turtle' | 'sieger' | 'drone_swarm' | 'stealth_strike';
   resolvedAiProfile?: 'balanced' | 'captain' | 'hunter' | 'turtle' | 'sieger' | 'drone_swarm' | 'stealth_strike';
   enemyMemory?: Record<string, EnemyMemoryEntry>;

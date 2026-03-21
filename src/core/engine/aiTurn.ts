@@ -12,7 +12,10 @@ import type { EnemyMemoryEntry, GameState } from '@core/types/state';
 import type { AiTurnResult, AiTurnSummaryItem, VisibleAiPlaybackEvent } from '@core/types/aiPlayback';
 import type { UnitState, UnitType } from '@core/types/unit';
 
-export type AiDifficulty = 'easy' | 'normal' | 'hard';
+export type AiDifficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
+
+const isAdvancedAiDifficulty = (difficulty: AiDifficulty): boolean => difficulty === 'hard' || difficulty === 'nightmare';
+const isNightmareAiDifficulty = (difficulty: AiDifficulty): boolean => difficulty === 'nightmare';
 
 export type AiTurnOptions = {
   difficulty: AiDifficulty;
@@ -725,21 +728,26 @@ const scoreAttackTarget = (
     score -= 10 * weights.captureBias;
   }
 
-  if (difficulty === 'hard') {
+  if (isAdvancedAiDifficulty(difficulty)) {
+    const safetyScale = isNightmareAiDifficulty(difficulty) ? 1.4 : 1;
+    const rewardScale = isNightmareAiDifficulty(difficulty) ? 1.25 : 1;
     if (retaliation >= attacker.hp && attackerCost > targetCost) {
-      score -= 16 * weights.safetyBias;
+      score -= 16 * safetyScale * weights.safetyBias;
     }
-    score -= postAttackThreat.incomingMax * 1.8 * weights.safetyBias;
-    score -= postAttackThreat.attackers * 5 * weights.safetyBias;
-    score -= postAttackThreat.lethalThreats * 22 * weights.safetyBias;
+    score -= postAttackThreat.incomingMax * 1.8 * safetyScale * weights.safetyBias;
+    score -= postAttackThreat.attackers * 5 * safetyScale * weights.safetyBias;
+    score -= postAttackThreat.lethalThreats * 22 * safetyScale * weights.safetyBias;
     if (attackerCost > targetCost && postAttackThreat.attackers >= 2) {
-      score -= 14 * weights.safetyBias;
+      score -= 14 * safetyScale * weights.safetyBias;
     }
     if (damage < target.hp && postAttackThreat.attackers > 0) {
-      score -= 8 * weights.safetyBias;
+      score -= 8 * safetyScale * weights.safetyBias;
     }
     if (damage >= target.hp && postAttackThreat.attackers === 0) {
-      score += 6 * weights.killBias;
+      score += 6 * rewardScale * weights.killBias;
+    }
+    if (isNightmareAiDifficulty(difficulty) && targetCost < attackerCost && postAttackThreat.attackers > 0) {
+      score -= 10 * weights.safetyBias;
     }
   }
 
@@ -753,7 +761,11 @@ const chooseAttackCandidate = (
 ): UnitState | null => {
   if (candidates.length === 0) return null;
   candidates.sort((left, right) => right.score - left.score);
-  if (difficulty !== 'hard' || candidates.length === 1) {
+  if (difficulty === 'nightmare' || candidates.length === 1) {
+    return candidates[0]?.target ?? null;
+  }
+
+  if (difficulty !== 'hard') {
     return candidates[0]?.target ?? null;
   }
 
@@ -786,7 +798,7 @@ const selectBestAttackTarget = (
     score: scoreAttackTarget(state, unit, target, difficulty, profile),
   }));
 
-  if (difficulty === 'hard' && scoredTargets.length > 0 && scoredTargets.every((candidate) => candidate.score <= 0)) {
+  if (isAdvancedAiDifficulty(difficulty) && scoredTargets.length > 0 && scoredTargets.every((candidate) => candidate.score <= 0)) {
     return null;
   }
 
@@ -954,9 +966,11 @@ const evaluateMoveScore = (
     }
   }
 
-  const attackTarget = selectBestAttackTarget(state, movedUnit, difficulty === 'easy' ? 'easy' : 'normal', profile, rng);
+  const attackEvaluationDifficulty: AiDifficulty = difficulty === 'easy' ? 'easy' : difficulty;
+  const attackTarget = selectBestAttackTarget(state, movedUnit, attackEvaluationDifficulty, profile, rng);
   if (attackTarget) {
-    score += Math.max(0, scoreAttackTarget(state, movedUnit, attackTarget, difficulty === 'easy' ? 'easy' : 'normal', profile) * 0.35) + 5;
+    const attackPreview = Math.max(0, scoreAttackTarget(state, movedUnit, attackTarget, attackEvaluationDifficulty, profile));
+    score += attackPreview * (isNightmareAiDifficulty(difficulty) ? 0.42 : 0.35) + 5;
   }
 
   score -= threat.incomingMax * 2.4 * weights.safetyBias;
@@ -1069,8 +1083,18 @@ const evaluateMoveScore = (
     }
   }
 
-  if (difficulty === 'hard') {
+  if (isAdvancedAiDifficulty(difficulty)) {
     score += scoreHardForwardPlan(state, unit, to, enemyHq, profile, attackTarget, threat, nearbyAllies);
+    if (isNightmareAiDifficulty(difficulty)) {
+      score -= threat.incomingMax * 0.9 * weights.safetyBias;
+      score -= threat.attackers * 2.5 * weights.safetyBias;
+      if (enemyHq && hqDist <= 6) {
+        score += (7 - hqDist) * 1.8 * weights.hqPressureBias;
+      }
+      if (tile?.owner === unit.owner && CAPTURABLE_TERRAINS.has(tile.terrainType)) {
+        score += 3 * weights.safetyBias;
+      }
+    }
   }
 
   if (tile?.owner === unit.owner && tile.terrainType === 'FACTORY' && unit.type !== 'INFANTRY') {
@@ -1087,7 +1111,11 @@ const chooseMoveCandidate = (
 ): MoveCandidate | null => {
   if (candidates.length === 0) return null;
   candidates.sort((left, right) => right.score - left.score);
-  if (difficulty !== 'hard' || candidates.length === 1) {
+  if (difficulty === 'nightmare' || candidates.length === 1) {
+    return candidates[0] ?? null;
+  }
+
+  if (difficulty !== 'hard') {
     return candidates[0] ?? null;
   }
 
@@ -1182,7 +1210,7 @@ const getCapturableCoastalTargets = (state: GameState, aiPlayer: PlayerId): Coor
     })
     .map((tile) => tile.coord);
 
-const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile: ResolvedAiProfile): UnitType | null => {
+const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile: ResolvedAiProfile, difficulty: AiDifficulty): UnitType | null => {
   const weights = AI_PROFILES[profile];
   const canAfford = (type: UnitType): boolean => state.players[aiPlayer].funds >= UNIT_DEFINITIONS[type].cost;
 
@@ -1214,7 +1242,10 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId, profil
 
   const supportUnits = ownCounts.SUPPLY_TRUCK + ownCounts.AIR_TANKER + ownCounts.SUPPLY_SHIP;
   const lowSupplyUnits = own.filter((unit) => isLowOnSupply(state, unit)).length;
-  if (lowSupplyUnits >= 2 && supportUnits === 0 && canAfford('SUPPLY_TRUCK') && profile !== 'hunter') {
+  if (difficulty === 'nightmare' && (state.fogOfWar ?? false) && ownCounts.RECON === 0 && canAfford('RECON')) {
+    return 'RECON';
+  }
+  if (lowSupplyUnits >= (difficulty === 'nightmare' ? 1 : 2) && supportUnits === 0 && canAfford('SUPPLY_TRUCK') && profile !== 'hunter') {
     return 'SUPPLY_TRUCK';
   }
 
@@ -1335,7 +1366,7 @@ const selectAiProductionUnitForTile = (
     return selectNavalProductionUnit(state, aiPlayer, profile);
   }
 
-  return shouldProduceTransport(state, aiPlayer, tile.terrainType) ?? selectNormalProductionUnit(state, aiPlayer, profile);
+  return shouldProduceTransport(state, aiPlayer, tile.terrainType) ?? selectNormalProductionUnit(state, aiPlayer, profile, difficulty);
 };
 
 const produceForAi = (

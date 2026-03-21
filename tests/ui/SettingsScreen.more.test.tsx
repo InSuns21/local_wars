@@ -17,7 +17,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
 
     render(<SettingsScreen onConfirm={onConfirm} onBack={() => {}} />);
 
-    fireEvent.change(screen.getByLabelText('AIの強さ'), { target: { value: 'hard' } });
+    fireEvent.change(screen.getByLabelText('AIの強さ'), { target: { value: 'nightmare' } });
     fireEvent.change(screen.getByLabelText('AIの思考傾向'), { target: { value: 'sieger' } });
     fireEvent.change(screen.getByLabelText('人間が担当する陣営'), { target: { value: 'P2' } });
     fireEvent.click(screen.getByLabelText('索敵あり'));
@@ -46,7 +46,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
     const submitted = onConfirm.mock.calls[0][0];
-    expect(submitted.aiDifficulty).toBe('hard');
+    expect(submitted.aiDifficulty).toBe('nightmare');
     expect(submitted.selectedAiProfile).toBe('sieger');
     expect(submitted.humanPlayerSide).toBe('P2');
     expect(submitted.fogOfWar).toBe(true);
@@ -136,6 +136,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     fireEvent.change(screen.getByLabelText('AIの強さ'), { target: { value: 'hard' } });
 
     expect(screen.getByText('現在の状態: カスタム')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('AIの強さ')).getByRole('option', { name: 'めちゃつよ' })).toBeInTheDocument();
     const preset = screen.getByLabelText('プリセット');
     expect(within(preset).getByRole('option', { name: 'カスタム' })).toBeDisabled();
   });

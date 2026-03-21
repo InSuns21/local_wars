@@ -32,7 +32,7 @@ const normalizeSettings = (value: unknown): GameSettings => {
 
   return {
     aiDifficulty:
-      value.aiDifficulty === 'easy' || value.aiDifficulty === 'normal' || value.aiDifficulty === 'hard'
+      value.aiDifficulty === 'easy' || value.aiDifficulty === 'normal' || value.aiDifficulty === 'hard' || value.aiDifficulty === 'nightmare'
         ? value.aiDifficulty
         : DEFAULT_SETTINGS.aiDifficulty,
     selectedAiProfile:
