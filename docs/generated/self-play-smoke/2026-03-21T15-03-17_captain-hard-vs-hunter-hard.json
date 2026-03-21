@@ -1,0 +1,239 @@
+{
+  "generatedAt": "2026-03-21T15:03:17.603Z",
+  "config": {
+    "maps": [
+      "plains-clash"
+    ],
+    "matchCount": 2,
+    "maxTurns": 4,
+    "seed": 5,
+    "fogOfWar": false,
+    "swapSidesEveryMatch": true,
+    "participants": {
+      "left": {
+        "id": "left",
+        "label": "captain-hard",
+        "difficulty": "hard",
+        "selectedAiProfile": "captain"
+      },
+      "right": {
+        "id": "right",
+        "label": "hunter-hard",
+        "difficulty": "hard",
+        "selectedAiProfile": "hunter"
+      }
+    }
+  },
+  "aggregate": {
+    "totalMatches": 2,
+    "averageTurns": 4,
+    "hqCaptureRate": 0,
+    "annihilationRate": 0,
+    "turnLimitRate": 1,
+    "participants": {
+      "left": {
+        "label": "captain-hard",
+        "wins": 0,
+        "draws": 2,
+        "losses": 0,
+        "winRate": 0,
+        "averageFunds": 4000,
+        "averagePropertyCount": 2.5,
+        "averageAliveUnitCount": 6
+      },
+      "right": {
+        "label": "hunter-hard",
+        "wins": 0,
+        "draws": 2,
+        "losses": 0,
+        "winRate": 0,
+        "averageFunds": 4500,
+        "averagePropertyCount": 3.5,
+        "averageAliveUnitCount": 6.5
+      }
+    },
+    "mapBreakdown": [
+      {
+        "mapId": "plains-clash",
+        "mapName": "平原会戦",
+        "matches": 2,
+        "averageTurns": 4,
+        "wins": {
+          "left": 0,
+          "right": 0
+        },
+        "draws": 2
+      }
+    ]
+  },
+  "matches": [
+    {
+      "matchIndex": 1,
+      "seed": 5,
+      "mapId": "plains-clash",
+      "mapName": "平原会戦",
+      "turnsPlayed": 4,
+      "fogOfWar": false,
+      "endedBy": "turn_limit",
+      "winnerParticipantId": null,
+      "winnerSide": null,
+      "victoryReason": "TURN_LIMIT",
+      "participants": {
+        "left": {
+          "label": "captain-hard",
+          "side": "P1",
+          "difficulty": "hard",
+          "selectedAiProfile": "captain",
+          "resolvedAiProfile": "captain",
+          "funds": 7000,
+          "propertyCount": 3,
+          "aliveUnitCount": 5
+        },
+        "right": {
+          "label": "hunter-hard",
+          "side": "P2",
+          "difficulty": "hard",
+          "selectedAiProfile": "hunter",
+          "resolvedAiProfile": "hunter",
+          "funds": 2000,
+          "propertyCount": 3,
+          "aliveUnitCount": 6
+        }
+      },
+      "majorEvents": [
+        {
+          "turn": 2,
+          "playerId": "P2",
+          "action": "PRODUCE_UNIT",
+          "detail": "TRANSPORT_TRUCK @ 10,6"
+        },
+        {
+          "turn": 3,
+          "playerId": "P1",
+          "action": "ATTACK",
+          "detail": "p1_tank -> p2_recon 味方HP:9->9 敵HP:2->0 被害:8/0"
+        },
+        {
+          "turn": 3,
+          "playerId": "P1",
+          "action": "PRODUCE_UNIT",
+          "detail": "TRANSPORT_TRUCK @ 1,3"
+        },
+        {
+          "turn": 3,
+          "playerId": "P2",
+          "action": "ATTACK",
+          "detail": "p2_tank -> P1_TRANSPORT_TRUCK_2_9 味方HP:9->9 敵HP:10->3 被害:7/0"
+        },
+        {
+          "turn": 3,
+          "playerId": "P2",
+          "action": "PRODUCE_UNIT",
+          "detail": "TRANSPORT_TRUCK @ 10,6"
+        },
+        {
+          "turn": 4,
+          "playerId": "P1",
+          "action": "ATTACK",
+          "detail": "p1_inf -> P2_TRANSPORT_TRUCK_1_8 味方HP:10->10 敵HP:10->9 被害:1/0"
+        },
+        {
+          "turn": 4,
+          "playerId": "P2",
+          "action": "ATTACK",
+          "detail": "p2_tank -> p1_recon 味方HP:9->9 敵HP:4->0 被害:5/0"
+        },
+        {
+          "turn": 4,
+          "playerId": "P2",
+          "action": "PRODUCE_UNIT",
+          "detail": "TRANSPORT_TRUCK @ 10,6"
+        }
+      ]
+    },
+    {
+      "matchIndex": 2,
+      "seed": 6,
+      "mapId": "plains-clash",
+      "mapName": "平原会戦",
+      "turnsPlayed": 4,
+      "fogOfWar": false,
+      "endedBy": "turn_limit",
+      "winnerParticipantId": null,
+      "winnerSide": null,
+      "victoryReason": "TURN_LIMIT",
+      "participants": {
+        "left": {
+          "label": "captain-hard",
+          "side": "P2",
+          "difficulty": "hard",
+          "selectedAiProfile": "captain",
+          "resolvedAiProfile": "captain",
+          "funds": 1000,
+          "propertyCount": 2,
+          "aliveUnitCount": 7
+        },
+        "right": {
+          "label": "hunter-hard",
+          "side": "P1",
+          "difficulty": "hard",
+          "selectedAiProfile": "hunter",
+          "resolvedAiProfile": "hunter",
+          "funds": 7000,
+          "propertyCount": 4,
+          "aliveUnitCount": 7
+        }
+      },
+      "majorEvents": [
+        {
+          "turn": 3,
+          "playerId": "P2",
+          "action": "ATTACK",
+          "detail": "p2_recon -> P1_TRANSPORT_TRUCK_2_9 味方HP:10->10 敵HP:10->7 被害:3/0"
+        },
+        {
+          "turn": 3,
+          "playerId": "P2",
+          "action": "PRODUCE_UNIT",
+          "detail": "TRANSPORT_TRUCK @ 10,6"
+        },
+        {
+          "turn": 4,
+          "playerId": "P1",
+          "action": "CAPTURE",
+          "detail": "p1_inf @ 8,6 terrain=CITY owner=P2"
+        },
+        {
+          "turn": 4,
+          "playerId": "P1",
+          "action": "ATTACK",
+          "detail": "p1_tank -> P2_TRANSPORT_TRUCK_1_8 味方HP:4->4 敵HP:10->7 被害:3/0"
+        },
+        {
+          "turn": 4,
+          "playerId": "P1",
+          "action": "PRODUCE_UNIT",
+          "detail": "INFANTRY @ 1,3"
+        },
+        {
+          "turn": 4,
+          "playerId": "P2",
+          "action": "ATTACK",
+          "detail": "p2_tank -> p1_recon 味方HP:5->5 敵HP:6->2 被害:4/0"
+        },
+        {
+          "turn": 4,
+          "playerId": "P2",
+          "action": "ATTACK",
+          "detail": "p2_recon -> P1_TRANSPORT_TRUCK_1_7 味方HP:10->10 敵HP:6->3 被害:3/0"
+        },
+        {
+          "turn": 4,
+          "playerId": "P2",
+          "action": "PRODUCE_UNIT",
+          "detail": "TRANSPORT_TRUCK @ 10,6"
+        }
+      ]
+    }
+  ]
+}
