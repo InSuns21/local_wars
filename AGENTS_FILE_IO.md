@@ -4,7 +4,13 @@
 
 MCPのfilesystemが利用可能な場合はそれを使用する。
 
-できない場合は以下のポリシーで読み書きする。
+MCPのfilesystemが使えない、またはこの環境で通常のリポジトリ内ファイルI/Oが問題なく使える場合は、通常のファイルI/Oを使ってよい。
+
+- 読み取り: `Get-Content -Encoding UTF8`, `rg`, `Select-String` などを優先してよい
+- 書き込み: `apply_patch` または PowerShell の `Set-Content -Encoding UTF8` / `Add-Content -Encoding UTF8` を使ってよい
+- 一時ファイル: repo ルートの `.codex_tmp_*` を使ってよい
+
+通常のファイルI/Oで安定して扱えない場合だけ、以下の `cfs` ポリシーで読み書きする。
 
 ### 独自IOコマンドの利用
 
