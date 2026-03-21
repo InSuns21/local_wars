@@ -71,4 +71,13 @@ describe('gameStore 追加カバレッジ', () => {
     expect(rolledBack.currentPlayerId).toBe('P1');
     expect(rolledBack.turn).toBe(1);
   });
+
+  it('dismissAiTurnSummaryでターン開始サマリーを閉じられる', () => {
+    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
+
+    store.setState({ aiTurnSummary: [{ message: 'テスト要約' }] });
+    store.getState().dismissAiTurnSummary();
+
+    expect(store.getState().aiTurnSummary).toEqual([]);
+  });
 });

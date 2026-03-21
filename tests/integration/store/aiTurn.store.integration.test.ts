@@ -293,4 +293,30 @@ describe('store AI手番統合', () => {
     store.getState().skipAiPlayback();
     expect(store.getState().gameState.currentPlayerId).toBe('P1');
   });
+
+  it('FoWでの新規視認は再生後にターン開始サマリーへ残る', () => {
+    const initial = createInitialGameState({
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+        fogOfWar: true,
+      },
+    });
+    initial.players.P2.funds = 0;
+    initial.units = {
+      p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 0, y: 0 } }),
+      p2_tank: makeUnit({ id: 'p2_tank', owner: 'P2', type: 'TANK', position: { x: 2, y: 0 } }),
+    };
+    initial.map.tiles['2,0'] = { coord: { x: 2, y: 0 }, terrainType: 'FOREST' };
+
+    const store = createGameStore(initial, { rng: () => 0.5 });
+    const result = store.getState().endTurn();
+
+    expect(result.ok).toBe(true);
+    store.getState().skipAiPlayback();
+
+    const summaryMessages = store.getState().aiTurnSummary.map((item) => item.message).join(' | ');
+    expect(summaryMessages).toContain('新たに敵戦車を視認');
+    expect(summaryMessages).toContain('HQ周辺に敵戦車が接近');
+  });
 });

@@ -319,6 +319,7 @@ describe('aiターンの挙動テスト', () => {
   it('FoW下では可視敵をenemyMemoryへ記録する', () => {
     const state = createAiState('normal');
     state.fogOfWar = true;
+    state.selectedAiProfile = 'balanced';
     state.players.P2.funds = 0;
     state.units = {
       p2_inf: makeUnit({ id: 'p2_inf', owner: 'P2', type: 'INFANTRY', position: { x: 0, y: 0 }, moved: true, acted: true }),
@@ -525,6 +526,30 @@ describe('aiターンの挙動テスト', () => {
     expect(moveEvents.length).toBeGreaterThan(1);
     expect(moveEvents[0]?.displayState.units.p2_tank.position).not.toEqual(state.units.p2_tank.position);
     expect(moveEvents[moveEvents.length - 1]?.displayState.units.p2_tank.position).toEqual(result.finalState.units.p2_tank.position);
+  });
+
+  it('FoWで新たに見えた敵はspottedイベントとターン開始サマリーへ入る', () => {
+    const state = createInitialGameState({
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+        selectedAiProfile: 'balanced',
+        fogOfWar: true,
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.players.P2.funds = 0;
+    state.units = {
+      p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 0, y: 0 } }),
+      p2_tank: makeUnit({ id: 'p2_tank', owner: 'P2', type: 'TANK', position: { x: 2, y: 0 } }),
+    };
+    state.map.tiles['2,0'] = { coord: { x: 2, y: 0 }, terrainType: 'FOREST' };
+
+    const result = runAiTurnWithPlayback(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const spottedMessages = result.turnStartSummary.map((item) => item.message).join(' | ');
+
+    expect(spottedMessages).toContain('新たに敵戦車を視認');
+    expect(spottedMessages).toContain('HQ周辺に敵戦車が接近');
   });
 
   it('可視占領では占領と施設変化の再生イベントを生成する', () => {

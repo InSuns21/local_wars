@@ -5,7 +5,7 @@ import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { canCounterAttack, forecastCombat } from '@core/rules/combat';
 import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
 import { findPreferredMovePath, getEnemyUnits, getReachableTiles } from '@core/rules/movement';
-import type { VisibleAiPlaybackEvent } from '@core/types/aiPlayback';
+import type { AiTurnSummaryItem, VisibleAiPlaybackEvent } from '@core/types/aiPlayback';
 import type { CombatForecast } from '@core/types/combat';
 import type { Coord } from '@core/types/game';
 import type { CommandResult, GameCommand, GameState } from '@core/types/state';
@@ -23,7 +23,9 @@ export type GameStoreState = {
   aiPlaybackEvents: VisibleAiPlaybackEvent[];
   aiPlaybackIndex: number;
   pendingAiFinalState: GameState | null;
+  pendingAiTurnSummary: AiTurnSummaryItem[];
   currentAiPlaybackEvent: VisibleAiPlaybackEvent | null;
+  aiTurnSummary: AiTurnSummaryItem[];
   dispatchCommand: (command: GameCommand) => CommandResult;
   getMoveRange: (unitId: string) => Coord[];
   getAttackRange: (unitId: string) => Coord[];
@@ -36,6 +38,7 @@ export type GameStoreState = {
   setGameState: (state: GameState) => void;
   stepAiPlayback: () => void;
   skipAiPlayback: () => void;
+  dismissAiTurnSummary: () => void;
 };
 
 export type CreateStoreOptions = {
@@ -54,7 +57,12 @@ const idlePlaybackState = () => ({
   aiPlaybackEvents: [],
   aiPlaybackIndex: -1,
   pendingAiFinalState: null,
+  pendingAiTurnSummary: [] as AiTurnSummaryItem[],
   currentAiPlaybackEvent: null,
+});
+
+const emptyAiTurnSummary = () => ({
+  aiTurnSummary: [] as AiTurnSummaryItem[],
 });
 
 export const createGameStore = (initialState: GameState, options: CreateStoreOptions = {}) =>
@@ -65,6 +73,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
     selectedTile: null,
     previousSelectedPath: null,
     ...idlePlaybackState(),
+    ...emptyAiTurnSummary(),
     dispatchCommand: (command) => {
       if (get().aiPlaybackStatus === 'running') {
         return { ok: false, reason: '�G�R�s���̍Đ����ł��B' };
@@ -82,6 +91,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
       }
 
       let nextState = state;
+      let turnStartSummary: AiTurnSummaryItem[] = [];
 
       if (command.type === 'END_TURN') {
         const humanSide = current.humanPlayerSide ?? 'P1';
@@ -89,11 +99,13 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
         let guard = 0;
         let finalState = state;
         const playbackEvents: VisibleAiPlaybackEvent[] = [];
+        turnStartSummary = [];
 
         while (!finalState.winner && finalState.currentPlayerId !== humanSide && guard < 8) {
           const aiResult = runAiTurnWithPlayback(finalState, { difficulty: aiDifficulty, deps });
           finalState = aiResult.finalState;
           playbackEvents.push(...aiResult.playbackEvents);
+          turnStartSummary.push(...aiResult.turnStartSummary);
           guard += 1;
         }
 
@@ -109,7 +121,9 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
             aiPlaybackEvents: playbackEvents,
             aiPlaybackIndex: 0,
             pendingAiFinalState: cloneState(finalState),
+            pendingAiTurnSummary: [...turnStartSummary],
             currentAiPlaybackEvent: firstEvent,
+            aiTurnSummary: [],
           }));
           return result;
         }
@@ -124,6 +138,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
         selectedTile: command.type === 'END_TURN' ? null : prev.selectedTile,
         previousSelectedPath: command.type === 'END_TURN' ? null : prev.previousSelectedPath,
         ...idlePlaybackState(),
+        aiTurnSummary: command.type === 'END_TURN' ? turnStartSummary : [],
       }));
 
       return result;
@@ -228,6 +243,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
         selectedTile: null,
         previousSelectedPath: null,
         ...idlePlaybackState(),
+        ...emptyAiTurnSummary(),
       });
 
       return { ok: true };
@@ -239,6 +255,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
       selectedTile: null,
       previousSelectedPath: null,
       ...idlePlaybackState(),
+      ...emptyAiTurnSummary(),
     }),
     stepAiPlayback: () => {
       const current = get();
@@ -254,6 +271,7 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
           selectedTile: null,
           previousSelectedPath: null,
           ...idlePlaybackState(),
+          aiTurnSummary: [...current.pendingAiTurnSummary],
         });
         return;
       }
@@ -268,7 +286,9 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
         aiPlaybackEvents: current.aiPlaybackEvents,
         aiPlaybackIndex: nextIndex,
         pendingAiFinalState: current.pendingAiFinalState,
+        pendingAiTurnSummary: current.pendingAiTurnSummary,
         currentAiPlaybackEvent: nextEvent,
+        aiTurnSummary: [],
       });
     },
     skipAiPlayback: () => {
@@ -283,6 +303,8 @@ export const createGameStore = (initialState: GameState, options: CreateStoreOpt
         selectedTile: null,
         previousSelectedPath: null,
         ...idlePlaybackState(),
+        aiTurnSummary: [...current.pendingAiTurnSummary],
       });
     },
+    dismissAiTurnSummary: () => set({ aiTurnSummary: [] }),
   }));

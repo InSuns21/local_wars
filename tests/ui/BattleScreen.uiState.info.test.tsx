@@ -272,5 +272,39 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     expect(secondPos).not.toEqual(firstPos);
     expect(within(screen.getByRole('button', { name: `タイル ${secondPos.x},${secondPos.y}` })).getByText('TANK')).toBeInTheDocument();
   });
+
+  it('再生後のターン開始サマリーに新規視認が表示され、閉じられる', () => {
+    const state = createInitialGameState();
+    state.fogOfWar = true;
+    state.selectedAiProfile = 'balanced';
+    state.aiDifficulty = 'normal';
+    state.players.P2.funds = 0;
+    state.units = {
+      p1_tank: { ...state.units.p1_tank, position: { x: 0, y: 0 } },
+      p2_tank: { ...state.units.p2_tank, position: { x: 2, y: 0 } },
+    };
+    state.map.tiles['2,0'] = { coord: { x: 2, y: 0 }, terrainType: 'FOREST' };
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+    act(() => {
+      store.getState().endTurn();
+    });
+
+    if (store.getState().aiPlaybackStatus === 'running') {
+      act(() => {
+        store.getState().skipAiPlayback();
+      });
+    }
+
+    expect(store.getState().aiTurnSummary.map((item) => item.message).join(' | ')).toContain('新たに敵戦車を視認');
+    expect(screen.getByText('ターン開始サマリー')).toBeInTheDocument();
+    expect(screen.getByText('新たに敵戦車を視認')).toBeInTheDocument();
+    expect(screen.getByText('HQ周辺に敵戦車が接近')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '閉じる' }));
+    expect(screen.queryByText('ターン開始サマリー')).not.toBeInTheDocument();
+  });
 });
 

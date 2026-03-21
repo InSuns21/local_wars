@@ -238,8 +238,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const undo = useStore((s: GameStoreState) => s.undo);
   const aiPlaybackStatus = useStore((s: GameStoreState) => s.aiPlaybackStatus);
   const currentAiPlaybackEvent = useStore((s: GameStoreState) => s.currentAiPlaybackEvent);
+  const aiTurnSummary = useStore((s: GameStoreState) => s.aiTurnSummary);
   const stepAiPlayback = useStore((s: GameStoreState) => s.stepAiPlayback);
   const skipAiPlayback = useStore((s: GameStoreState) => s.skipAiPlayback);
+  const dismissAiTurnSummary = useStore((s: GameStoreState) => s.dismissAiTurnSummary);
 
   const selectedUnit = selectedUnitId
     ? gameState.units[selectedUnitId] ?? null
@@ -299,6 +301,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const humanSide = gameState.humanPlayerSide ?? "P1";
   const isHumanTurn = gameState.currentPlayerId === humanSide;
   const isAiPlaybackRunning = aiPlaybackStatus === 'running';
+  const shouldShowAiTurnSummary = !isAiPlaybackRunning && isHumanTurn && aiTurnSummary.length > 0;
   const resultLabel =
     gameState.winner === null
       ? null
@@ -1267,6 +1270,26 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
             </Box>
             <Button type="button" variant="contained" color="warning" onClick={() => skipAiPlayback()}>
               スキップ
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
+      {shouldShowAiTurnSummary && (
+        <Paper variant="outlined" sx={{ p: 1.5, mb: 1, borderColor: 'info.main', bgcolor: 'info.50' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'flex-start' }} justifyContent="space-between">
+            <Box>
+              <Typography variant="subtitle2">ターン開始サマリー</Typography>
+              <Stack component="ul" spacing={0.5} sx={{ mt: 0.5, pl: 2, mb: 0 }}>
+                {aiTurnSummary.map((item, index) => (
+                  <Typography key={`${item.message}-${index}`} component="li" variant="body2" color="text.secondary">
+                    {item.message}
+                  </Typography>
+                ))}
+              </Stack>
+            </Box>
+            <Button type="button" variant="text" onClick={() => dismissAiTurnSummary()}>
+              閉じる
             </Button>
           </Stack>
         </Paper>

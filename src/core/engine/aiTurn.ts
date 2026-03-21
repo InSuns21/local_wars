@@ -9,7 +9,7 @@ import { getVisibleEnemyUnitIds, getVisibleTileCoordKeys } from '@core/rules/vis
 import { canDealDamage, forecastCombat } from '@core/rules/combat';
 import type { Coord, PlayerId } from '@core/types/game';
 import type { EnemyMemoryEntry, GameState } from '@core/types/state';
-import type { AiTurnResult, VisibleAiPlaybackEvent } from '@core/types/aiPlayback';
+import type { AiTurnResult, AiTurnSummaryItem, VisibleAiPlaybackEvent } from '@core/types/aiPlayback';
 import type { UnitState, UnitType } from '@core/types/unit';
 
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
@@ -1473,6 +1473,102 @@ const collectMovePlaybackEvents = (
   return events;
 };
 
+const collectSpottedPlaybackEvents = (
+  before: GameState,
+  after: GameState,
+): VisibleAiPlaybackEvent[] => {
+  if (!(after.fogOfWar ?? false)) {
+    return [];
+  }
+
+  const viewer = getPlaybackViewer(before);
+  const beforeVisibleEnemyIds = getVisibleEnemyUnitIds(before, viewer);
+  const afterVisibleEnemyIds = getVisibleEnemyUnitIds(after, viewer);
+  const events: VisibleAiPlaybackEvent[] = [];
+
+  for (const unitId of afterVisibleEnemyIds) {
+    if (beforeVisibleEnemyIds.has(unitId)) {
+      continue;
+    }
+
+    const unit = after.units[unitId];
+    if (!unit) {
+      continue;
+    }
+
+    events.push(
+      createPlaybackEvent(
+        'spotted',
+        `新たに敵${UNIT_DEFINITIONS[unit.type].label}を視認`,
+        after,
+        unit.position,
+        unitId,
+        900,
+      ),
+    );
+  }
+
+  return events;
+};
+
+const appendTurnStartSummary = (
+  items: AiTurnSummaryItem[],
+  seenMessages: Set<string>,
+  message: string,
+  focusCoord?: Coord,
+): void => {
+  if (items.length >= 5 || seenMessages.has(message)) {
+    return;
+  }
+
+  items.push(focusCoord ? { message, focusCoord } : { message });
+  seenMessages.add(message);
+};
+
+const getHqThreatSummaryItem = (state: GameState, viewer: PlayerId): AiTurnSummaryItem | null => {
+  const hqTile = Object.values(state.map.tiles).find((tile) => tile.owner === viewer && tile.terrainType === 'HQ');
+  if (!hqTile) {
+    return null;
+  }
+
+  const visibleEnemyIds = getVisibleEnemyUnitIds(state, viewer);
+  const threateningEnemy = Object.values(state.units)
+    .filter((unit) => unit.hp > 0 && visibleEnemyIds.has(unit.id))
+    .find((unit) => manhattanDistance(unit.position, hqTile.coord) <= HQ_THREAT_DISTANCE);
+
+  if (!threateningEnemy) {
+    return null;
+  }
+
+  return {
+    message: `HQ周辺に敵${UNIT_DEFINITIONS[threateningEnemy.type].label}が接近`,
+    focusCoord: threateningEnemy.position,
+  };
+};
+
+const buildTurnStartSummary = (
+  before: GameState,
+  after: GameState,
+  playbackEvents: VisibleAiPlaybackEvent[],
+): AiTurnSummaryItem[] => {
+  const viewer = getPlaybackViewer(before);
+  const items: AiTurnSummaryItem[] = [];
+  const seenMessages = new Set<string>();
+  const hqThreat = getHqThreatSummaryItem(after, viewer);
+
+  if (hqThreat) {
+    appendTurnStartSummary(items, seenMessages, hqThreat.message, hqThreat.focusCoord);
+  }
+
+  for (const type of ['property_changed', 'damage_report', 'spotted'] as const) {
+    for (const event of playbackEvents.filter((candidate) => candidate.type === type)) {
+      appendTurnStartSummary(items, seenMessages, event.summary, event.focusCoord);
+    }
+  }
+
+  return items;
+};
+
 const collectAttackPlaybackEvents = (
   before: GameState,
   after: GameState,
@@ -1587,7 +1683,7 @@ const collectCapturePlaybackEvents = (
 
 export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions): AiTurnResult => {
   if (state.winner) {
-    return { finalState: state, playbackEvents: [] };
+    return { finalState: state, playbackEvents: [], turnStartSummary: [] };
   }
 
   const aiPlayer = state.currentPlayerId;
@@ -1610,6 +1706,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
     const captured = tryCapture(working, unitId, options.deps);
     if (captured !== working) {
       playbackEvents.push(...collectCapturePlaybackEvents(working, captured, unitId));
+      playbackEvents.push(...collectSpottedPlaybackEvents(working, captured));
       working = captured;
       continue;
     }
@@ -1622,6 +1719,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
       const attackApplied = applyCommand(working, { type: 'ATTACK', attackerId: readyUnit.id, defenderId: firstAttackTarget.id }, options.deps);
       if (attackApplied.result.ok) {
         const nextState = refreshEnemyMemory(attackApplied.state, aiPlayer);
+        playbackEvents.push(...collectSpottedPlaybackEvents(working, nextState));
         playbackEvents.push(...collectAttackPlaybackEvents(working, nextState, readyUnit.id, firstAttackTarget.id));
         working = nextState;
         continue;
@@ -1645,6 +1743,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
       if (moveApplied.result.ok) {
         const nextState = refreshEnemyMemory(moveApplied.state, aiPlayer);
         playbackEvents.push(...collectMovePlaybackEvents(working, nextState, movable.id));
+        playbackEvents.push(...collectSpottedPlaybackEvents(working, nextState));
         working = nextState;
       }
     }
@@ -1655,6 +1754,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
     const capturedAfterMove = tryCapture(working, unitId, options.deps);
     if (capturedAfterMove !== working) {
       playbackEvents.push(...collectCapturePlaybackEvents(working, capturedAfterMove, unitId));
+      playbackEvents.push(...collectSpottedPlaybackEvents(working, capturedAfterMove));
       working = capturedAfterMove;
       continue;
     }
@@ -1668,6 +1768,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
         const attackApplied = applyCommand(working, { type: 'ATTACK', attackerId: postCaptureUnit.id, defenderId: attackTarget.id }, options.deps);
         if (attackApplied.result.ok) {
           const nextState = refreshEnemyMemory(attackApplied.state, aiPlayer);
+          playbackEvents.push(...collectSpottedPlaybackEvents(working, nextState));
           playbackEvents.push(...collectAttackPlaybackEvents(working, nextState, postCaptureUnit.id, attackTarget.id));
           working = nextState;
           continue;
@@ -1685,7 +1786,9 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
   }
 
   if (!working.winner) {
-    working = produceForAi(working, aiPlayer, options.difficulty, resolvedProfile, options.deps);
+    const producedState = produceForAi(working, aiPlayer, options.difficulty, resolvedProfile, options.deps);
+    playbackEvents.push(...collectSpottedPlaybackEvents(working, producedState));
+    working = producedState;
   }
 
   if (!working.winner) {
@@ -1702,6 +1805,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
   return {
     finalState: working,
     playbackEvents,
+    turnStartSummary: buildTurnStartSummary(initialState, working, playbackEvents),
   };
 };
 

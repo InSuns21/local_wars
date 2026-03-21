@@ -1,7 +1,7 @@
 import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
 
-export type VisibleAiPlaybackEventType = 'move' | 'attack' | 'damage_report' | 'capture' | 'property_changed';
+export type VisibleAiPlaybackEventType = 'move' | 'attack' | 'damage_report' | 'capture' | 'property_changed' | 'spotted';
 
 export type VisibleAiPlaybackEvent = {
   type: VisibleAiPlaybackEventType;
@@ -12,7 +12,13 @@ export type VisibleAiPlaybackEvent = {
   durationMs?: number;
 };
 
+export type AiTurnSummaryItem = {
+  message: string;
+  focusCoord?: Coord;
+};
+
 export type AiTurnResult = {
   finalState: GameState;
   playbackEvents: VisibleAiPlaybackEvent[];
+  turnStartSummary: AiTurnSummaryItem[];
 };
