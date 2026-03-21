@@ -6,6 +6,7 @@
 file/ioについては,
 `AGENTS_FILE_IO.md`
 に従う。
+Powershellを使った読み書きでは文字コードutf8を必ず明示する。
 
 ## 必ず守る
 - ts ファイルを編集した後は必ず構文チェックをすること
@@ -33,6 +34,7 @@ file/ioについては,
 
 ### 実行計画
 - [docs/exec-plans/active/](docs/exec-plans/active): 進行中の実行計画
+- [docs/exec-plans/active/2026-03-20-ai-visible-turn-playback.md](docs/exec-plans/active/2026-03-20-ai-visible-turn-playback.md): AI ターンの可視行動再生とターン開始認知負荷を下げる実装計画
 - [docs/exec-plans/completed/](docs/exec-plans/completed): 完了済み実行計画
 - [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md): 技術的負債の一覧と優先度
 

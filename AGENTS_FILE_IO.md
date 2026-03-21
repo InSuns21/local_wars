@@ -54,6 +54,7 @@ For `patch`, `apply-edits`, and `write-batch`:
 - Prefer temporary JSON input files under `.codex/tmp/` when the environment allows creating files there.
 - If direct temp-file creation under `.codex/tmp/` fails in this environment, use repo-root fallback filenames that start with `.codex_tmp_`.
 - Prefer stable fallback filenames such as `.codex_tmp_apply-edits.json`, `.codex_tmp_patch.json`, or `.codex_tmp_write-batch.json`.
+- 編集用の一時 JSON は、PowerShell + -Encoding UTF8 で .codex_tmp_apply-edits.json に書き出して使うのがよい
 - Reuse or overwrite existing temp files when safe instead of creating scattered one-off temp files.
 - Always check `node C:\tools\codex-fswrap\bin\cfs.mjs <command> --help` before constructing JSON input.
 - Use `--dry-run` before broad edits when possible.
