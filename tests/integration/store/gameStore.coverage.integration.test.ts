@@ -1,6 +1,13 @@
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { createGameStore } from '@store/gameStore';
 
+const finalizePlayback = (store: ReturnType<typeof createGameStore>) => {
+  if (store.getState().aiPlaybackStatus === 'running') {
+    store.getState().skipAiPlayback();
+  }
+  return store.getState().gameState;
+};
+
 describe('gameStore 追加カバレッジ', () => {
   it('dispatchCommandでUNDOを渡すとundo分岐を通る', () => {
     const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
@@ -44,7 +51,7 @@ describe('gameStore 追加カバレッジ', () => {
     const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
 
     const result = store.getState().endTurn();
-    const nextState = store.getState().gameState;
+    const nextState = finalizePlayback(store);
 
     expect(result.ok).toBe(true);
     expect(nextState.currentPlayerId).toBe('P1');
@@ -55,7 +62,7 @@ describe('gameStore 追加カバレッジ', () => {
     const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
 
     store.getState().endTurn();
-    expect(store.getState().gameState.turn).toBe(2);
+    expect(finalizePlayback(store).turn).toBe(2);
 
     const undoResult = store.getState().undo();
     const rolledBack = store.getState().gameState;

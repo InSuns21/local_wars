@@ -236,6 +236,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   const simulateCombat = useStore((s: GameStoreState) => s.simulateCombat);
   const endTurn = useStore((s: GameStoreState) => s.endTurn);
   const undo = useStore((s: GameStoreState) => s.undo);
+  const aiPlaybackStatus = useStore((s: GameStoreState) => s.aiPlaybackStatus);
+  const currentAiPlaybackEvent = useStore((s: GameStoreState) => s.currentAiPlaybackEvent);
+  const stepAiPlayback = useStore((s: GameStoreState) => s.stepAiPlayback);
+  const skipAiPlayback = useStore((s: GameStoreState) => s.skipAiPlayback);
 
   const selectedUnit = selectedUnitId
     ? gameState.units[selectedUnitId] ?? null
@@ -293,6 +297,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const isGameOver = gameState.winner !== null;
   const humanSide = gameState.humanPlayerSide ?? "P1";
+  const isHumanTurn = gameState.currentPlayerId === humanSide;
+  const isAiPlaybackRunning = aiPlaybackStatus === 'running';
   const resultLabel =
     gameState.winner === null
       ? null
@@ -323,6 +329,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   }, [gameState.units]);
 
   const availableFactories = useMemo(() => {
+    if (!isHumanTurn) {
+      return [];
+    }
+
     const terrainPriority = (terrainType?: string): number => {
       if (isDroneFocusedMap && (gameState.enableSuicideDrones ?? false)) {
         if (terrainType === "FACTORY") return 0;
@@ -346,7 +356,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         return left.coord.x - right.coord.x;
       })
       .map((tile) => tile.coord);
-  }, [gameState.currentPlayerId, gameState.enableSuicideDrones, gameState.map.tiles, isDroneFocusedMap]);
+  }, [gameState.currentPlayerId, gameState.enableSuicideDrones, gameState.map.tiles, isDroneFocusedMap, isHumanTurn]);
 
   const moveRangeTiles = useMemo(() => {
     if (
@@ -802,6 +812,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   }, [availableFactories, selectedFactoryKey]);
 
   useEffect(() => {
+    if (!isAiPlaybackRunning || !currentAiPlaybackEvent) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      stepAiPlayback();
+    }, currentAiPlaybackEvent.durationMs ?? 700);
+
+    return () => window.clearTimeout(timer);
+  }, [currentAiPlaybackEvent, isAiPlaybackRunning, stepAiPlayback]);
+
+  useEffect(() => {
     selectTile(null);
     setLastResult("未実行");
   }, [selectTile, selectedUnitId]);
@@ -1209,11 +1231,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 playSe('error');
               }
             }}
-            disabled={isGameOver}
+            disabled={isGameOver || !isHumanTurn || isAiPlaybackRunning}
           >
             {"ターン終了"}
           </Button>
-          <Button type="button" variant="outlined" onClick={() => {
+          <Button type="button" variant="outlined" disabled={!isHumanTurn || isAiPlaybackRunning} onClick={() => {
             const result = undo();
             if (result.ok) {
               playSe('cancel');
@@ -1226,12 +1248,29 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
           <Button
             type="button"
             variant="outlined"
+            disabled={!isHumanTurn || isAiPlaybackRunning}
             onClick={() => setShowOtherMenu((prev) => !prev)}
           >
             {"その他"}
           </Button>
         </Toolbar>
       </AppBar>
+
+      {isAiPlaybackRunning && currentAiPlaybackEvent && (
+        <Paper variant="outlined" sx={{ p: 1.5, mb: 1, borderColor: 'warning.main', bgcolor: 'warning.50' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+            <Box>
+              <Typography variant="subtitle2">敵軍行動中...</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {currentAiPlaybackEvent.summary}
+              </Typography>
+            </Box>
+            <Button type="button" variant="contained" color="warning" onClick={() => skipAiPlayback()}>
+              スキップ
+            </Button>
+          </Stack>
+        </Paper>
+      )}
 
       {showOtherMenu && (
         <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
@@ -1654,8 +1693,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
                 interceptRangeTiles={interceptRangeTiles}
                 highlightedTargetUnitId={canIssueAttack ? targetUnitId || null : null}
                 zoom={boardZoom}
-                onSelectUnit={isGameOver ? () => {} : handleSelectUnit}
-                onSelectTile={handleSelectTile}
+                onSelectUnit={isGameOver || !isHumanTurn || isAiPlaybackRunning ? () => {} : handleSelectUnit}
+                onSelectTile={isAiPlaybackRunning || !isHumanTurn ? () => {} : handleSelectTile}
               />
             </Box>
           </Paper>

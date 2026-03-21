@@ -1,5 +1,5 @@
 ﻿import { manhattanDistance } from '@/utils/coord';
-import { runAiTurn } from '@core/engine/aiTurn';
+import { runAiTurn, runAiTurnWithPlayback } from '@core/engine/aiTurn';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import type { GameState } from '@core/types/state';
@@ -298,7 +298,7 @@ describe('aiターンの挙動テスト', () => {
     expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(false);
   });
 
-  it('adaptive rerolls when facility deficit is detected', () => {
+  it('adaptiveは施設劣勢を検知すると再抽選する', () => {
     const state = createAiState('hard');
     state.turn = 2;
     state.selectedAiProfile = 'adaptive';
@@ -316,7 +316,7 @@ describe('aiターンの挙動テスト', () => {
     expect(next.resolvedAiProfile).toBe('captain');
   });
 
-  it('records visible enemies into enemyMemory under FoW', () => {
+  it('FoW下では可視敵をenemyMemoryへ記録する', () => {
     const state = createAiState('normal');
     state.fogOfWar = true;
     state.players.P2.funds = 0;
@@ -336,7 +336,7 @@ describe('aiターンの挙動テスト', () => {
     expect(next.enemyMemory?.p1_bomber?.position).toEqual({ x: 4, y: 4 });
   });
 
-  it('uses remembered invisible air threats for anti-air production', () => {
+  it('記憶した不可視航空脅威を対空生産に使う', () => {
     const state = createAiState('normal');
     state.fogOfWar = true;
     state.players.P2.funds = 9000;
@@ -365,7 +365,7 @@ describe('aiターンの挙動テスト', () => {
     expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(true);
   });
 
-  it('Normal AI produces naval units on sea maps when it owns a port', () => {
+  it('Normalは港を持つ海戦マップで海上ユニットを生産する', () => {
     const state = createInitialGameState({
       mapId: 'island-landing',
       settings: {
@@ -390,7 +390,7 @@ describe('aiターンの挙動テスト', () => {
     expect(produceLogs.some((log) => /^(DESTROYER|LANDER|CARRIER|SUPPLY_SHIP)/.test(log.detail ?? ''))).toBe(true);
   });
 
-  it('Normal AI prioritizes producing a destroyer from ports on naval maps', () => {
+  it('Normalは海戦マップの港で駆逐艦生産を優先する', () => {
     const state = createInitialGameState({
       mapId: 'carrier-strike',
       settings: {
@@ -494,6 +494,42 @@ describe('aiターンの挙動テスト', () => {
 
     expect(normalNext.actionLog.some((log) => log.playerId === 'P2' && log.action === 'ATTACK')).toBe(true);
     expect(hardNext.actionLog.some((log) => log.playerId === 'P2' && log.action === 'ATTACK')).toBe(false);
+  });
+  it('可視戦闘では攻撃と自軍被害の再生イベントを生成する', () => {
+    const state = createAiState('normal');
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_tank: makeUnit({ id: 'p2_tank', owner: 'P2', type: 'TANK', position: { x: 2, y: 2 } }),
+      p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 2, y: 1 } }),
+    };
+
+    const result = runAiTurnWithPlayback(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const eventTypes = result.playbackEvents.map((event) => event.type);
+
+    expect(eventTypes).toContain('attack');
+    expect(eventTypes).toContain('damage_report');
+    expect(result.finalState.units.p1_tank.hp).toBeLessThan(10);
+  });
+
+  it('可視占領では占領と施設変化の再生イベントを生成する', () => {
+    const state = createAiState('normal');
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_inf: makeUnit({ id: 'p2_inf', owner: 'P2', type: 'INFANTRY', position: { x: 2, y: 2 } }),
+    };
+    state.map.tiles['2,2'] = {
+      coord: { x: 2, y: 2 },
+      terrainType: 'CITY',
+      owner: 'P1',
+      capturePoints: 10,
+    };
+
+    const result = runAiTurnWithPlayback(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const eventTypes = result.playbackEvents.map((event) => event.type);
+
+    expect(eventTypes).toContain('capture');
+    expect(eventTypes).toContain('property_changed');
+    expect(result.finalState.map.tiles['2,2']?.owner).toBe('P2');
   });
 });
 

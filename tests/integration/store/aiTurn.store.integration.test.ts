@@ -49,6 +49,13 @@ const makeUnit = (overrides: Partial<UnitState> & Pick<UnitState, 'id' | 'owner'
   };
 };
 
+const finalizePlayback = (store: ReturnType<typeof createGameStore>) => {
+  if (store.getState().aiPlaybackStatus === 'running') {
+    store.getState().skipAiPlayback();
+  }
+  return store.getState().gameState;
+};
+
 describe('store AI手番統合', () => {
   it('END_TURN後にAI手番が自動進行する', () => {
     const initial = createInitialGameState({
@@ -59,11 +66,10 @@ describe('store AI手番統合', () => {
     });
 
     const store = createGameStore(initial, { rng: () => 0.5 });
-
     const result = store.getState().endTurn();
-    expect(result.ok).toBe(true);
+    const next = finalizePlayback(store);
 
-    const next = store.getState().gameState;
+    expect(result.ok).toBe(true);
     expect(next.currentPlayerId).toBe('P1');
     expect(next.turn).toBe(2);
     expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'END_TURN')).toBe(true);
@@ -80,10 +86,11 @@ describe('store AI手番統合', () => {
 
     const store = createGameStore(initial, { rng: () => 0.5 });
     const result = store.getState().endTurn();
+    const next = finalizePlayback(store);
 
     expect(result.ok).toBe(true);
-    expect(store.getState().gameState.currentPlayerId).toBe('P1');
-    expect(store.getState().gameState.resolvedAiProfile).toBe('captain');
+    expect(next.currentPlayerId).toBe('P1');
+    expect(next.resolvedAiProfile).toBe('captain');
   });
 
   it('adaptiveは人間ターン終了後のAIターン開始時にだけ再抽選する', () => {
@@ -106,11 +113,12 @@ describe('store AI手番統合', () => {
 
     const store = createGameStore(initial, { rng: () => 0.3 });
     const result = store.getState().endTurn();
+    const next = finalizePlayback(store);
 
     expect(result.ok).toBe(true);
-    expect(store.getState().gameState.currentPlayerId).toBe('P1');
-    expect(store.getState().gameState.turn).toBe(3);
-    expect(store.getState().gameState.resolvedAiProfile).toBe('captain');
+    expect(next.currentPlayerId).toBe('P1');
+    expect(next.turn).toBe(3);
+    expect(next.resolvedAiProfile).toBe('captain');
   });
 
   it('FoW下では記憶した不可視航空脅威をAIターン統合でも生産判断に使う', () => {
@@ -143,11 +151,10 @@ describe('store AI手番統合', () => {
 
     const store = createGameStore(initial, { rng: () => 0.5 });
     const result = store.getState().endTurn();
-
-    expect(result.ok).toBe(true);
-    const next = store.getState().gameState;
+    const next = finalizePlayback(store);
     const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
 
+    expect(result.ok).toBe(true);
     expect(produceLogs.some((log) => /^(MISSILE_AA|ANTI_AIR|FLAK_TANK)/.test(log.detail ?? ''))).toBe(true);
     expect(next.enemyMemory?.p1_bomber).toBeDefined();
   });
@@ -172,9 +179,9 @@ describe('store AI手番統合', () => {
     const before = manhattanDistance(initial.units.p2_tank.position, initial.units.p1_art.position);
     const store = createGameStore(initial, { rng: () => 0.5 });
     const result = store.getState().endTurn();
+    const next = finalizePlayback(store);
 
     expect(result.ok).toBe(true);
-    const next = store.getState().gameState;
     expect(next.units.p1_art?.hp ?? 0).toBeLessThan(10);
     expect(manhattanDistance(next.units.p2_tank.position, { x: 3, y: 2 })).toBeLessThan(before);
   });
@@ -199,7 +206,7 @@ describe('store AI手番統合', () => {
     const result = store.getState().endTurn();
 
     expect(result.ok).toBe(true);
-    expect(manhattanDistance(store.getState().gameState.units.p2_stealth.position, { x: 0, y: 4 })).toBeLessThan(before);
+    expect(manhattanDistance(finalizePlayback(store).units.p2_stealth.position, { x: 0, y: 4 })).toBeLessThan(before);
   });
 
   it('stealth_strikeはAIターン統合でも低燃料の潜水艦を港へ戻そうとする', () => {
@@ -225,6 +232,34 @@ describe('store AI手番統合', () => {
     const result = store.getState().endTurn();
 
     expect(result.ok).toBe(true);
-    expect(manhattanDistance(store.getState().gameState.units.p2_sub.position, { x: 0, y: 4 })).toBeLessThan(before);
+    expect(manhattanDistance(finalizePlayback(store).units.p2_sub.position, { x: 0, y: 4 })).toBeLessThan(before);
+  });
+
+  it('可視戦闘では再生が始まり、スキップでAI最終状態が反映される', () => {
+    const initial = createInitialGameState({
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+      },
+    });
+    initial.players.P2.funds = 0;
+    initial.units = {
+      p2_tank: makeUnit({ id: 'p2_tank', owner: 'P2', type: 'TANK', position: { x: 2, y: 2 } }),
+      p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 2, y: 1 } }),
+    };
+
+    const store = createGameStore(initial, { rng: () => 0.5 });
+    const result = store.getState().endTurn();
+
+    expect(result.ok).toBe(true);
+    expect(store.getState().aiPlaybackStatus).toBe('running');
+    expect(store.getState().currentAiPlaybackEvent?.type).toBe('attack');
+
+    store.getState().skipAiPlayback();
+
+    expect(store.getState().aiPlaybackStatus).toBe('idle');
+    const next = store.getState().gameState;
+    expect(next.currentPlayerId).toBe('P1');
+    expect(next.units.p1_tank.hp).toBeLessThan(10);
   });
 });

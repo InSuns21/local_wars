@@ -222,5 +222,30 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
 
     expect(text).not.toContain('敵軍 占領');
   });
+  it('AI再生バナーが敵軍ターン中に表示され、スキップで自軍ターンへ戻る', () => {
+    const state = createInitialGameState();
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_tank: { ...state.units.p2_tank, position: { x: 2, y: 2 } },
+      p1_tank: { ...state.units.p1_tank, position: { x: 2, y: 1 } },
+    };
+
+
+    const store = createGameStore(state, { rng: () => 0.5 });
+    render(<BattleScreen useStore={store} />);
+
+
+    act(() => {
+      store.getState().endTurn();
+    });
+
+
+    expect(screen.getByText('敵軍行動中...')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'スキップ' }));
+
+
+    expect(screen.queryByText('敵軍行動中...')).not.toBeInTheDocument();
+    expect(screen.getByText('手番: P1')).toBeInTheDocument();
+  });
 });
 
