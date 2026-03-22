@@ -654,6 +654,47 @@ describe('aiターンの挙動テスト', () => {
     expect(objective).toBe('hq_push');
   });
 
+  it('ground-onlyのhunterは押し込める盤面でhq_pushへ移行しやすい', () => {
+    const state = createInitialGameState({
+      mapId: 'plains-clash',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'nightmare',
+        fogOfWar: true,
+        enableAirUnits: false,
+        enableNavalUnits: false,
+        enableSuicideDrones: false,
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.selectedAiProfile = 'hunter';
+    state.units = {
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 5, y: 2 }, moved: true, acted: true }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 2 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+    state.map.tiles['6,1'] = { coord: { x: 6, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+    state.map.tiles['6,3'] = { coord: { x: 6, y: 3 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+    state.map.tiles['5,1'] = { coord: { x: 5, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+    state.map.tiles['4,0'] = { coord: { x: 4, y: 0 }, terrainType: 'CITY', owner: 'P2', capturePoints: 20 };
+
+    const objective = getAiOperationalObjectiveForProfile(state, 'P2', 'nightmare', 'hunter');
+
+    expect(objective).toBe('hq_push');
+  });
+
   it('hunterは偵察車を必要数以上は量産しにくい', () => {
     const state = createInitialGameState({
       mapId: 'plains-clash',

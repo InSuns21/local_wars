@@ -645,8 +645,11 @@ const buildOperationalPlan = (
     }
     : enemyHq ?? supplyAnchorCoord;
   const nearestCapturableToHq = enemyHq ? getNearestCoord(enemyHq, capturableTargets) : null;
-  const desiredCapturerCount = Math.max(2, Math.min(6, capturableTargets.length === 0 ? 2 : Math.ceil(capturableTargets.length / 2)));
   const groundOnlyBattle = isGroundOnlyBattle(state);
+  const desiredCapturerCountBase = Math.max(2, Math.min(6, capturableTargets.length === 0 ? 2 : Math.ceil(capturableTargets.length / 2)));
+  const desiredCapturerCount = profile === 'hunter'
+    ? Math.max(1, Math.min(desiredCapturerCountBase, groundOnlyBattle ? 2 : 3))
+    : desiredCapturerCountBase;
   const desiredFrontlineCount = enemyHq
     ? groundOnlyBattle
       ? (difficulty === 'nightmare' ? 3 : 2)
@@ -676,13 +679,26 @@ const buildOperationalPlan = (
     && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= (groundOnlyBattle ? 8 : 7))
     && lowSupplyUnits.length <= Math.max(1, Math.floor(ownUnits.length / 4)),
   );
+  const hunterCanForceHqPush = Boolean(
+    profile === 'hunter'
+    && enemyHq
+    && frontlineUnits.length >= Math.max(1, desiredFrontlineCount - 1)
+    && capturers.length >= 1
+    && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= (groundOnlyBattle ? 9 : 8))
+    && capturableTargets.length <= (groundOnlyBattle ? 4 : 3)
+    && lowSupplyUnits.length <= Math.max(1, Math.floor(ownUnits.length / 4)),
+  );
 
   let primaryObjective: AiOperationalPlan['primaryObjective'] = 'capture';
   if (shouldDefendHq) {
     primaryObjective = 'defend_hq';
   } else if (lowSupplyUnits.length >= Math.max(2, Math.ceil(ownUnits.length / 3))) {
     primaryObjective = 'regroup';
-  } else if (canPressureHqSoon || (profile === 'captain' && enemyHq && capturableTargets.length <= (groundOnlyBattle ? 3 : 2))) {
+  } else if (
+    canPressureHqSoon
+    || hunterCanForceHqPush
+    || (profile === 'captain' && enemyHq && capturableTargets.length <= (groundOnlyBattle ? 3 : 2))
+  ) {
     primaryObjective = 'hq_push';
   }
 
