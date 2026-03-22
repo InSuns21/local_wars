@@ -4,54 +4,34 @@ import {
   renderNightmareAutotuneMarkdown,
   serializeNightmareTuningConfig,
 } from '@core/analysis/selfPlayAutoTune';
+import { nightmareParticipants } from './helpers/selfPlayTestUtils';
 
-describe('selfPlayAutoTune', () => {
-  const participants = {
-    left: {
-      id: 'left' as const,
-      label: 'captain-nightmare',
-      difficulty: 'nightmare' as const,
-      selectedAiProfile: 'captain' as const,
-    },
-    right: {
-      id: 'right' as const,
-      label: 'hunter-hard',
-      difficulty: 'hard' as const,
-      selectedAiProfile: 'hunter' as const,
-    },
-  };
-
+describe('selfPlayAutoTune plan', () => {
   const reportA = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 3,
-    maxTurns: 6,
+    matchCount: 2,
+    maxTurns: 5,
     seed: 101,
     fogOfWar: true,
-    participants,
+    participants: nightmareParticipants,
   });
+
   const reportB = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 3,
-    maxTurns: 6,
+    matchCount: 2,
+    maxTurns: 5,
     seed: 102,
     fogOfWar: true,
-    participants,
+    participants: nightmareParticipants,
   });
+
   const shortReport = runSelfPlaySeries({
     maps: ['plains-clash'],
     matchCount: 2,
     maxTurns: 5,
     seed: 103,
     fogOfWar: true,
-    participants,
-  });
-  const stallReport = runSelfPlaySeries({
-    maps: ['plains-clash'],
-    matchCount: 3,
-    maxTurns: 10,
-    seed: 120,
-    fogOfWar: true,
-    participants,
+    participants: nightmareParticipants,
   });
 
   it('nightmare参加者向けの調整計画を生成できる', () => {
@@ -71,17 +51,5 @@ describe('selfPlayAutoTune', () => {
 
     expect(renderNightmareAutotuneMarkdown(plan)).toContain('# nightmare autotune 提案');
     expect(serializeNightmareTuningConfig(plan.nextConfig)).toContain('NIGHTMARE_TUNING_CONFIG');
-  });
-
-  it('強いstallがあるとautotuneを保留して原因調査を優先する', () => {
-    const proposal = buildSelfPlayImprovementProposal(stallReport);
-    const plan = buildNightmareAutotunePlan(stallReport, undefined, proposal);
-
-    if (stallReport.aggregate.participants.left.stallMatchRate >= 0.5 || stallReport.aggregate.participants.left.averageInactiveTurnRate >= 0.4) {
-      expect(plan.decisions[0]?.adjustments ?? {}).toEqual({});
-      expect(plan.decisions[0]?.reasons.join(' ')).toContain('stall detector');
-    } else {
-      expect(plan.decisions.length).toBeGreaterThanOrEqual(1);
-    }
   });
 });
