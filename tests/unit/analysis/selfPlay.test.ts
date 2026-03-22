@@ -146,9 +146,11 @@ describe('selfPlay', () => {
     expect(left.responseRates.antiAir.opportunityCount).toBeGreaterThanOrEqual(0);
     expect(left.compositionShares.frontline).toBeGreaterThanOrEqual(0);
     expect(left.mapWinRateSpread).toBeGreaterThanOrEqual(0);
+    expect(left.objectiveRates.capture).toBeGreaterThanOrEqual(0);
     const markdown = renderSelfPlayMarkdown(nightmareReport);
     expect(markdown).toContain('nightmare調整向け詳細指標');
     expect(markdown).toContain('対空応答率');
+    expect(markdown).toContain('objective内訳');
   });
 
   it('stall detectorで停滞指標を集計できる', () => {

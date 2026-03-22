@@ -63,6 +63,9 @@ type AiOperationalPlan = {
   lowSupplyUnitCount: number;
   frontlineUnitCount: number;
   canPressureHqSoon: boolean;
+  desiredCapturerCount: number;
+  desiredFrontlineCount: number;
+  desiredSupportCount: number;
 };
 
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
@@ -614,10 +617,15 @@ const buildOperationalPlan = (
     }
     : enemyHq ?? supplyAnchorCoord;
   const nearestCapturableToHq = enemyHq ? getNearestCoord(enemyHq, capturableTargets) : null;
+  const desiredCapturerCount = Math.max(2, Math.min(6, capturableTargets.length === 0 ? 2 : Math.ceil(capturableTargets.length / 2)));
+  const desiredFrontlineCount = enemyHq
+    ? (difficulty === 'nightmare' ? 4 : 3)
+    : 2;
+  const desiredSupportCount = lowSupplyUnits.length > 0 || (enemyHq && frontlineUnits.length >= 3) ? 1 : 0;
   const canPressureHqSoon = Boolean(
     enemyHq
-    && frontlineUnits.length >= (difficulty === 'nightmare' ? 3 : 2)
-    && capturers.length >= 1
+    && frontlineUnits.length >= desiredFrontlineCount - 1
+    && capturers.length >= Math.max(1, Math.min(2, desiredCapturerCount - 1))
     && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= 7)
     && lowSupplyUnits.length <= Math.max(1, Math.floor(ownUnits.length / 4)),
   );
@@ -644,6 +652,9 @@ const buildOperationalPlan = (
     lowSupplyUnitCount: lowSupplyUnits.length,
     frontlineUnitCount: frontlineUnits.length,
     canPressureHqSoon,
+    desiredCapturerCount,
+    desiredFrontlineCount,
+    desiredSupportCount,
   };
 };
 
@@ -971,6 +982,29 @@ const evaluateMoveScore = (
     }
     if (isFriendlyResupplyTile(state, unit, to) && (unit.supplyCharges ?? 0) <= 1) {
       score += 8 * weights.supplyBias;
+    }
+
+    if (plan.supplyAnchorCoord) {
+      const anchorDistance = manhattanDistance(to, plan.supplyAnchorCoord);
+      if (plan.primaryObjective === 'hq_push') {
+        const supportGoal = plan.stagingCoord ?? plan.targetCoord;
+        if (supportGoal) {
+          const goalDistance = manhattanDistance(to, supportGoal);
+          score -= goalDistance * 1.2 * weights.supplyBias;
+        }
+        const routeLength = plan.targetCoord ? manhattanDistance(plan.supplyAnchorCoord, plan.targetCoord) : 0;
+        if (routeLength > 0) {
+          const idealAdvance = Math.max(1, Math.floor(routeLength * 0.45));
+          score -= Math.abs(anchorDistance - idealAdvance) * 1.6 * weights.supplyBias;
+        } else {
+          score -= anchorDistance * 1.5 * weights.supplyBias;
+        }
+      } else if (plan.primaryObjective === 'regroup') {
+        score -= anchorDistance * 2.6 * weights.supplyBias;
+        if (anchorDistance <= 1) {
+          score += 8 * weights.supplyBias;
+        }
+      }
     }
   } else {
     if (nearestEnemyDist === 1) score += 6 * weights.killBias;
@@ -1363,11 +1397,14 @@ const selectNormalProductionUnit = (
   const capturableCount = Object.values(state.map.tiles).filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== aiPlayer).length;
   const ownCapturers = ownCounts.INFANTRY + ownCounts.AIR_DEFENSE_INFANTRY;
   if (plan.primaryObjective === 'hq_push') {
-    if (plan.lowSupplyUnitCount > 0 && supportUnits === 0 && canAfford('SUPPLY_TRUCK') && profile !== 'hunter') {
+    if (plan.lowSupplyUnitCount > 0 && supportUnits < plan.desiredSupportCount && canAfford('SUPPLY_TRUCK') && profile !== 'hunter') {
       return 'SUPPLY_TRUCK';
     }
-    if (plan.frontlineUnitCount < 3 && canAfford('TANK')) {
+    if (plan.frontlineUnitCount < plan.desiredFrontlineCount && canAfford('TANK')) {
       return 'TANK';
+    }
+    if (ownCapturers < plan.desiredCapturerCount && canAfford('INFANTRY')) {
+      return 'INFANTRY';
     }
   }
   const targetInfantry = Math.max(2, Math.min(7, Math.round(capturableCount * weights.captureBias)));
@@ -1565,6 +1602,27 @@ const trySupply = (working: GameState, unitId: string, deps: CommandDeps): GameS
   if (!unit || unit.acted || !UNIT_DEFINITIONS[unit.type].resupplyTarget) return working;
   const supplyApplied = applyCommand(working, { type: 'SUPPLY', unitId: unit.id }, deps);
   return supplyApplied.result.ok ? refreshEnemyMemory(supplyApplied.state, unit.owner) : working;
+};
+
+const shouldDelaySupplyUntilAfterMove = (
+  unit: UnitState,
+  plan: AiOperationalPlan,
+): boolean => {
+  if (!UNIT_DEFINITIONS[unit.type].resupplyTarget || !plan.supplyAnchorCoord) {
+    return false;
+  }
+
+  if (plan.primaryObjective === 'hq_push') {
+    const anchorDistance = manhattanDistance(unit.position, plan.supplyAnchorCoord);
+    const stagingDistance = plan.stagingCoord ? manhattanDistance(unit.position, plan.stagingCoord) : null;
+    return anchorDistance > 1 && (stagingDistance == null || stagingDistance > 1);
+  }
+
+  if (plan.primaryObjective === 'regroup') {
+    return manhattanDistance(unit.position, plan.supplyAnchorCoord) > 0;
+  }
+
+  return false;
 };
 
 const cloneGameState = (state: GameState): GameState => JSON.parse(JSON.stringify(state)) as GameState;
@@ -1912,7 +1970,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
       }
     }
 
-    if (options.difficulty !== 'easy') {
+    if (options.difficulty !== 'easy' && !shouldDelaySupplyUntilAfterMove(readyUnit, operationalPlan)) {
       const supplied = trySupply(working, unitId, options.deps);
       if (supplied !== working) {
         working = supplied;

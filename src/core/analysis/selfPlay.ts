@@ -7,6 +7,7 @@ import type { VictoryReason } from '../rules/victory';
 import type { PlayerId } from '../types/game';
 import type { GameState } from '../types/state';
 import type { UnitState, UnitType } from '../types/unit';
+import { manhattanDistance } from '../../utils/coord';
 
 export type SelfPlayParticipantId = 'left' | 'right';
 export type SelfPlaySide = PlayerId;
@@ -44,10 +45,14 @@ export type SelfPlayThreatResponseSnapshot = {
   hadSubCounter: boolean;
 };
 
+export type SelfPlayObjective = 'capture' | 'hq_push' | 'regroup' | 'defend_hq';
+export type SelfPlayObjectiveBreakdown = Record<SelfPlayObjective, number>;
+
 export type SelfPlayTurnActivity = {
   turn: number;
   participantId: SelfPlayParticipantId;
   side: SelfPlaySide;
+  objective: SelfPlayObjective;
   moveCount: number;
   attackCount: number;
   captureCount: number;
@@ -87,6 +92,7 @@ export type SelfPlayParticipantMatchSummary = {
   supportSurvivorCount: number;
   threatResponse: SelfPlayThreatResponseSnapshot;
   compositionShares: SelfPlayCompositionShares;
+  objectiveBreakdown: SelfPlayObjectiveBreakdown;
 };
 
 export type SelfPlayMatchResult = {
@@ -141,6 +147,8 @@ export type SelfPlayParticipantAggregate = {
   averageLongestInactiveStreak: number;
   stallMatchRate: number;
   suspectedStallReasons: string[];
+  objectiveRates: SelfPlayObjectiveBreakdown;
+  dominantObjective: SelfPlayObjective;
   resolvedProfileBreakdown: Array<{
     profile: string;
     matches: number;
@@ -256,6 +264,13 @@ const AIR_COUNTER_TYPES = new Set<UnitType>(['ANTI_AIR', 'FLAK_TANK', 'MISSILE_A
 const DRONE_COUNTER_TYPES = new Set<UnitType>(['COUNTER_DRONE_AA', 'ANTI_AIR', 'FLAK_TANK', 'MISSILE_AA', 'FIGHTER', 'AIR_DEFENSE_INFANTRY']);
 const SUB_COUNTER_TYPES = new Set<UnitType>(['DESTROYER', 'CARRIER', 'ATTACKER', 'BATTLESHIP']);
 const EMPTY_COMPOSITION: SelfPlayCompositionShares = { frontline: 0, scout: 0, support: 0, air: 0, naval: 0, drone: 0, other: 0 };
+const OBJECTIVES: SelfPlayObjective[] = ['capture', 'hq_push', 'regroup', 'defend_hq'];
+const EMPTY_OBJECTIVE_BREAKDOWN: SelfPlayObjectiveBreakdown = {
+  capture: 0,
+  hq_push: 0,
+  regroup: 0,
+  defend_hq: 0,
+};
 
 const round = (value: number, digits = 3): number => {
   const base = 10 ** digits;
@@ -389,6 +404,13 @@ const normalizeCompositionShares = (value?: Partial<SelfPlayCompositionShares>):
   other: value?.other ?? 0,
 });
 
+const normalizeObjectiveBreakdown = (value?: Partial<SelfPlayObjectiveBreakdown>): SelfPlayObjectiveBreakdown => ({
+  capture: value?.capture ?? 0,
+  hq_push: value?.hq_push ?? 0,
+  regroup: value?.regroup ?? 0,
+  defend_hq: value?.defend_hq ?? 0,
+});
+
 const normalizeRecord = <K extends string>(keys: readonly K[], value?: Partial<Record<K, number>>): Record<K, number> =>
   keys.reduce<Record<K, number>>((result, key) => {
     result[key] = value?.[key] ?? 0;
@@ -436,6 +458,8 @@ const getParticipantAggregate = (
     averageLongestInactiveStreak: aggregate?.averageLongestInactiveStreak ?? 0,
     stallMatchRate: aggregate?.stallMatchRate ?? 0,
     suspectedStallReasons: aggregate?.suspectedStallReasons ?? [],
+    objectiveRates: normalizeObjectiveBreakdown(aggregate?.objectiveRates),
+    dominantObjective: aggregate?.dominantObjective ?? 'capture',
     resolvedProfileBreakdown: aggregate?.resolvedProfileBreakdown ?? [],
   };
 };
@@ -453,12 +477,62 @@ const buildTurnState = (
   resolvedAiProfile: resolvedAiProfile ?? undefined,
 });
 
+const getHqCoord = (state: GameState, owner: PlayerId): { x: number; y: number } | null =>
+  Object.values(state.map.tiles).find((tile) => tile.terrainType === 'HQ' && tile.owner === owner)?.coord ?? null;
+
+const getCapturableTargetCount = (state: GameState, owner: PlayerId): number =>
+  Object.values(state.map.tiles).filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== owner).length;
+
+const inferOperationalObjective = (
+  state: GameState,
+  side: SelfPlaySide,
+  difficulty: AiDifficulty,
+): SelfPlayObjective => {
+  const ownUnits = getAliveUnits(state, side);
+  const enemySide: SelfPlaySide = side === 'P1' ? 'P2' : 'P1';
+  const ownHq = getHqCoord(state, side);
+  const enemyHq = getHqCoord(state, enemySide);
+  const capturers = ownUnits.filter((unit) => UNIT_DEFINITIONS[unit.type].canCapture).length;
+  const frontline = ownUnits.filter((unit) => FRONTLINE_TYPES.has(unit.type) || HIGH_VALUE_TYPES.has(unit.type));
+  const lowSupply = ownUnits.filter((unit) => {
+    const def = UNIT_DEFINITIONS[unit.type];
+    const lowFuel = def.maxFuel > 0 && unit.fuel <= Math.max(1, Math.ceil(def.maxFuel * 0.25));
+    const lowAmmo = def.maxAmmo > 0 && unit.ammo <= Math.max(1, Math.ceil(def.maxAmmo * 0.25));
+    return lowFuel || lowAmmo;
+  }).length;
+
+  if (ownHq) {
+    const nearbyEnemy = getAliveUnits(state, enemySide).some((unit) =>
+      UNIT_DEFINITIONS[unit.type].canCapture && manhattanDistance(unit.position, ownHq) <= 3);
+    if (nearbyEnemy) {
+      return 'defend_hq';
+    }
+  }
+
+  if (lowSupply >= Math.max(2, Math.ceil(ownUnits.length / 3))) {
+    return 'regroup';
+  }
+
+  if (
+    enemyHq
+    && frontline.length >= (difficulty === 'nightmare' ? 3 : 2)
+    && capturers >= 1
+    && frontline.some((unit) => manhattanDistance(unit.position, enemyHq) <= 7)
+    && lowSupply <= Math.max(1, Math.floor(ownUnits.length / 4))
+  ) {
+    return 'hq_push';
+  }
+
+  return getCapturableTargetCount(state, side) > 0 ? 'capture' : 'hq_push';
+};
+
 const buildParticipantMatchSummary = (
   state: GameState,
   initialState: GameState,
   side: SelfPlaySide,
   participant: SelfPlayParticipantConfig,
   resolvedAiProfile: ResolvedSelfPlayProfile | null,
+  turnActivities: SelfPlayTurnActivity[],
 ): SelfPlayParticipantMatchSummary => {
   const enemySide: SelfPlaySide = side === 'P1' ? 'P2' : 'P1';
   const initialOwnUnits = getAliveUnits(initialState, side);
@@ -473,6 +547,12 @@ const buildParticipantMatchSummary = (
   const enemyHighValueAvailable = countUnitsInSet(initialEnemyUnits, HIGH_VALUE_TYPES) + sumCountsInSet(enemyProducedUnitTypes, HIGH_VALUE_TYPES);
   const ownScoutAvailable = countUnitsInSet(initialOwnUnits, SCOUT_TYPES) + sumCountsInSet(ownProducedUnitTypes, SCOUT_TYPES);
   const ownSupportAvailable = countUnitsInSet(initialOwnUnits, SUPPORT_TYPES) + sumCountsInSet(ownProducedUnitTypes, SUPPORT_TYPES);
+  const objectiveBreakdown = turnActivities
+    .filter((activity) => activity.side === side)
+    .reduce<SelfPlayObjectiveBreakdown>((acc, activity) => {
+      acc[activity.objective] += 1;
+      return acc;
+    }, { ...EMPTY_OBJECTIVE_BREAKDOWN });
 
   return {
     label: participant.label,
@@ -502,6 +582,7 @@ const buildParticipantMatchSummary = (
       hadSubCounter: countUnitsInSet(initialOwnUnits, SUB_COUNTER_TYPES) + sumCountsInSet(ownProducedUnitTypes, SUB_COUNTER_TYPES) > 0,
     },
     compositionShares: calculateCompositionShares(finalOwnUnits),
+    objectiveBreakdown,
   };
 };
 
@@ -510,6 +591,7 @@ const summarizeTurnActivity = (
   turn: number,
   side: SelfPlaySide,
   participantId: SelfPlayParticipantId,
+  objective: SelfPlayObjective,
 ): SelfPlayTurnActivity => {
   const moveCount = entries.filter((entry) => entry.action === 'MOVE_UNIT').length;
   const attackCount = entries.filter((entry) => entry.action === 'ATTACK' || entry.action === 'ATTACK_TILE').length;
@@ -521,6 +603,7 @@ const summarizeTurnActivity = (
     turn,
     participantId,
     side,
+    objective,
     moveCount,
     attackCount,
     captureCount,
@@ -609,6 +692,7 @@ export const runSelfPlayMatch = (
     const side = state.currentPlayerId;
     const participantId = sideAssignments[side];
     const participant = config.participants[participantId];
+    const objective = inferOperationalObjective(state, side, participant.difficulty);
     const previousActionLogLength = state.actionLog.length;
     const nextState = runAiTurn(buildTurnState(state, side, participant, resolvedProfiles[participantId]), {
       difficulty: participant.difficulty,
@@ -618,15 +702,15 @@ export const runSelfPlayMatch = (
     const newEntries = nextState.actionLog
       .slice(previousActionLogLength)
       .filter((entry) => entry.turn === state.turn && entry.playerId === side);
-    turnActivities.push(summarizeTurnActivity(newEntries, state.turn, side, participantId));
+    turnActivities.push(summarizeTurnActivity(newEntries, state.turn, side, participantId, objective));
     state = JSON.parse(JSON.stringify(nextState)) as GameState;
   }
 
   const leftSide: SelfPlaySide = sideAssignments.P1 === 'left' ? 'P1' : 'P2';
   const rightSide: SelfPlaySide = sideAssignments.P1 === 'right' ? 'P1' : 'P2';
   const participantSummaries = {
-    left: buildParticipantMatchSummary(state, initialState, leftSide, config.participants.left, resolvedProfiles.left),
-    right: buildParticipantMatchSummary(state, initialState, rightSide, config.participants.right, resolvedProfiles.right),
+    left: buildParticipantMatchSummary(state, initialState, leftSide, config.participants.left, resolvedProfiles.left, turnActivities),
+    right: buildParticipantMatchSummary(state, initialState, rightSide, config.participants.right, resolvedProfiles.right, turnActivities),
   };
 
   return {
@@ -716,15 +800,28 @@ export const runSelfPlaySeries = (config: SelfPlaySeriesConfig): SelfPlaySeriesR
       match.stall.longestInactiveStreaks[participantId] >= 5 || match.stall.inactiveTurnRates[participantId] >= 0.6).length, matches.length));
     const resolvedProfileCounts = new Map<string, number>();
     const reasonCounts = new Map<string, number>();
+    const objectiveCounts = { ...EMPTY_OBJECTIVE_BREAKDOWN };
     for (const summary of summaries) {
       const key = summary.resolvedAiProfile ?? summary.selectedAiProfile;
       resolvedProfileCounts.set(key, (resolvedProfileCounts.get(key) ?? 0) + 1);
+      for (const objective of OBJECTIVES) {
+        objectiveCounts[objective] += summary.objectiveBreakdown[objective];
+      }
     }
     for (const match of matches) {
       for (const reason of match.stall.reasons) {
         reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
       }
     }
+    const totalObjectiveTurns = OBJECTIVES.reduce((sum, objective) => sum + objectiveCounts[objective], 0);
+    const objectiveRates = OBJECTIVES.reduce<SelfPlayObjectiveBreakdown>((acc, objective) => {
+      acc[objective] = round(rate(objectiveCounts[objective], totalObjectiveTurns));
+      return acc;
+    }, { ...EMPTY_OBJECTIVE_BREAKDOWN });
+    const dominantObjective = OBJECTIVES.reduce<SelfPlayObjective>(
+      (best, objective) => objectiveCounts[objective] > objectiveCounts[best] ? objective : best,
+      'capture',
+    );
     return {
       label: config.participants[participantId].label,
       wins,
@@ -771,6 +868,8 @@ export const runSelfPlaySeries = (config: SelfPlaySeriesConfig): SelfPlaySeriesR
       averageLongestInactiveStreak,
       stallMatchRate,
       suspectedStallReasons: Array.from(reasonCounts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([reason]) => reason),
+      objectiveRates,
+      dominantObjective,
       resolvedProfileBreakdown: Array.from(resolvedProfileCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .map(([profile, count]) => ({ profile, matches: count })),
@@ -881,6 +980,7 @@ const renderParticipantAggregateLines = (participant: SelfPlayParticipantAggrega
   `- 平均低補給残存数: ${participant.averageLowSupplyUnitCount} / 平均HQ制圧ターン: ${formatNullableTurn(participant.averageHqCaptureTurn)}`,
   `- 平均停滞ターン率: ${formatPercent(participant.averageInactiveTurnRate)} / 平均最長停滞連続: ${participant.averageLongestInactiveStreak} / stall試合率: ${formatPercent(participant.stallMatchRate)}`,
   `- stall要因候補: ${participant.suspectedStallReasons.length > 0 ? participant.suspectedStallReasons.join(', ') : '顕著な停滞なし'}`,
+  `- objective内訳: capture ${formatPercent(participant.objectiveRates.capture)} / hq_push ${formatPercent(participant.objectiveRates.hq_push)} / regroup ${formatPercent(participant.objectiveRates.regroup)} / defend_hq ${formatPercent(participant.objectiveRates.defend_hq)} / dominant ${participant.dominantObjective}`,
   `- 偵察生存率: ${formatPercent(participant.scoutSurvivalRate)} / 補給生存率: ${formatPercent(participant.supportSurvivalRate)}`,
   `- 対空応答率: ${formatResponseRate(participant.responseRates.antiAir)}`,
   `- 対ドローン応答率: ${formatResponseRate(participant.responseRates.antiDrone)}`,
