@@ -24,6 +24,12 @@
 - Keep shared scoring and command flow in `aiTurn.ts`
 - Do not split playback, combat forecasting, or FoW core logic yet
 
+## Scope of Phase 2
+- Extract `turtle` and `sieger` profile differences into strategy modules
+- Move profile-specific move bonuses behind `getMoveScoreBonus`
+- Move profile-specific production overrides behind `chooseProductionOverride`
+- Reduce `buildOperationalPlan` clutter by constructing strategy plan context through a helper
+
 ## Target architecture
 
 ### Shared engine
@@ -40,7 +46,7 @@
 - default fallback strategy
 
 ### Future phases
-- Move `turtle / sieger / drone_swarm / stealth_strike` into strategy modules
+- Move `drone_swarm / stealth_strike` into strategy modules
 - Move profile-specific move/attack hooks into smaller evaluators
 - Split difficulty policy from profile strategy
 
@@ -82,7 +88,7 @@ type AiStrategy = {
 ## Validation
 - `npm run typecheck`
 - `npm run test:changed`
-- Confirm `captain / hunter` strategy behavior still matches current expectations
+- Confirm `captain / hunter / turtle / sieger` strategy behavior still matches current expectations
 
 ## Notes
 - This phase is intentionally small

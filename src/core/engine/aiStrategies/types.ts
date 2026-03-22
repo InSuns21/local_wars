@@ -43,6 +43,7 @@ export type AiStrategyProductionContext = {
   plan: AiOperationalPlanSnapshot;
   ownCounts: Record<UnitType, number>;
   enemyCounts: Record<UnitType, number>;
+  ownFrontlineCount: number;
   supportUnits: number;
   lowSupplyUnits: number;
   canAfford: (type: UnitType) => boolean;
@@ -53,7 +54,11 @@ export type AiStrategyMoveContext = {
   unit: UnitState;
   nearbyAllies: UnitState[];
   hasFrontlineNearby: boolean;
+  hasIndirectSupportNearby: boolean;
   canCapture: boolean;
+  isFrontlineUnit: boolean;
+  tileOwnerIsUnitOwner: boolean;
+  tileIsCapturableTerrain: boolean;
 };
 
 export type AiStrategy = {

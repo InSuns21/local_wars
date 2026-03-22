@@ -13,6 +13,7 @@ import type { Coord, PlayerId } from '@core/types/game';
 import type { EnemyMemoryEntry, GameState } from '@core/types/state';
 import type { AiTurnResult, AiTurnSummaryItem, VisibleAiPlaybackEvent } from '@core/types/aiPlayback';
 import type { UnitState, UnitType } from '@core/types/unit';
+import type { AiStrategyPlanContext } from '@core/engine/aiStrategies';
 
 export type { AiDifficulty } from '@/app/types';
 export type { AiOperationalObjective } from '@core/engine/aiStrategies';
@@ -206,6 +207,40 @@ const getEstimatedEnemyContacts = (state: GameState, viewer: PlayerId): Strategi
 
   return contacts;
 };
+
+const buildAiStrategyPlanContext = (
+  state: GameState,
+  aiPlayer: PlayerId,
+  difficulty: AiDifficulty,
+  groundOnlyBattle: boolean,
+  enemyHq: Coord | null,
+  ownHq: Coord | null,
+  capturableTargetCount: number,
+  capturerCount: number,
+  frontlineUnitCount: number,
+  desiredFrontlineCount: number,
+  lowSupplyUnitCount: number,
+  lowSupplyLimit: number,
+  frontlineCanReachEnemyHq: boolean,
+  hqThreatContactCount: number,
+  imminentHqThreat: boolean,
+): AiStrategyPlanContext => ({
+  state,
+  aiPlayer,
+  difficulty,
+  groundOnlyBattle,
+  enemyHq,
+  ownHq,
+  capturableTargetCount,
+  capturerCount,
+  frontlineUnitCount,
+  desiredFrontlineCount,
+  lowSupplyUnitCount,
+  lowSupplyLimit,
+  frontlineCanReachEnemyHq,
+  hqThreatContactCount,
+  imminentHqThreat,
+});
 
 const emptyUnitCountMap = (): Record<UnitType, number> => ({
   INFANTRY: 0,
@@ -649,34 +684,31 @@ const buildOperationalPlan = (
   const nearestCapturableToHq = enemyHq ? getNearestCoord(enemyHq, capturableTargets) : null;
   const groundOnlyBattle = isGroundOnlyBattle(state);
   const desiredCapturerCountBase = Math.max(2, Math.min(6, capturableTargets.length === 0 ? 2 : Math.ceil(capturableTargets.length / 2)));
-  const desiredCapturerCount = strategy.adjustDesiredCapturerCount
-    ? strategy.adjustDesiredCapturerCount({
-      state,
-      aiPlayer,
-      difficulty,
-      groundOnlyBattle,
-      enemyHq,
-      ownHq,
-      capturableTargetCount: capturableTargets.length,
-      capturerCount: capturers.length,
-      frontlineUnitCount: frontlineUnits.length,
-      desiredFrontlineCount: enemyHq
-        ? groundOnlyBattle
-          ? (difficulty === 'nightmare' ? 3 : 2)
-          : (difficulty === 'nightmare' ? 4 : 3)
-        : 2,
-      lowSupplyUnitCount: lowSupplyUnits.length,
-      lowSupplyLimit: Math.max(1, Math.floor(ownUnits.length / 4)),
-      frontlineCanReachEnemyHq: Boolean(enemyHq && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= (groundOnlyBattle ? 8 : 7))),
-      hqThreatContactCount: 0,
-      imminentHqThreat: false,
-    }, desiredCapturerCountBase)
-    : desiredCapturerCountBase;
   const desiredFrontlineCount = enemyHq
     ? groundOnlyBattle
       ? (difficulty === 'nightmare' ? 3 : 2)
       : (difficulty === 'nightmare' ? 4 : 3)
     : 2;
+  const desiredCapturerCountBaseContext = buildAiStrategyPlanContext(
+    state,
+    aiPlayer,
+    difficulty,
+    groundOnlyBattle,
+    enemyHq,
+    ownHq,
+    capturableTargets.length,
+    capturers.length,
+    frontlineUnits.length,
+    desiredFrontlineCount,
+    lowSupplyUnits.length,
+    Math.max(1, Math.floor(ownUnits.length / 4)),
+    Boolean(enemyHq && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= (groundOnlyBattle ? 8 : 7))),
+    0,
+    false,
+  );
+  const desiredCapturerCount = strategy.adjustDesiredCapturerCount
+    ? strategy.adjustDesiredCapturerCount(desiredCapturerCountBaseContext, desiredCapturerCountBase)
+    : desiredCapturerCountBase;
   const desiredSupportCount = lowSupplyUnits.length > 0 || (enemyHq && frontlineUnits.length >= 3) ? 1 : 0;
   const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
   const droneThreatCount = enemyCounts.SUICIDE_DRONE;
@@ -692,23 +724,23 @@ const buildOperationalPlan = (
   const frontlineCanReachEnemyHq = Boolean(
     enemyHq && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= (groundOnlyBattle ? 8 : 7)),
   );
-  const planContext = {
+  const planContext = buildAiStrategyPlanContext(
     state,
     aiPlayer,
     difficulty,
     groundOnlyBattle,
     enemyHq,
     ownHq,
-    capturableTargetCount: capturableTargets.length,
-    capturerCount: capturers.length,
-    frontlineUnitCount: frontlineUnits.length,
+    capturableTargets.length,
+    capturers.length,
+    frontlineUnits.length,
     desiredFrontlineCount,
-    lowSupplyUnitCount: lowSupplyUnits.length,
+    lowSupplyUnits.length,
     lowSupplyLimit,
     frontlineCanReachEnemyHq,
-    hqThreatContactCount: hqThreatContacts.length,
+    hqThreatContacts.length,
     imminentHqThreat,
-  };
+  );
   const shouldDefendHq = Boolean(
     ownHq
     && (
@@ -1378,14 +1410,12 @@ const evaluateMoveScore = (
     unit,
     nearbyAllies,
     hasFrontlineNearby: nearbyAllies.some((ally) => FRONTLINE_TYPES.has(ally.type)),
+    hasIndirectSupportNearby: nearbyAllies.some((ally) => INDIRECT_SUPPORT_UNITS.has(ally.type)),
     canCapture: UNIT_DEFINITIONS[unit.type].canCapture,
+    isFrontlineUnit: FRONTLINE_TYPES.has(unit.type),
+    tileOwnerIsUnitOwner: tile?.owner === unit.owner,
+    tileIsCapturableTerrain: Boolean(tile && CAPTURABLE_TERRAINS.has(tile.terrainType)),
   }) ?? 0;
-  if (profile === 'sieger' && nearbyAllies.some((ally) => INDIRECT_SUPPORT_UNITS.has(ally.type)) && FRONTLINE_TYPES.has(unit.type)) {
-    score += 5;
-  }
-  if (profile === 'turtle' && tile?.owner === unit.owner && CAPTURABLE_TERRAINS.has(tile.terrainType)) {
-    score += 6;
-  }
 
   if (UNIT_DEFINITIONS[unit.type].movementType === 'NAVAL') {
     const nearbyNavalAllies = nearbyAllies.filter((ally) => UNIT_DEFINITIONS[ally.type].movementType === 'NAVAL');
@@ -1677,6 +1707,7 @@ const getDesiredReconCount = (
     plan: plan as AiOperationalPlanSnapshot,
     ownCounts: emptyUnitCountMap(),
     enemyCounts: emptyUnitCountMap(),
+    ownFrontlineCount: 0,
     supportUnits: 0,
     lowSupplyUnits: 0,
     canAfford: () => false,
@@ -1707,6 +1738,7 @@ const selectNormalProductionUnit = (
   const supportUnits = ownCounts.SUPPLY_TRUCK + ownCounts.AIR_TANKER + ownCounts.SUPPLY_SHIP;
   const indirectSupportUnits = ownCounts.ARTILLERY + ownCounts.FLAK_TANK + ownCounts.MISSILE_AA;
   const lowSupplyUnits = own.filter((unit) => isLowOnSupply(state, unit)).length;
+  const ownFrontline = ownCounts.TANK + ownCounts.HEAVY_TANK + ownCounts.ANTI_TANK + ownCounts.RECON + ownCounts.ANTI_AIR;
   const desiredReconCount = getDesiredReconCount(state, profile, difficulty, plan);
 
   const capturableCount = Object.values(state.map.tiles).filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== aiPlayer).length;
@@ -1718,6 +1750,7 @@ const selectNormalProductionUnit = (
     plan: plan as AiOperationalPlanSnapshot,
     ownCounts,
     enemyCounts,
+    ownFrontlineCount: ownFrontline,
     supportUnits,
     lowSupplyUnits,
     canAfford,
@@ -1791,14 +1824,8 @@ const selectNormalProductionUnit = (
   const ownAntiArmor = ownCounts.TANK + ownCounts.HEAVY_TANK + ownCounts.ANTI_TANK + ownCounts.ARTILLERY + ownCounts.FLAK_TANK;
   if (enemyArmorCount > ownAntiArmor && canAfford('ANTI_TANK')) return 'ANTI_TANK';
 
-  const ownFrontline = ownCounts.TANK + ownCounts.HEAVY_TANK + ownCounts.ANTI_TANK + ownCounts.RECON + ownCounts.ANTI_AIR;
-  if ((profile === 'sieger' || profile === 'turtle') && ownFrontline >= 1 && ownCounts.ARTILLERY < Math.max(1, Math.floor(ownFrontline / 2)) && canAfford('ARTILLERY')) {
-    return 'ARTILLERY';
-  }
-
   const strategyOverride = strategy.chooseProductionOverride?.(strategyProductionContext);
   if (strategyOverride) return strategyOverride;
-  if (profile === 'turtle' && canAfford('MISSILE_AA') && ownCounts.MISSILE_AA === 0 && (mapHasAirport(state) || (state.enableSuicideDrones ?? false))) return 'MISSILE_AA';
 
   const candidates: UnitType[] = ['HEAVY_TANK', 'TANK', 'ANTI_TANK', 'RECON', 'INFANTRY', 'ARTILLERY', 'FLAK_TANK', 'MISSILE_AA', 'AIR_DEFENSE_INFANTRY', 'SUPPLY_TRUCK'];
   for (const type of candidates) {
@@ -1875,6 +1902,7 @@ const selectNavalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile
       },
       ownCounts,
       enemyCounts,
+      ownFrontlineCount: 0,
       supportUnits: ownCounts.SUPPLY_SHIP,
       lowSupplyUnits: 0,
       canAfford,
