@@ -35,6 +35,7 @@ Powershellを使った読み書きでは文字コードutf8を必ず明示する
 ### 実行計画
 - [docs/exec-plans/active/](docs/exec-plans/active): 進行中の実行計画
 - [docs/exec-plans/active/2026-03-20-ai-visible-turn-playback.md](docs/exec-plans/active/2026-03-20-ai-visible-turn-playback.md): AI ターンの可視行動再生とターン開始認知負荷を下げる実装計画
+- [docs/exec-plans/active/2026-03-22-ai-strategy-split.md](docs/exec-plans/active/2026-03-22-ai-strategy-split.md): AI 思考傾向を strategy interface へ切り出す最小リファクタ計画
 - [docs/exec-plans/completed/](docs/exec-plans/completed): 完了済み実行計画
 - [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md): 技術的負債の一覧と優先度
 

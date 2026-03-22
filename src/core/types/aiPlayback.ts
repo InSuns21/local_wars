@@ -1,4 +1,4 @@
-import type { AiOperationalObjective } from '@core/engine/aiTurn';
+import type { AiOperationalObjective } from '@core/engine/aiStrategies';
 import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
 
