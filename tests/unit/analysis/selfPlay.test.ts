@@ -24,6 +24,98 @@ describe('selfPlay', () => {
     },
   };
 
+  const basicReport = runSelfPlaySeries({
+    maps: ['plains-clash', 'river-crossing'],
+    matchCount: 4,
+    maxTurns: 6,
+    seed: 10,
+    fogOfWar: true,
+    swapSidesEveryMatch: true,
+    participants,
+  });
+
+  const nightmareReport = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 3,
+    maxTurns: 6,
+    seed: 30,
+    fogOfWar: true,
+    participants: {
+      ...participants,
+      left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
+    },
+  });
+
+  const stallReport = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 3,
+    maxTurns: 8,
+    seed: 50,
+    fogOfWar: true,
+    participants,
+  });
+
+  const fowRecoveryReport = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 3,
+    maxTurns: 16,
+    seed: 510,
+    fogOfWar: true,
+    participants: {
+      left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
+      right: participants.right,
+    },
+  });
+
+  const markdownReport = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 2,
+    maxTurns: 5,
+    seed: 3,
+    fogOfWar: false,
+    participants,
+  });
+
+  const comparisonBefore = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 2,
+    maxTurns: 5,
+    seed: 21,
+    fogOfWar: false,
+    participants,
+  });
+  const comparisonAfter = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 2,
+    maxTurns: 5,
+    seed: 22,
+    fogOfWar: false,
+    participants: {
+      ...participants,
+      left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
+    },
+  });
+
+  const proposalBefore = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 2,
+    maxTurns: 5,
+    seed: 41,
+    fogOfWar: true,
+    participants,
+  });
+  const proposalAfter = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 2,
+    maxTurns: 5,
+    seed: 42,
+    fogOfWar: true,
+    participants: {
+      ...participants,
+      left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
+    },
+  });
+
   it('単一の自己対戦結果を返せる', () => {
     const match = runSelfPlayMatch({
       mapId: 'plains-clash',
@@ -42,146 +134,54 @@ describe('selfPlay', () => {
   });
 
   it('複数試合の集計レポートを返せる', () => {
-    const report = runSelfPlaySeries({
-      maps: ['plains-clash', 'river-crossing'],
-      matchCount: 4,
-      maxTurns: 6,
-      seed: 10,
-      fogOfWar: true,
-      swapSidesEveryMatch: true,
-      participants,
-    });
-
-    expect(report.matches).toHaveLength(4);
-    expect(report.aggregate.totalMatches).toBe(4);
-    expect(report.aggregate.mapBreakdown).toHaveLength(2);
+    expect(basicReport.matches).toHaveLength(4);
+    expect(basicReport.aggregate.totalMatches).toBe(4);
+    expect(basicReport.aggregate.mapBreakdown).toHaveLength(2);
   });
 
   it('nightmare向けの詳細指標をレポートへ含められる', () => {
-    const report = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 4,
-      maxTurns: 6,
-      seed: 30,
-      fogOfWar: true,
-      participants: {
-        ...participants,
-        left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
-      },
-    });
-
-    const left = report.aggregate.participants.left;
+    const left = nightmareReport.aggregate.participants.left;
     expect(left.firstPlayerWinRate).toBeGreaterThanOrEqual(0);
     expect(left.secondPlayerWinRate).toBeGreaterThanOrEqual(0);
     expect(left.responseRates.antiAir.opportunityCount).toBeGreaterThanOrEqual(0);
     expect(left.compositionShares.frontline).toBeGreaterThanOrEqual(0);
     expect(left.mapWinRateSpread).toBeGreaterThanOrEqual(0);
-    const markdown = renderSelfPlayMarkdown(report);
+    const markdown = renderSelfPlayMarkdown(nightmareReport);
     expect(markdown).toContain('nightmare調整向け詳細指標');
     expect(markdown).toContain('対空応答率');
   });
 
   it('stall detectorで停滞指標を集計できる', () => {
-    const report = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 4,
-      maxTurns: 8,
-      seed: 50,
-      fogOfWar: true,
-      participants,
-    });
-
-    const left = report.aggregate.participants.left;
+    const left = stallReport.aggregate.participants.left;
     expect(left.averageInactiveTurnRate).toBeGreaterThanOrEqual(0);
     expect(left.averageLongestInactiveStreak).toBeGreaterThanOrEqual(0);
     expect(left.stallMatchRate).toBeGreaterThanOrEqual(0);
-    expect(report.matches[0].stall.turnActivities.length).toBeGreaterThan(0);
+    expect(stallReport.matches[0].stall.turnActivities.length).toBeGreaterThan(0);
 
-    const markdown = renderSelfPlayMarkdown(report);
+    const markdown = renderSelfPlayMarkdown(stallReport);
     expect(markdown).toContain('平均停滞ターン率');
     expect(markdown).toContain('stall要因候補');
   });
 
   it('FoW付き自己対戦でも全面stallには戻りにくい', () => {
-    const report = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 4,
-      maxTurns: 20,
-      seed: 510,
-      fogOfWar: true,
-      participants: {
-        left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
-        right: participants.right,
-      },
-    });
-
-    expect(report.aggregate.participants.left.stallMatchRate).toBeLessThan(1);
-    expect(report.aggregate.participants.right.stallMatchRate).toBeLessThan(1);
-    expect(report.aggregate.participants.left.averageInactiveTurnRate).toBeLessThan(0.5);
+    expect(fowRecoveryReport.aggregate.participants.left.stallMatchRate).toBeLessThan(1);
+    expect(fowRecoveryReport.aggregate.participants.right.stallMatchRate).toBeLessThan(1);
+    expect(fowRecoveryReport.aggregate.participants.left.averageInactiveTurnRate).toBeLessThan(0.5);
   });
 
   it('Markdownレポートを生成できる', () => {
-    const report = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 2,
-      maxTurns: 5,
-      seed: 3,
-      fogOfWar: false,
-      participants,
-    });
-
-    expect(renderSelfPlayMarkdown(report)).toContain('# AI自己対戦レポート');
+    expect(renderSelfPlayMarkdown(markdownReport)).toContain('# AI自己対戦レポート');
   });
 
   it('前後レポートの差分を生成できる', () => {
-    const before = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 2,
-      maxTurns: 5,
-      seed: 21,
-      fogOfWar: false,
-      participants,
-    });
-    const after = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 2,
-      maxTurns: 5,
-      seed: 22,
-      fogOfWar: false,
-      participants: {
-        ...participants,
-        left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
-      },
-    });
-
-    const comparison = compareSelfPlayReports(before, after);
+    const comparison = compareSelfPlayReports(comparisonBefore, comparisonAfter);
     expect(renderSelfPlayComparisonMarkdown(comparison)).toContain('# AI自己対戦 差分レポート');
     expect(comparison.participants.left.label).toBe('captain-nightmare');
     expect(comparison.participants.left.firstPlayerWinRateDelta).toBeDefined();
   });
 
   it('改善提案Markdownを自動生成できる', () => {
-    const before = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 2,
-      maxTurns: 5,
-      seed: 41,
-      fogOfWar: true,
-      participants,
-    });
-    const after = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 2,
-      maxTurns: 5,
-      seed: 42,
-      fogOfWar: true,
-      participants: {
-        ...participants,
-        left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
-      },
-    });
-
-    const proposal = buildSelfPlayImprovementProposal(after, compareSelfPlayReports(before, after));
+    const proposal = buildSelfPlayImprovementProposal(proposalAfter, compareSelfPlayReports(proposalBefore, proposalAfter));
     const markdown = renderSelfPlayImprovementProposalMarkdown(proposal);
 
     expect(markdown).toContain('# AI自己対戦 改善提案');

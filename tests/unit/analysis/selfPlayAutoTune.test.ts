@@ -21,26 +21,43 @@ describe('selfPlayAutoTune', () => {
     },
   };
 
+  const reportA = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 3,
+    maxTurns: 6,
+    seed: 101,
+    fogOfWar: true,
+    participants,
+  });
+  const reportB = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 3,
+    maxTurns: 6,
+    seed: 102,
+    fogOfWar: true,
+    participants,
+  });
+  const shortReport = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 2,
+    maxTurns: 5,
+    seed: 103,
+    fogOfWar: true,
+    participants,
+  });
+  const stallReport = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 3,
+    maxTurns: 10,
+    seed: 120,
+    fogOfWar: true,
+    participants,
+  });
+
   it('nightmare参加者向けの調整計画を生成できる', () => {
-    const before = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 4,
-      maxTurns: 6,
-      seed: 101,
-      fogOfWar: true,
-      participants,
-    });
-    const after = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 4,
-      maxTurns: 6,
-      seed: 102,
-      fogOfWar: true,
-      participants,
-    });
-    const comparison = compareSelfPlayReports(before, after);
-    const proposal = buildSelfPlayImprovementProposal(after, comparison);
-    const plan = buildNightmareAutotunePlan(after, comparison, proposal);
+    const comparison = compareSelfPlayReports(reportA, reportB);
+    const proposal = buildSelfPlayImprovementProposal(reportB, comparison);
+    const plan = buildNightmareAutotunePlan(reportB, comparison, proposal);
 
     expect(plan.decisions.length).toBeGreaterThanOrEqual(1);
     expect(plan.decisions[0].targetProfile).toBe('captain');
@@ -49,34 +66,18 @@ describe('selfPlayAutoTune', () => {
   });
 
   it('autotune計画をMarkdownと設定TSへ出力できる', () => {
-    const report = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 2,
-      maxTurns: 5,
-      seed: 103,
-      fogOfWar: true,
-      participants,
-    });
-    const proposal = buildSelfPlayImprovementProposal(report);
-    const plan = buildNightmareAutotunePlan(report, undefined, proposal);
+    const proposal = buildSelfPlayImprovementProposal(shortReport);
+    const plan = buildNightmareAutotunePlan(shortReport, undefined, proposal);
 
     expect(renderNightmareAutotuneMarkdown(plan)).toContain('# nightmare autotune 提案');
     expect(serializeNightmareTuningConfig(plan.nextConfig)).toContain('NIGHTMARE_TUNING_CONFIG');
   });
 
   it('強いstallがあるとautotuneを保留して原因調査を優先する', () => {
-    const report = runSelfPlaySeries({
-      maps: ['plains-clash'],
-      matchCount: 4,
-      maxTurns: 12,
-      seed: 120,
-      fogOfWar: true,
-      participants,
-    });
-    const proposal = buildSelfPlayImprovementProposal(report);
-    const plan = buildNightmareAutotunePlan(report, undefined, proposal);
+    const proposal = buildSelfPlayImprovementProposal(stallReport);
+    const plan = buildNightmareAutotunePlan(stallReport, undefined, proposal);
 
-    if (report.aggregate.participants.left.stallMatchRate >= 0.5 || report.aggregate.participants.left.averageInactiveTurnRate >= 0.4) {
+    if (stallReport.aggregate.participants.left.stallMatchRate >= 0.5 || stallReport.aggregate.participants.left.averageInactiveTurnRate >= 0.4) {
       expect(plan.decisions[0]?.adjustments ?? {}).toEqual({});
       expect(plan.decisions[0]?.reasons.join(' ')).toContain('stall detector');
     } else {
