@@ -5,6 +5,4 @@ node_modules
 tmp
 .codex/tmp/
 .codex_tmp_*.json
-docs/generated/self-play-smoke/
-docs/generated/self-play-stall/
-docs/generated/self-play-autotune/
+docs/generated/self-play*/

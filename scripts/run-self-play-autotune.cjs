@@ -72,6 +72,21 @@ const parseBoolean = (value, fallback) => {
 };
 
 const fileTimestamp = () => new Date().toISOString().replace(/[:]/g, '-').replace(/\..+$/, '');
+const formatPercent = (value) => `${Math.round(value * 1000) / 10}%`;
+const printStallSummary = (report) => {
+  console.log('Summary:');
+  console.log(`- avg turns: ${report.aggregate.averageTurns}`);
+  console.log(`- turn limit rate: ${formatPercent(report.aggregate.turnLimitRate)}`);
+  for (const participantId of ['left', 'right']) {
+    const participant = report.aggregate.participants[participantId];
+    console.log(`- ${participant.label}: stall=${formatPercent(participant.stallMatchRate)}, inactive=${formatPercent(participant.averageInactiveTurnRate)}, longest=${participant.averageLongestInactiveStreak}`);
+    if (participant.suspectedStallReasons.length > 0) {
+      console.log(`  reasons: ${participant.suspectedStallReasons.join(' | ')}`);
+    }
+  }
+};
+const isAutotuneBlocked = (plan) =>
+  plan.decisions.length > 0 && plan.decisions.every((decision) => Object.keys(decision.adjustments).length === 0);
 
 const args = parseArgs(process.argv.slice(2));
 const runConfig = {
@@ -115,6 +130,17 @@ fs.writeFileSync(beforeJsonPath, JSON.stringify(beforeReport, null, 2), 'utf8');
 fs.writeFileSync(beforeMdPath, renderSelfPlayMarkdown(beforeReport), 'utf8');
 fs.writeFileSync(beforeProposalMdPath, renderSelfPlayImprovementProposalMarkdown(beforeProposal), 'utf8');
 fs.writeFileSync(autotuneMdPath, autotuneMarkdown, 'utf8');
+
+printStallSummary(beforeReport);
+
+if (isAutotuneBlocked(autotunePlan)) {
+  console.log('Autotune skipped: severe stall detected before tuning.');
+  console.log(`Before JSON: ${path.relative(repoRoot, beforeJsonPath)}`);
+  console.log(`Before Markdown: ${path.relative(repoRoot, beforeMdPath)}`);
+  console.log(`Before Proposal Markdown: ${path.relative(repoRoot, beforeProposalMdPath)}`);
+  console.log(`Autotune Markdown: ${path.relative(repoRoot, autotuneMdPath)}`);
+  process.exit(0);
+}
 
 const previousTuningFile = fs.readFileSync(tuningFilePath, 'utf8');
 fs.writeFileSync(tuningFilePath, serializeNightmareTuningConfig(autotunePlan.nextConfig), 'utf8');

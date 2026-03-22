@@ -347,6 +347,34 @@ describe('aiターンの挙動テスト', () => {
     expect(next.enemyMemory?.p1_bomber?.position).toEqual({ x: 4, y: 4 });
   });
 
+  it('FoWで敵が見えなくても歩兵は中立施設へ前進する', () => {
+    const state = createAiState('normal');
+    state.fogOfWar = true;
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_inf: makeUnit({ id: 'p2_inf', owner: 'P2', type: 'INFANTRY', position: { x: 1, y: 1 } }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['1,1'] = { coord: { x: 1, y: 1 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['2,1'] = { coord: { x: 2, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['3,1'] = { coord: { x: 3, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['4,1'] = { coord: { x: 4, y: 1 }, terrainType: 'PLAIN' };
+    state.map.tiles['5,1'] = { coord: { x: 5, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const movedInfantry = next.units.p2_inf;
+
+    expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'MOVE_UNIT' && log.detail?.includes('p2_inf'))).toBe(true);
+    expect(manhattanDistance(movedInfantry.position, { x: 5, y: 1 })).toBeLessThan(manhattanDistance({ x: 1, y: 1 }, { x: 5, y: 1 }));
+  });
+
   it('記憶した不可視航空脅威を対空生産に使う', () => {
     const state = createAiState('normal');
     state.fogOfWar = true;
@@ -585,4 +613,3 @@ describe('aiターンの挙動テスト', () => {
     expect(result.finalState.map.tiles['2,2']?.owner).toBe('P2');
   });
 });
-

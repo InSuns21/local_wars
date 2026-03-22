@@ -55,6 +55,16 @@ type StrategicEnemyContact = {
   confidence: number;
 };
 
+type AiOperationalPlan = {
+  primaryObjective: 'capture' | 'hq_push' | 'regroup' | 'defend_hq';
+  targetCoord: Coord | null;
+  stagingCoord: Coord | null;
+  supplyAnchorCoord: Coord | null;
+  lowSupplyUnitCount: number;
+  frontlineUnitCount: number;
+  canPressureHqSoon: boolean;
+};
+
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
 const INDIRECT_SUPPORT_UNITS = new Set<UnitType>(['ARTILLERY', 'FLAK_TANK', 'MISSILE_AA']);
 const NAVAL_COMBAT_TYPES = new Set<UnitType>(['DESTROYER', 'SUBMARINE', 'BATTLESHIP', 'CARRIER']);
@@ -544,6 +554,21 @@ const getOwnedFacilityCoords = (state: GameState, owner: PlayerId, terrainTypes:
     .filter((tile) => tile.owner === owner && terrainTypes.includes(tile.terrainType))
     .map((tile) => tile.coord);
 
+const getCapturableTargetCoords = (state: GameState, owner: PlayerId): Coord[] =>
+  Object.values(state.map.tiles)
+    .filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== owner)
+    .map((tile) => tile.coord);
+
+const getNearestCoord = (from: Coord, coords: Coord[]): Coord | null => {
+  if (coords.length === 0) {
+    return null;
+  }
+
+  return coords.reduce((best, coord) =>
+    manhattanDistance(from, coord) < manhattanDistance(from, best) ? coord : best,
+  );
+};
+
 const getNearestCoordDistance = (from: Coord, coords: Coord[]): number | null => {
   if (coords.length === 0) {
     return null;
@@ -560,6 +585,67 @@ const getEnemyTypePressure = (
 ): number => getKnownEnemyUnits(state, viewer).filter(
   (enemy) => threatTypes.has(enemy.type) && manhattanDistance(coord, enemy.position) <= radius,
 ).length;
+
+const buildOperationalPlan = (
+  state: GameState,
+  aiPlayer: PlayerId,
+  difficulty: AiDifficulty,
+  profile: ResolvedAiProfile,
+): AiOperationalPlan => {
+  const ownUnits = getAliveUnits(state, aiPlayer);
+  const ownHq = getOwnHqCoord(state, aiPlayer);
+  const enemyHq = getEnemyHqCoord(state, aiPlayer);
+  const capturableTargets = getCapturableTargetCoords(state, aiPlayer);
+  const capturers = ownUnits.filter((unit) => UNIT_DEFINITIONS[unit.type].canCapture);
+  const frontlineUnits = ownUnits.filter((unit) => FRONTLINE_TYPES.has(unit.type) || HIGH_VALUE_TYPES.has(unit.type));
+  const lowSupplyUnits = ownUnits.filter((unit) => isLowOnSupply(state, unit));
+  const supplyAnchors = getOwnedFacilityCoords(state, aiPlayer, ['HQ', 'CITY', 'FACTORY', 'AIRPORT', 'PORT']);
+  const averageFrontlinePos = frontlineUnits.length === 0
+    ? ownHq
+    : {
+      x: Math.round(frontlineUnits.reduce((sum, unit) => sum + unit.position.x, 0) / frontlineUnits.length),
+      y: Math.round(frontlineUnits.reduce((sum, unit) => sum + unit.position.y, 0) / frontlineUnits.length),
+    };
+  const supplyAnchorCoord = averageFrontlinePos ? getNearestCoord(averageFrontlinePos, supplyAnchors) : ownHq;
+  const stagingCoord = enemyHq && supplyAnchorCoord
+    ? {
+      x: Math.round((enemyHq.x + supplyAnchorCoord.x) / 2),
+      y: Math.round((enemyHq.y + supplyAnchorCoord.y) / 2),
+    }
+    : enemyHq ?? supplyAnchorCoord;
+  const nearestCapturableToHq = enemyHq ? getNearestCoord(enemyHq, capturableTargets) : null;
+  const canPressureHqSoon = Boolean(
+    enemyHq
+    && frontlineUnits.length >= (difficulty === 'nightmare' ? 3 : 2)
+    && capturers.length >= 1
+    && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= 7)
+    && lowSupplyUnits.length <= Math.max(1, Math.floor(ownUnits.length / 4)),
+  );
+
+  let primaryObjective: AiOperationalPlan['primaryObjective'] = 'capture';
+  if (ownHq && getAdaptiveBattleSignals(state, aiPlayer).hqThreat) {
+    primaryObjective = 'defend_hq';
+  } else if (lowSupplyUnits.length >= Math.max(2, Math.ceil(ownUnits.length / 3))) {
+    primaryObjective = 'regroup';
+  } else if (canPressureHqSoon || (profile === 'captain' && enemyHq && capturableTargets.length <= 2)) {
+    primaryObjective = 'hq_push';
+  }
+
+  const targetCoord =
+    primaryObjective === 'defend_hq' ? ownHq
+      : primaryObjective === 'hq_push' ? enemyHq
+        : nearestCapturableToHq ?? getNearestCoord(averageFrontlinePos ?? ownHq ?? { x: 0, y: 0 }, capturableTargets);
+
+  return {
+    primaryObjective,
+    targetCoord,
+    stagingCoord,
+    supplyAnchorCoord,
+    lowSupplyUnitCount: lowSupplyUnits.length,
+    frontlineUnitCount: frontlineUnits.length,
+    canPressureHqSoon,
+  };
+};
 
 const scoreHardForwardPlan = (
   state: GameState,
@@ -804,6 +890,7 @@ const evaluateMoveScore = (
   enemyHq: Coord | null,
   difficulty: AiDifficulty,
   profile: ResolvedAiProfile,
+  plan: AiOperationalPlan,
   rng: () => number,
 ): number => {
   const weights = getProfileWeights(profile, difficulty);
@@ -818,6 +905,13 @@ const evaluateMoveScore = (
   const ownedAirports = getOwnedFacilityCoords(state, unit.owner, ['AIRPORT']);
   const ownedPorts = getOwnedFacilityCoords(state, unit.owner, ['PORT']);
   const ownedCoreFacilities = getOwnedFacilityCoords(state, unit.owner, ['HQ', 'FACTORY', 'AIRPORT']);
+  const capturableTargets = getCapturableTargetCoords(state, unit.owner);
+  const nearestCapturableDist = getNearestCoordDistance(to, capturableTargets);
+  const currentCapturableDist = getNearestCoordDistance(unit.position, capturableTargets);
+  const planTargetDistance = plan.targetCoord ? manhattanDistance(to, plan.targetCoord) : null;
+  const currentPlanTargetDistance = plan.targetCoord ? manhattanDistance(unit.position, plan.targetCoord) : null;
+  const supplyAnchorDistance = plan.supplyAnchorCoord ? manhattanDistance(to, plan.supplyAnchorCoord) : null;
+  const stagingDistance = plan.stagingCoord ? manhattanDistance(to, plan.stagingCoord) : null;
 
   let score = 0;
 
@@ -825,7 +919,40 @@ const evaluateMoveScore = (
     if (tile && CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== unit.owner) {
       score += 24 * weights.captureBias;
     }
+    if (nearestCapturableDist !== null) {
+      score -= nearestCapturableDist * ((state.fogOfWar ?? false) ? 3.2 : 1.6) * weights.captureBias;
+      if ((state.fogOfWar ?? false) && currentCapturableDist !== null && nearestCapturableDist < currentCapturableDist) {
+        score += (currentCapturableDist - nearestCapturableDist) * 6 * weights.captureBias;
+      }
+    }
     score -= hqDist * 1.1 * weights.hqPressureBias;
+  }
+
+  if (plan.primaryObjective === 'hq_push' && planTargetDistance !== null) {
+    score -= planTargetDistance * 2.4 * weights.hqPressureBias;
+    if (currentPlanTargetDistance !== null && planTargetDistance < currentPlanTargetDistance) {
+      score += (currentPlanTargetDistance - planTargetDistance) * 4.5 * weights.hqPressureBias;
+    }
+    if (FRONTLINE_TYPES.has(unit.type) || HIGH_VALUE_TYPES.has(unit.type)) {
+      score += (currentPlanTargetDistance !== null ? Math.max(0, currentPlanTargetDistance - planTargetDistance) : 0) * 6 * weights.hqPressureBias;
+      if (enemyHq && manhattanDistance(to, enemyHq) <= 5) {
+        score += (6 - manhattanDistance(to, enemyHq)) * 3.5 * weights.hqPressureBias;
+      }
+    }
+    if (!UNIT_DEFINITIONS[unit.type].canCapture && stagingDistance !== null) {
+      score -= stagingDistance * 0.9 * weights.hqPressureBias;
+    }
+  }
+
+  if (plan.primaryObjective === 'regroup' && supplyAnchorDistance !== null) {
+    score -= supplyAnchorDistance * 2.2 * weights.supplyBias;
+    if (isFriendlyResupplyTile(state, unit, to)) {
+      score += 10 * weights.supplyBias;
+    }
+  }
+
+  if (plan.primaryObjective === 'defend_hq' && ownHq) {
+    score -= manhattanDistance(to, ownHq) * 2.6 * weights.safetyBias;
   }
 
   const resupplyTarget = UNIT_DEFINITIONS[unit.type].resupplyTarget;
@@ -953,6 +1080,14 @@ const evaluateMoveScore = (
 
       if (tile && (tile.terrainType === 'FOREST' || tile.terrainType === 'CITY' || tile.terrainType === 'MOUNTAIN')) {
         score -= rememberedDistances.filter(({ distance }) => distance <= 2).length * 1.5 * weights.safetyBias;
+      }
+    }
+
+    if (nearestCapturableDist !== null && (!UNIT_DEFINITIONS[unit.type].canCapture || enemies.length === 0)) {
+      const supportBias = SCOUT_TYPES.has(unit.type) ? weights.scoutBias : weights.captureBias;
+      score -= nearestCapturableDist * (SCOUT_TYPES.has(unit.type) ? 2.2 : 1.2) * supportBias;
+      if (currentCapturableDist !== null && nearestCapturableDist < currentCapturableDist) {
+        score += (currentCapturableDist - nearestCapturableDist) * (SCOUT_TYPES.has(unit.type) ? 4.5 : 2.5) * supportBias;
       }
     }
   }
@@ -1091,6 +1226,13 @@ const evaluateMoveScore = (
   if (tile?.owner === unit.owner && tile.terrainType === 'FACTORY' && unit.type !== 'INFANTRY') {
     score -= 2;
   }
+  if ((state.fogOfWar ?? false) && tile?.owner === unit.owner && tile.terrainType === 'FACTORY' && capturableTargets.length > 0) {
+    score -= UNIT_DEFINITIONS[unit.type].canCapture ? 8 * weights.captureBias : 5 * weights.scoutBias;
+  }
+
+  if (plan.primaryObjective === 'hq_push' && plan.lowSupplyUnitCount > 0 && UNIT_DEFINITIONS[unit.type].resupplyTarget && supplyAnchorDistance !== null) {
+    score -= supplyAnchorDistance * 1.8 * weights.supplyBias;
+  }
 
   return score;
 };
@@ -1128,6 +1270,7 @@ const selectBestMove = (
   unit: UnitState,
   difficulty: AiDifficulty,
   profile: ResolvedAiProfile,
+  plan: AiOperationalPlan,
   rng: () => number,
 ): { to: Coord; path: Coord[] } | null => {
   const enemies = getKnownEnemyUnits(state, unit.owner);
@@ -1153,7 +1296,7 @@ const selectBestMove = (
     return best ? { to: best.to, path: best.path } : null;
   }
 
-  const stayScore = evaluateMoveScore(state, unit, unit.position, enemies, enemyHq, difficulty, profile, rng);
+  const stayScore = evaluateMoveScore(state, unit, unit.position, enemies, enemyHq, difficulty, profile, plan, rng);
   const candidates: MoveCandidate[] = [];
   for (const to of reachable) {
     const path = findMovePath({ map: state.map, unit, enemyUnits: enemies, maxMove }, to);
@@ -1161,7 +1304,7 @@ const selectBestMove = (
     candidates.push({
       to,
       path,
-      score: evaluateMoveScore(state, unit, to, enemies, enemyHq, difficulty, profile, rng),
+      score: evaluateMoveScore(state, unit, to, enemies, enemyHq, difficulty, profile, plan, rng),
     });
   }
 
@@ -1201,17 +1344,37 @@ const getCapturableCoastalTargets = (state: GameState, aiPlayer: PlayerId): Coor
     })
     .map((tile) => tile.coord);
 
-const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile: ResolvedAiProfile, difficulty: AiDifficulty): UnitType | null => {
+const selectNormalProductionUnit = (
+  state: GameState,
+  aiPlayer: PlayerId,
+  profile: ResolvedAiProfile,
+  difficulty: AiDifficulty,
+  plan: AiOperationalPlan,
+): UnitType | null => {
   const weights = getProfileWeights(profile, difficulty);
   const canAfford = (type: UnitType): boolean => state.players[aiPlayer].funds >= UNIT_DEFINITIONS[type].cost;
 
   const own = getAliveUnits(state, aiPlayer);
   const ownCounts = countUnitsByType(own);
   const enemyCounts = getEstimatedEnemyCounts(state, aiPlayer);
+  const supportUnits = ownCounts.SUPPLY_TRUCK + ownCounts.AIR_TANKER + ownCounts.SUPPLY_SHIP;
+  const lowSupplyUnits = own.filter((unit) => isLowOnSupply(state, unit)).length;
 
   const capturableCount = Object.values(state.map.tiles).filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== aiPlayer).length;
+  const ownCapturers = ownCounts.INFANTRY + ownCounts.AIR_DEFENSE_INFANTRY;
+  if (plan.primaryObjective === 'hq_push') {
+    if (plan.lowSupplyUnitCount > 0 && supportUnits === 0 && canAfford('SUPPLY_TRUCK') && profile !== 'hunter') {
+      return 'SUPPLY_TRUCK';
+    }
+    if (plan.frontlineUnitCount < 3 && canAfford('TANK')) {
+      return 'TANK';
+    }
+  }
   const targetInfantry = Math.max(2, Math.min(7, Math.round(capturableCount * weights.captureBias)));
   if (canAfford('INFANTRY') && ownCounts.INFANTRY < targetInfantry) return 'INFANTRY';
+  if ((state.fogOfWar ?? false) && capturableCount > 0 && ownCapturers < Math.max(2, Math.ceil(targetInfantry * 0.6)) && canAfford('INFANTRY')) {
+    return 'INFANTRY';
+  }
 
   const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
   if (enemyAirCount > 0) {
@@ -1231,8 +1394,6 @@ const selectNormalProductionUnit = (state: GameState, aiPlayer: PlayerId, profil
     }
   }
 
-  const supportUnits = ownCounts.SUPPLY_TRUCK + ownCounts.AIR_TANKER + ownCounts.SUPPLY_SHIP;
-  const lowSupplyUnits = own.filter((unit) => isLowOnSupply(state, unit)).length;
   if (difficulty === 'nightmare' && (state.fogOfWar ?? false) && ownCounts.RECON === 0 && canAfford('RECON')) {
     return 'RECON';
   }
@@ -1316,6 +1477,7 @@ const selectAiProductionUnitForTile = (
   aiPlayer: PlayerId,
   difficulty: AiDifficulty,
   profile: ResolvedAiProfile,
+  plan: AiOperationalPlan,
   coord: Coord,
 ): UnitType | null => {
   const tile = state.map.tiles[toCoordKey(coord)];
@@ -1357,7 +1519,7 @@ const selectAiProductionUnitForTile = (
     return selectNavalProductionUnit(state, aiPlayer, profile);
   }
 
-  return shouldProduceTransport(state, aiPlayer, tile.terrainType) ?? selectNormalProductionUnit(state, aiPlayer, profile, difficulty);
+  return shouldProduceTransport(state, aiPlayer, tile.terrainType) ?? selectNormalProductionUnit(state, aiPlayer, profile, difficulty, plan);
 };
 
 const produceForAi = (
@@ -1365,6 +1527,7 @@ const produceForAi = (
   aiPlayer: PlayerId,
   difficulty: AiDifficulty,
   profile: ResolvedAiProfile,
+  plan: AiOperationalPlan,
   deps: CommandDeps,
 ): GameState => {
   let working = state;
@@ -1373,7 +1536,7 @@ const produceForAi = (
     .map((tile) => tile.coord);
 
   for (const coord of productionSites) {
-    const affordable = selectAiProductionUnitForTile(working, aiPlayer, difficulty, profile, coord);
+    const affordable = selectAiProductionUnitForTile(working, aiPlayer, difficulty, profile, plan, coord);
     if (!affordable) continue;
 
     const applied = applyCommand(working, {
@@ -1711,6 +1874,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
   const aiPlayer = state.currentPlayerId;
   const initialState = refreshEnemyMemory(state, aiPlayer);
   const resolvedProfile = resolveAiProfile(initialState, options.deps.rng);
+  const operationalPlan = buildOperationalPlan(initialState, aiPlayer, options.difficulty, resolvedProfile);
   const playbackEvents: VisibleAiPlaybackEvent[] = [];
   let working: GameState = {
     ...initialState,
@@ -1759,7 +1923,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
     const movable = working.units[unitId];
     if (!movable || movable.moved) continue;
 
-    const move = selectBestMove(working, movable, options.difficulty, resolvedProfile, options.deps.rng);
+    const move = selectBestMove(working, movable, options.difficulty, resolvedProfile, operationalPlan, options.deps.rng);
     if (move) {
       const moveApplied = applyCommand(working, { type: 'MOVE_UNIT', unitId: movable.id, to: move.to, path: move.path }, options.deps);
       if (moveApplied.result.ok) {
@@ -1808,7 +1972,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
   }
 
   if (!working.winner) {
-    const producedState = produceForAi(working, aiPlayer, options.difficulty, resolvedProfile, options.deps);
+    const producedState = produceForAi(working, aiPlayer, options.difficulty, resolvedProfile, operationalPlan, options.deps);
     playbackEvents.push(...collectSpottedPlaybackEvents(working, producedState));
     working = producedState;
   }

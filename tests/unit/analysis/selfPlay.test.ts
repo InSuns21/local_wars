@@ -102,6 +102,24 @@ describe('selfPlay', () => {
     expect(markdown).toContain('stall要因候補');
   });
 
+  it('FoW付き自己対戦でも全面stallには戻りにくい', () => {
+    const report = runSelfPlaySeries({
+      maps: ['plains-clash'],
+      matchCount: 4,
+      maxTurns: 20,
+      seed: 510,
+      fogOfWar: true,
+      participants: {
+        left: { ...participants.left, difficulty: 'nightmare', label: 'captain-nightmare' },
+        right: participants.right,
+      },
+    });
+
+    expect(report.aggregate.participants.left.stallMatchRate).toBeLessThan(1);
+    expect(report.aggregate.participants.right.stallMatchRate).toBeLessThan(1);
+    expect(report.aggregate.participants.left.averageInactiveTurnRate).toBeLessThan(0.5);
+  });
+
   it('Markdownレポートを生成できる', () => {
     const report = runSelfPlaySeries({
       maps: ['plains-clash'],

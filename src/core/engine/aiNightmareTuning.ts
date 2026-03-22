@@ -30,11 +30,11 @@ export type NightmareTuningConfig = {
 
 export const NIGHTMARE_TUNING_CONFIG: NightmareTuningConfig = {
   version: 1,
-  updatedAt: '2026-03-21T15:38:54.946Z',
+  updatedAt: '2026-03-21T23:43:58.323Z',
   updatedBy: 'selfplay-autotune',
   note: '自己対戦 Phase 3 の限定自動改修で更新。',
   profiles: [
-    { profile: 'captain', multipliers: { captureBias: 1.06, killBias: 1.08, hqPressureBias: 1.11 } },
+    { profile: 'captain', multipliers: { captureBias: 1.124, killBias: 1.166, safetyBias: 1.05, hqPressureBias: 1.232, supplyBias: 1.15, scoutBias: 1.17 } },
   ],
 };
 

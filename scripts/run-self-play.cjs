@@ -67,6 +67,19 @@ const parseBoolean = (value, fallback) => {
 };
 
 const fileTimestamp = () => new Date().toISOString().replace(/[:]/g, '-').replace(/\..+$/, '');
+const formatPercent = (value) => `${Math.round(value * 1000) / 10}%`;
+const printStallSummary = (report) => {
+  console.log('Summary:');
+  console.log(`- avg turns: ${report.aggregate.averageTurns}`);
+  console.log(`- turn limit rate: ${formatPercent(report.aggregate.turnLimitRate)}`);
+  for (const participantId of ['left', 'right']) {
+    const participant = report.aggregate.participants[participantId];
+    console.log(`- ${participant.label}: stall=${formatPercent(participant.stallMatchRate)}, inactive=${formatPercent(participant.averageInactiveTurnRate)}, longest=${participant.averageLongestInactiveStreak}`);
+    if (participant.suspectedStallReasons.length > 0) {
+      console.log(`  reasons: ${participant.suspectedStallReasons.join(' | ')}`);
+    }
+  }
+};
 
 const args = parseArgs(process.argv.slice(2));
 const report = runSelfPlaySeries({
@@ -101,6 +114,7 @@ const reportMdPath = path.join(outputDir, `${prefix}.md`);
 fs.writeFileSync(reportJsonPath, JSON.stringify(report, null, 2), 'utf8');
 fs.writeFileSync(reportMdPath, renderSelfPlayMarkdown(report), 'utf8');
 
+printStallSummary(report);
 console.log(`JSON: ${path.relative(repoRoot, reportJsonPath)}`);
 console.log(`Markdown: ${path.relative(repoRoot, reportMdPath)}`);
 
