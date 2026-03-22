@@ -613,6 +613,47 @@ describe('aiターンの挙動テスト', () => {
     expect(objective).toBe('hq_push');
   });
 
+  it('ground-onlyのcaptainは単発のHQ脅威だけではdefend_hqに寄りすぎない', () => {
+    const state = createInitialGameState({
+      mapId: 'plains-clash',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'nightmare',
+        fogOfWar: true,
+        enableAirUnits: false,
+        enableNavalUnits: false,
+        enableSuicideDrones: false,
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.selectedAiProfile = 'captain';
+    state.units = {
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 5, y: 2 }, moved: true, acted: true }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 2 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+      p1_inf: makeUnit({ id: 'p1_inf', owner: 'P1', type: 'INFANTRY', position: { x: 0, y: 5 } }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+    state.map.tiles['6,1'] = { coord: { x: 6, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+    state.map.tiles['6,3'] = { coord: { x: 6, y: 3 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+    state.map.tiles['5,1'] = { coord: { x: 5, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const objective = getAiOperationalObjectiveForProfile(state, 'P2', 'nightmare', 'captain');
+
+    expect(objective).toBe('hq_push');
+  });
+
   it('defend_hqでは航空脅威があるとMISSILE_AAかFLAK_TANKを優先しやすい', () => {
     const state = createAiState('nightmare');
     state.selectedAiProfile = 'captain';

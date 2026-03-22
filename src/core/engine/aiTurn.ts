@@ -625,6 +625,7 @@ const buildOperationalPlan = (
   const ownHq = getOwnHqCoord(state, aiPlayer);
   const enemyHq = getEnemyHqCoord(state, aiPlayer);
   const enemyCounts = getEstimatedEnemyCounts(state, aiPlayer);
+  const enemyContacts = getEstimatedEnemyContacts(state, aiPlayer);
   const capturableTargets = getCapturableTargetCoords(state, aiPlayer);
   const capturers = ownUnits.filter((unit) => UNIT_DEFINITIONS[unit.type].canCapture);
   const frontlineUnits = ownUnits.filter((unit) => FRONTLINE_TYPES.has(unit.type) || HIGH_VALUE_TYPES.has(unit.type));
@@ -655,6 +656,19 @@ const buildOperationalPlan = (
   const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
   const droneThreatCount = enemyCounts.SUICIDE_DRONE;
   const airDefensePressure = enemyAirCount + droneThreatCount;
+  const hqThreatContacts = ownHq
+    ? enemyContacts.filter((contact) =>
+      contact.confidence >= 0.5
+      && UNIT_DEFINITIONS[contact.type].canCapture
+      && manhattanDistance(contact.position, ownHq) <= HQ_THREAT_DISTANCE)
+    : [];
+  const shouldDefendHq = Boolean(
+    ownHq
+    && (
+      hqThreatContacts.some((contact) => manhattanDistance(contact.position, ownHq) <= 2)
+      || hqThreatContacts.length >= ((groundOnlyBattle && profile === 'captain') ? 2 : 1)
+    ),
+  );
   const canPressureHqSoon = Boolean(
     enemyHq
     && frontlineUnits.length >= Math.max(1, desiredFrontlineCount - 1)
@@ -664,7 +678,7 @@ const buildOperationalPlan = (
   );
 
   let primaryObjective: AiOperationalPlan['primaryObjective'] = 'capture';
-  if (ownHq && getAdaptiveBattleSignals(state, aiPlayer).hqThreat) {
+  if (shouldDefendHq) {
     primaryObjective = 'defend_hq';
   } else if (lowSupplyUnits.length >= Math.max(2, Math.ceil(ownUnits.length / 3))) {
     primaryObjective = 'regroup';
