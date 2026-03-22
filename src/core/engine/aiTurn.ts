@@ -74,6 +74,8 @@ type AiOperationalPlan = {
 
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
 const INDIRECT_SUPPORT_UNITS = new Set<UnitType>(['ARTILLERY', 'FLAK_TANK', 'MISSILE_AA']);
+const GROUND_SUPPORT_INDIRECT_TYPES = new Set<UnitType>(['ARTILLERY']);
+const AIR_DEFENSE_INDIRECT_TYPES = new Set<UnitType>(['FLAK_TANK', 'MISSILE_AA']);
 const NAVAL_COMBAT_TYPES = new Set<UnitType>(['DESTROYER', 'SUBMARINE', 'BATTLESHIP', 'CARRIER']);
 const LIGHT_TRANSPORTABLE_TYPES = new Set<UnitType>(['INFANTRY', 'RECON', 'ANTI_TANK', 'ARTILLERY', 'ANTI_AIR', 'SUPPLY_TRUCK', 'FLAK_TANK', 'MISSILE_AA']);
 const HIGH_VALUE_TYPES = new Set<UnitType>(['HEAVY_TANK', 'BATTLESHIP', 'CARRIER', 'STEALTH_BOMBER', 'BOMBER', 'MISSILE_AA']);
@@ -751,50 +753,72 @@ const scoreIndirectFormation = (
   ownHq: Coord | null,
   plan: AiOperationalPlan,
   frontlineUnits: UnitState[],
+  protectedUnits: UnitState[],
   nearestEnemyDist: number,
   weights: AiProfileWeights,
 ): number => {
   let score = 0;
   const nearestFrontlineDistance = getNearestUnitDistance(to, frontlineUnits);
   const currentFrontlineDistance = getNearestUnitDistance(unit.position, frontlineUnits);
+  const nearestProtectedUnitDistance = getNearestUnitDistance(to, protectedUnits);
 
-  if (nearestFrontlineDistance !== null) {
+  if (GROUND_SUPPORT_INDIRECT_TYPES.has(unit.type) && nearestFrontlineDistance !== null) {
     const idealFrontlineGap = plan.primaryObjective === 'defend_hq' ? 1 : 2;
-    score -= Math.abs(nearestFrontlineDistance - idealFrontlineGap) * 5 * weights.artilleryBias;
+    score -= Math.abs(nearestFrontlineDistance - idealFrontlineGap) * 5.5 * weights.artilleryBias;
     if (currentFrontlineDistance !== null && nearestFrontlineDistance < currentFrontlineDistance && nearestFrontlineDistance >= 1) {
-      score += (currentFrontlineDistance - nearestFrontlineDistance) * 3.5 * weights.artilleryBias;
+      score += (currentFrontlineDistance - nearestFrontlineDistance) * 3.8 * weights.artilleryBias;
     }
     if (nearestFrontlineDistance === 0) {
       score -= 12 * weights.safetyBias;
     }
   }
 
-  if (plan.primaryObjective === 'hq_push' && enemyHq) {
-    const desiredTargetDistance = unit.type === 'ARTILLERY' ? 3 : 4;
+  if (GROUND_SUPPORT_INDIRECT_TYPES.has(unit.type) && plan.primaryObjective === 'hq_push' && enemyHq) {
+    const desiredTargetDistance = 3;
     const targetDistance = manhattanDistance(to, enemyHq);
-    score -= Math.abs(targetDistance - desiredTargetDistance) * 3.2 * weights.artilleryBias;
+    score -= Math.abs(targetDistance - desiredTargetDistance) * 3.4 * weights.artilleryBias;
     if (targetDistance < desiredTargetDistance - 1) {
-      score -= (desiredTargetDistance - targetDistance) * 8 * weights.safetyBias;
+      score -= (desiredTargetDistance - targetDistance) * 9 * weights.safetyBias;
     }
     if (plan.stagingCoord) {
       const stagingDistance = manhattanDistance(to, plan.stagingCoord);
-      score -= stagingDistance * 0.9 * weights.artilleryBias;
+      score -= stagingDistance * 1.1 * weights.artilleryBias;
     }
   }
 
-  if (plan.primaryObjective === 'defend_hq' && ownHq) {
-    const desiredHqDistance = unit.type === 'MISSILE_AA' ? 2 : 1;
+  if (AIR_DEFENSE_INDIRECT_TYPES.has(unit.type) && nearestProtectedUnitDistance !== null) {
+    const idealCoverGap = unit.type === 'MISSILE_AA' ? 2 : 1;
+    score -= Math.abs(nearestProtectedUnitDistance - idealCoverGap) * 5.2 * weights.antiAirBias;
+    if (nearestProtectedUnitDistance === 0) {
+      score -= 8 * weights.safetyBias;
+    }
+  }
+
+  if (AIR_DEFENSE_INDIRECT_TYPES.has(unit.type) && plan.primaryObjective === 'hq_push' && plan.stagingCoord) {
+    const desiredStagingDistance = unit.type === 'MISSILE_AA' ? 2 : 1;
+    const stagingDistance = manhattanDistance(to, plan.stagingCoord);
+    score -= Math.abs(stagingDistance - desiredStagingDistance) * 3.3 * weights.antiAirBias;
+  }
+
+  if (AIR_DEFENSE_INDIRECT_TYPES.has(unit.type) && ownHq) {
+    const desiredHqDistance =
+      plan.primaryObjective === 'defend_hq'
+        ? (unit.type === 'MISSILE_AA' ? 2 : 1)
+        : (unit.type === 'MISSILE_AA' ? 3 : 2);
     const hqDistance = manhattanDistance(to, ownHq);
-    score -= Math.abs(hqDistance - desiredHqDistance) * 3.4 * weights.artilleryBias;
+    score -= Math.abs(hqDistance - desiredHqDistance) * 3.4 * weights.antiAirBias;
     if (hqDistance > desiredHqDistance + 2) {
       score -= (hqDistance - (desiredHqDistance + 2)) * 5 * weights.safetyBias;
     }
   }
 
-  if (unit.type === 'ARTILLERY') {
+  if (GROUND_SUPPORT_INDIRECT_TYPES.has(unit.type)) {
     score -= Math.abs(nearestEnemyDist - 3) * 3.2 * weights.artilleryBias;
-  } else {
-    score -= Math.abs(nearestEnemyDist - 4) * 2.2 * weights.artilleryBias;
+  }
+
+  if (AIR_DEFENSE_INDIRECT_TYPES.has(unit.type)) {
+    const idealEnemyDistance = unit.type === 'MISSILE_AA' ? 4 : 3;
+    score -= Math.abs(nearestEnemyDist - idealEnemyDistance) * 2.8 * weights.antiAirBias;
   }
 
   return score;
@@ -1015,6 +1039,15 @@ const evaluateMoveScore = (
   const frontlineAllies = getAliveUnits(state, unit.owner).filter((ally) =>
     ally.id !== unit.id && (FRONTLINE_TYPES.has(ally.type) || HIGH_VALUE_TYPES.has(ally.type)),
   );
+  const protectedAllies = getAliveUnits(state, unit.owner).filter((ally) =>
+    ally.id !== unit.id
+    && (
+      FRONTLINE_TYPES.has(ally.type)
+      || HIGH_VALUE_TYPES.has(ally.type)
+      || UNIT_DEFINITIONS[ally.type].movementType === 'AIR'
+      || UNIT_DEFINITIONS[ally.type].canCapture
+    ),
+  );
   const ownHq = getOwnHqCoord(state, unit.owner);
   const ownedAirports = getOwnedFacilityCoords(state, unit.owner, ['AIRPORT']);
   const ownedPorts = getOwnedFacilityCoords(state, unit.owner, ['PORT']);
@@ -1074,7 +1107,7 @@ const evaluateMoveScore = (
     if (nearestEnemyDist >= 2 && nearestEnemyDist <= 4) score += 12 * weights.artilleryBias;
     if (nearestEnemyDist === 1) score -= 20 * weights.safetyBias;
     if (nearbyAllies.some((ally) => FRONTLINE_TYPES.has(ally.type))) score += 6 * weights.artilleryBias;
-    score += scoreIndirectFormation(unit, to, enemyHq, ownHq, plan, frontlineAllies, nearestEnemyDist, weights);
+    score += scoreIndirectFormation(unit, to, enemyHq, ownHq, plan, frontlineAllies, protectedAllies, nearestEnemyDist, weights);
   } else if (resupplyTarget) {
     const needyAllies = getUnitsNeedingSupply(state, unit.owner, resupplyTarget);
     if (needyAllies.length > 0) {

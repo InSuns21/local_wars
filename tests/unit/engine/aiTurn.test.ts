@@ -249,6 +249,46 @@ describe('aiターンの挙動テスト', () => {
     expect(afterDistance).toBeLessThan(beforeDistance);
   });
 
+  it('hq_push中のFLAK_TANKは前線カバーの防空ラインに寄りやすい', () => {
+    const state = createAiState('nightmare');
+    state.fogOfWar = true;
+    state.selectedAiProfile = 'captain';
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_flak: makeUnit({ id: 'p2_flak', owner: 'P2', type: 'FLAK_TANK', position: { x: 1, y: 2 } }),
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 5, y: 2 }, moved: true, acted: true }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'TANK', position: { x: 5, y: 3 }, moved: true, acted: true }),
+      p2_tank_3: makeUnit({ id: 'p2_tank_3', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 2 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+    state.map.tiles['6,1'] = { coord: { x: 6, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const beforeFrontlineDistance = Math.min(
+      manhattanDistance(state.units.p2_flak.position, state.units.p2_tank_1.position),
+      manhattanDistance(state.units.p2_flak.position, state.units.p2_tank_2.position),
+    );
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+    const afterFrontlineDistance = Math.min(
+      manhattanDistance(next.units.p2_flak.position, next.units.p2_tank_1.position),
+      manhattanDistance(next.units.p2_flak.position, next.units.p2_tank_2.position),
+    );
+
+    expect(afterFrontlineDistance).toBeLessThan(beforeFrontlineDistance);
+    expect(next.units.p2_flak.position.x).toBeLessThanOrEqual(5);
+  });
+
   it('Normalの生産は脅威ユニットに対して歩兵を優先する', () => {
     const state = createAiState('normal');
     state.players.P2.funds = 10000;
