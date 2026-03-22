@@ -405,6 +405,67 @@ describe('aiターンの挙動テスト', () => {
     expect(next.units.p2_supply.position.x).toBeLessThanOrEqual(6);
   });
 
+  it('hq_pushでは前線維持用の間接支援が不足していると砲兵を生産しやすい', () => {
+    const state = createAiState('nightmare');
+    state.fogOfWar = true;
+    state.selectedAiProfile = 'captain';
+    state.players.P2.funds = UNIT_DEFINITIONS.ARTILLERY.cost;
+    state.units = {
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 5, y: 2 }, moved: true, acted: true }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'TANK', position: { x: 5, y: 3 }, moved: true, acted: true }),
+      p2_tank_3: makeUnit({ id: 'p2_tank_3', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 2 }, moved: true, acted: true }),
+      p2_tank_4: makeUnit({ id: 'p2_tank_4', owner: 'P2', type: 'ANTI_AIR', position: { x: 4, y: 3 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+    state.map.tiles['6,1'] = { coord: { x: 6, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+    expect(produceLogs.some((log) => log.detail?.startsWith('ARTILLERY'))).toBe(true);
+  });
+
+  it('defend_hqでは航空脅威があるとMISSILE_AAかFLAK_TANKを優先しやすい', () => {
+    const state = createAiState('nightmare');
+    state.selectedAiProfile = 'captain';
+    state.players.P2.funds = UNIT_DEFINITIONS.MISSILE_AA.cost;
+    state.units = {
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 2, y: 3 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 3 }, moved: true, acted: true }),
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 2, y: 2 }, moved: true, acted: true }),
+      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 2, y: 0 } }),
+      p1_inf: makeUnit({ id: 'p1_inf', owner: 'P1', type: 'INFANTRY', position: { x: 1, y: 1 } }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+    expect(produceLogs.some((log) => /^(MISSILE_AA|FLAK_TANK)/.test(log.detail ?? ''))).toBe(true);
+  });
+
   it('記憶した不可視航空脅威を対空生産に使う', () => {
     const state = createAiState('normal');
     state.fogOfWar = true;

@@ -66,6 +66,10 @@ type AiOperationalPlan = {
   desiredCapturerCount: number;
   desiredFrontlineCount: number;
   desiredSupportCount: number;
+  desiredIndirectSupportCount: number;
+  desiredArtilleryCount: number;
+  desiredFlakTankCount: number;
+  desiredMissileAaCount: number;
 };
 
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
@@ -598,6 +602,7 @@ const buildOperationalPlan = (
   const ownUnits = getAliveUnits(state, aiPlayer);
   const ownHq = getOwnHqCoord(state, aiPlayer);
   const enemyHq = getEnemyHqCoord(state, aiPlayer);
+  const enemyCounts = getEstimatedEnemyCounts(state, aiPlayer);
   const capturableTargets = getCapturableTargetCoords(state, aiPlayer);
   const capturers = ownUnits.filter((unit) => UNIT_DEFINITIONS[unit.type].canCapture);
   const frontlineUnits = ownUnits.filter((unit) => FRONTLINE_TYPES.has(unit.type) || HIGH_VALUE_TYPES.has(unit.type));
@@ -622,6 +627,9 @@ const buildOperationalPlan = (
     ? (difficulty === 'nightmare' ? 4 : 3)
     : 2;
   const desiredSupportCount = lowSupplyUnits.length > 0 || (enemyHq && frontlineUnits.length >= 3) ? 1 : 0;
+  const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
+  const droneThreatCount = enemyCounts.SUICIDE_DRONE;
+  const airDefensePressure = enemyAirCount + droneThreatCount;
   const canPressureHqSoon = Boolean(
     enemyHq
     && frontlineUnits.length >= desiredFrontlineCount - 1
@@ -639,6 +647,31 @@ const buildOperationalPlan = (
     primaryObjective = 'hq_push';
   }
 
+  const desiredIndirectSupportCount =
+    primaryObjective === 'hq_push'
+      ? Math.max(1, Math.min(3, Math.ceil(frontlineUnits.length / 2)))
+      : primaryObjective === 'defend_hq'
+        ? Math.max(1, Math.min(3, Math.ceil(Math.max(frontlineUnits.length, 2) / 2)))
+        : 0;
+  const desiredArtilleryCount =
+    primaryObjective === 'hq_push'
+      ? Math.max(1, desiredIndirectSupportCount - (airDefensePressure > 0 ? 1 : 0))
+      : primaryObjective === 'defend_hq'
+        ? Math.max(0, desiredIndirectSupportCount - Math.max(1, Math.ceil(airDefensePressure / 2)))
+        : 0;
+  const desiredMissileAaCount =
+    primaryObjective === 'defend_hq'
+      ? Math.max(airDefensePressure > 0 ? 1 : 0, enemyAirCount >= 2 ? 1 : 0)
+      : primaryObjective === 'hq_push'
+        ? (enemyAirCount >= 2 ? 1 : 0)
+        : 0;
+  const desiredFlakTankCount =
+    primaryObjective === 'defend_hq'
+      ? Math.max(droneThreatCount > 0 ? 1 : 0, enemyAirCount > 0 ? 1 : 0)
+      : primaryObjective === 'hq_push'
+        ? (airDefensePressure > 0 ? 1 : 0)
+        : 0;
+
   const targetCoord =
     primaryObjective === 'defend_hq' ? ownHq
       : primaryObjective === 'hq_push' ? enemyHq
@@ -655,6 +688,10 @@ const buildOperationalPlan = (
     desiredCapturerCount,
     desiredFrontlineCount,
     desiredSupportCount,
+    desiredIndirectSupportCount,
+    desiredArtilleryCount,
+    desiredFlakTankCount,
+    desiredMissileAaCount,
   };
 };
 
@@ -1447,6 +1484,7 @@ const selectNormalProductionUnit = (
   const ownCounts = countUnitsByType(own);
   const enemyCounts = getEstimatedEnemyCounts(state, aiPlayer);
   const supportUnits = ownCounts.SUPPLY_TRUCK + ownCounts.AIR_TANKER + ownCounts.SUPPLY_SHIP;
+  const indirectSupportUnits = ownCounts.ARTILLERY + ownCounts.FLAK_TANK + ownCounts.MISSILE_AA;
   const lowSupplyUnits = own.filter((unit) => isLowOnSupply(state, unit)).length;
 
   const capturableCount = Object.values(state.map.tiles).filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== aiPlayer).length;
@@ -1460,6 +1498,18 @@ const selectNormalProductionUnit = (
     }
     if (ownCapturers < plan.desiredCapturerCount && canAfford('INFANTRY')) {
       return 'INFANTRY';
+    }
+    if (indirectSupportUnits < plan.desiredIndirectSupportCount) {
+      if (ownCounts.ARTILLERY < plan.desiredArtilleryCount && canAfford('ARTILLERY')) return 'ARTILLERY';
+      if (ownCounts.FLAK_TANK < plan.desiredFlakTankCount && canAfford('FLAK_TANK')) return 'FLAK_TANK';
+      if (ownCounts.MISSILE_AA < plan.desiredMissileAaCount && canAfford('MISSILE_AA')) return 'MISSILE_AA';
+    }
+  }
+  if (plan.primaryObjective === 'defend_hq') {
+    if (ownCounts.MISSILE_AA < plan.desiredMissileAaCount && canAfford('MISSILE_AA')) return 'MISSILE_AA';
+    if (ownCounts.FLAK_TANK < plan.desiredFlakTankCount && canAfford('FLAK_TANK')) return 'FLAK_TANK';
+    if (indirectSupportUnits < plan.desiredIndirectSupportCount && ownCounts.ARTILLERY < plan.desiredArtilleryCount && canAfford('ARTILLERY')) {
+      return 'ARTILLERY';
     }
   }
   const targetInfantry = Math.max(2, Math.min(7, Math.round(capturableCount * weights.captureBias)));
