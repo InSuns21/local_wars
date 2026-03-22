@@ -986,6 +986,7 @@ const evaluateMoveScore = (
 
     if (plan.supplyAnchorCoord) {
       const anchorDistance = manhattanDistance(to, plan.supplyAnchorCoord);
+      const currentAnchorDistance = manhattanDistance(unit.position, plan.supplyAnchorCoord);
       if (plan.primaryObjective === 'hq_push') {
         const supportGoal = plan.stagingCoord ?? plan.targetCoord;
         if (supportGoal) {
@@ -996,6 +997,15 @@ const evaluateMoveScore = (
         if (routeLength > 0) {
           const idealAdvance = Math.max(1, Math.floor(routeLength * 0.45));
           score -= Math.abs(anchorDistance - idealAdvance) * 1.6 * weights.supplyBias;
+          const overextendedThreshold = idealAdvance + 2;
+          score -= Math.max(0, anchorDistance - overextendedThreshold) * 7.5 * weights.supplyBias;
+          if (currentAnchorDistance > overextendedThreshold) {
+            if (anchorDistance < currentAnchorDistance) {
+              score += (currentAnchorDistance - anchorDistance) * 5.5 * weights.supplyBias;
+            } else if (anchorDistance > currentAnchorDistance) {
+              score -= (anchorDistance - currentAnchorDistance) * 4.5 * weights.supplyBias;
+            }
+          }
         } else {
           score -= anchorDistance * 1.5 * weights.supplyBias;
         }
@@ -1299,6 +1309,46 @@ const chooseMoveCandidate = (
   return nearBest[0] ?? candidates[0] ?? null;
 };
 
+const chooseSupportRetreatCandidate = (
+  state: GameState,
+  unit: UnitState,
+  candidates: MoveCandidate[],
+  plan: AiOperationalPlan,
+): MoveCandidate | null => {
+  const resupplyTarget = UNIT_DEFINITIONS[unit.type].resupplyTarget;
+  if (!resupplyTarget || plan.primaryObjective !== 'hq_push' || !plan.supplyAnchorCoord || !plan.targetCoord) {
+    return null;
+  }
+
+  const currentAnchorDistance = manhattanDistance(unit.position, plan.supplyAnchorCoord);
+  const routeLength = manhattanDistance(plan.supplyAnchorCoord, plan.targetCoord);
+  const idealAdvance = Math.max(1, Math.floor(routeLength * 0.45));
+  const overextendedThreshold = idealAdvance + 2;
+  if (currentAnchorDistance <= overextendedThreshold) {
+    return null;
+  }
+
+  const adjacentNeedyAllies = getUnitsNeedingSupply(state, unit.owner, resupplyTarget)
+    .filter((ally) => ally.id !== unit.id)
+    .some((ally) => manhattanDistance(unit.position, ally.position) === 1);
+  if (adjacentNeedyAllies) {
+    return null;
+  }
+
+  const retreatCandidates = candidates
+    .filter((candidate) => manhattanDistance(candidate.to, plan.supplyAnchorCoord!) < currentAnchorDistance)
+    .sort((left, right) => {
+      const leftDistance = manhattanDistance(left.to, plan.supplyAnchorCoord!);
+      const rightDistance = manhattanDistance(right.to, plan.supplyAnchorCoord!);
+      if (leftDistance !== rightDistance) {
+        return leftDistance - rightDistance;
+      }
+      return right.score - left.score;
+    });
+
+  return retreatCandidates[0] ?? null;
+};
+
 const selectBestMove = (
   state: GameState,
   unit: UnitState,
@@ -1340,6 +1390,11 @@ const selectBestMove = (
       path,
       score: evaluateMoveScore(state, unit, to, enemies, enemyHq, difficulty, profile, plan, rng),
     });
+  }
+
+  const forcedRetreat = chooseSupportRetreatCandidate(state, unit, candidates, plan);
+  if (forcedRetreat) {
+    return { to: forcedRetreat.to, path: forcedRetreat.path };
   }
 
   const best = chooseMoveCandidate(candidates, difficulty, rng);

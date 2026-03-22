@@ -42,6 +42,8 @@ describe('selfPlay metrics', () => {
     expect(markdown).toContain('nightmare調整向け詳細指標');
     expect(markdown).toContain('対空応答率');
     expect(markdown).toContain('objective内訳');
+    expect(markdown).toContain('objective要約');
+    expect(markdown).toContain('dominant');
   });
 
   it('stall detectorで停滞指標を集計できる', () => {

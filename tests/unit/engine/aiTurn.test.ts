@@ -375,6 +375,36 @@ describe('aiターンの挙動テスト', () => {
     expect(manhattanDistance(movedInfantry.position, { x: 5, y: 1 })).toBeLessThan(manhattanDistance({ x: 1, y: 1 }, { x: 5, y: 1 }));
   });
 
+  it('hq_push中の補給車は前線に出過ぎても敵HQ側へ踏み込み続けにくい', () => {
+    const state = createAiState('nightmare');
+    state.fogOfWar = true;
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_supply: makeUnit({ id: 'p2_supply', owner: 'P2', type: 'SUPPLY_TRUCK', position: { x: 6, y: 2 }, fuel: 30, ammo: 0 }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'TANK', position: { x: 5, y: 3 }, fuel: 30, ammo: 3, moved: true, acted: true }),
+      p2_tank_3: makeUnit({ id: 'p2_tank_3', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 3 }, fuel: 40, ammo: 3, moved: true, acted: true }),
+      p2_tank_4: makeUnit({ id: 'p2_tank_4', owner: 'P2', type: 'TANK', position: { x: 5, y: 4 }, fuel: 30, ammo: 3, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = undefined;
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+
+    expect(next.units.p2_supply).toBeDefined();
+    expect(next.units.p2_supply.position.x).toBeLessThanOrEqual(6);
+  });
+
   it('記憶した不可視航空脅威を対空生産に使う', () => {
     const state = createAiState('normal');
     state.fogOfWar = true;

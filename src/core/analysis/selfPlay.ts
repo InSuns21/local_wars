@@ -969,6 +969,8 @@ export const compareSelfPlayReports = (before: SelfPlaySeriesReport, after: Self
 const formatPercent = (value: number): string => `${round(value * 100, 1)}%`;
 const formatResponseRate = (summary: SelfPlayResponseRateSummary): string => `${formatPercent(summary.rate)} (${summary.opportunityCount}試合)`;
 const formatNullableTurn = (value: number | null): string => value == null ? '該当なし' : `${value}ターン`;
+const formatObjectiveSummary = (participant: SelfPlayParticipantAggregate): string =>
+  `dominant ${participant.dominantObjective} / capture ${formatPercent(participant.objectiveRates.capture)} / hq_push ${formatPercent(participant.objectiveRates.hq_push)} / regroup ${formatPercent(participant.objectiveRates.regroup)} / defend_hq ${formatPercent(participant.objectiveRates.defend_hq)}`;
 
 const renderParticipantAggregateLines = (participant: SelfPlayParticipantAggregate): string[] => [
   `### ${participant.label}`,
@@ -1011,6 +1013,8 @@ export const renderSelfPlayMarkdown = (report: SelfPlaySeriesReport): string => 
   `- ターン上限率: ${formatPercent(report.aggregate.turnLimitRate)}`,
   `- ${report.aggregate.participants.left.label} 勝率: ${formatPercent(report.aggregate.participants.left.winRate)}`,
   `- ${report.aggregate.participants.right.label} 勝率: ${formatPercent(report.aggregate.participants.right.winRate)}`,
+  `- ${report.aggregate.participants.left.label} objective要約: ${formatObjectiveSummary(report.aggregate.participants.left)}`,
+  `- ${report.aggregate.participants.right.label} objective要約: ${formatObjectiveSummary(report.aggregate.participants.right)}`,
   '',
   '## nightmare調整向け詳細指標',
   ...renderParticipantAggregateLines(report.aggregate.participants.left),
