@@ -1,3 +1,4 @@
+import type { AiOperationalObjective } from '@core/engine/aiTurn';
 import type { Coord } from '@core/types/game';
 import type { GameState } from '@core/types/state';
 
@@ -21,4 +22,5 @@ export type AiTurnResult = {
   finalState: GameState;
   playbackEvents: VisibleAiPlaybackEvent[];
   turnStartSummary: AiTurnSummaryItem[];
+  operationalObjective?: AiOperationalObjective;
 };

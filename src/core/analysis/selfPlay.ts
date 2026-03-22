@@ -2,7 +2,7 @@ import type { GameSettings, SelectedAiProfile } from '../../app/types';
 import { SKIRMISH_MAP_METAS } from '../../data/skirmishMaps';
 import { createInitialGameState } from '../engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '../engine/unitDefinitions';
-import { getAiOperationalObjectiveForProfile, type AiDifficulty, resolveAiProfile, runAiTurn } from '../engine/aiTurn';
+import { type AiDifficulty, runAiTurnWithPlayback } from '../engine/aiTurn';
 import type { VictoryReason } from '../rules/victory';
 import type { PlayerId } from '../types/game';
 import type { GameState } from '../types/state';
@@ -476,22 +476,6 @@ const buildTurnState = (
   resolvedAiProfile: resolvedAiProfile ?? undefined,
 });
 
-const inferOperationalObjective = (
-  state: GameState,
-  side: SelfPlaySide,
-  difficulty: AiDifficulty,
-  participant: SelfPlayParticipantConfig,
-  resolvedAiProfile: ResolvedSelfPlayProfile | null,
-  rng: () => number,
-): SelfPlayObjective => {
-  const analysisState = buildTurnState(state, side, participant, resolvedAiProfile);
-  const profile = resolvedAiProfile
-    ?? (participant.selectedAiProfile === 'auto' || participant.selectedAiProfile === 'adaptive'
-      ? resolveAiProfile(analysisState, rng)
-      : participant.selectedAiProfile);
-  return getAiOperationalObjectiveForProfile(analysisState, side, difficulty, profile);
-};
-
 const buildParticipantMatchSummary = (
   state: GameState,
   initialState: GameState,
@@ -651,25 +635,26 @@ export const runSelfPlayMatch = (
     mapId: config.mapId,
     settings: createSelfPlaySettings(config.fogOfWar, config.baseSettings),
   });
-  let state = JSON.parse(JSON.stringify(initialState)) as GameState;
+  let state = initialState;
   const turnActivities: SelfPlayTurnActivity[] = [];
 
   while (!state.winner && state.turn <= config.maxTurns) {
     const side = state.currentPlayerId;
     const participantId = sideAssignments[side];
     const participant = config.participants[participantId];
-    const objective = inferOperationalObjective(state, side, participant.difficulty, participant, resolvedProfiles[participantId], rng);
     const previousActionLogLength = state.actionLog.length;
-    const nextState = runAiTurn(buildTurnState(state, side, participant, resolvedProfiles[participantId]), {
+    const aiResult = runAiTurnWithPlayback(buildTurnState(state, side, participant, resolvedProfiles[participantId]), {
       difficulty: participant.difficulty,
       deps: { rng },
     });
+    const nextState = aiResult.finalState;
     resolvedProfiles[participantId] = (nextState.resolvedAiProfile ?? null) as ResolvedSelfPlayProfile | null;
+    const objective = aiResult.operationalObjective ?? 'capture';
     const newEntries = nextState.actionLog
       .slice(previousActionLogLength)
       .filter((entry) => entry.turn === state.turn && entry.playerId === side);
     turnActivities.push(summarizeTurnActivity(newEntries, state.turn, side, participantId, objective));
-    state = JSON.parse(JSON.stringify(nextState)) as GameState;
+    state = nextState;
   }
 
   const leftSide: SelfPlaySide = sideAssignments.P1 === 'left' ? 'P1' : 'P2';

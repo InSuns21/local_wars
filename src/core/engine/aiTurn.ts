@@ -2154,7 +2154,7 @@ const collectCapturePlaybackEvents = (
 
 export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions): AiTurnResult => {
   if (state.winner) {
-    return { finalState: state, playbackEvents: [], turnStartSummary: [] };
+    return { finalState: state, playbackEvents: [], turnStartSummary: [], operationalObjective: undefined };
   }
 
   const aiPlayer = state.currentPlayerId;
@@ -2278,6 +2278,7 @@ export const runAiTurnWithPlayback = (state: GameState, options: AiTurnOptions):
     finalState: working,
     playbackEvents,
     turnStartSummary: buildTurnStartSummary(initialState, working, playbackEvents),
+    operationalObjective: operationalPlan.primaryObjective,
   };
 };
 
