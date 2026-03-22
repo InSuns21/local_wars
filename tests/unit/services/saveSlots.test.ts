@@ -48,6 +48,8 @@ describe('saveSlots 正規化', () => {
       aiDifficulty: 'nightmare' as const,
       humanPlayerSide: 'P2' as const,
       fogOfWar: true,
+      enableAirUnits: false,
+      enableNavalUnits: false,
       initialFunds: 16000,
     };
     const nightmareState = createInitialGameState({
@@ -80,6 +82,10 @@ describe('saveSlots 正規化', () => {
     expect(slot?.settings.humanPlayerSide).toBe('P2');
     expect(slot?.state.humanPlayerSide).toBe('P2');
     expect(slot?.settings.fogOfWar).toBe(true);
+    expect(slot?.settings.enableAirUnits).toBe(false);
+    expect(slot?.settings.enableNavalUnits).toBe(false);
+    expect(slot?.state.enableAirUnits).toBe(false);
+    expect(slot?.state.enableNavalUnits).toBe(false);
   });
 
   it('不正なデータは空スロット扱いにする', () => {

@@ -29,6 +29,33 @@ describe('selfPlay metrics', () => {
     participants: nightmareParticipants,
   });
 
+  const groundOnlyObjectiveReport = runSelfPlaySeries({
+    maps: ['plains-clash'],
+    matchCount: 1,
+    maxTurns: 14,
+    seed: 20260322,
+    fogOfWar: true,
+    baseSettings: {
+      enableAirUnits: false,
+      enableNavalUnits: false,
+      enableSuicideDrones: false,
+    },
+    participants: {
+      left: {
+        id: 'left',
+        label: 'captain-nightmare-ground',
+        difficulty: 'nightmare',
+        selectedAiProfile: 'captain',
+      },
+      right: {
+        id: 'right',
+        label: 'hunter-nightmare-ground',
+        difficulty: 'nightmare',
+        selectedAiProfile: 'hunter',
+      },
+    },
+  });
+
   it('nightmare向けの詳細指標をレポートへ含められる', () => {
     const left = nightmareReport.aggregate.participants.left;
     expect(left.firstPlayerWinRate).toBeGreaterThanOrEqual(0);
@@ -62,5 +89,13 @@ describe('selfPlay metrics', () => {
     expect(fowRecoveryReport.aggregate.participants.left.stallMatchRate).toBeLessThan(1);
     expect(fowRecoveryReport.aggregate.participants.right.stallMatchRate).toBeLessThan(1);
     expect(fowRecoveryReport.aggregate.participants.left.averageInactiveTurnRate).toBeLessThan(0.5);
+  });
+
+  it('ground-onlyのobjective推定でもhq_pushを拾える', () => {
+    const objectives = groundOnlyObjectiveReport.matches[0].stall.turnActivities
+      .filter((activity) => activity.side === 'P2')
+      .map((activity) => activity.objective);
+
+    expect(objectives).toContain('hq_push');
   });
 });

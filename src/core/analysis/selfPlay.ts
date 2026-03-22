@@ -2,12 +2,11 @@ import type { GameSettings, SelectedAiProfile } from '../../app/types';
 import { SKIRMISH_MAP_METAS } from '../../data/skirmishMaps';
 import { createInitialGameState } from '../engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '../engine/unitDefinitions';
-import { type AiDifficulty, runAiTurn } from '../engine/aiTurn';
+import { getAiOperationalObjectiveForProfile, type AiDifficulty, resolveAiProfile, runAiTurn } from '../engine/aiTurn';
 import type { VictoryReason } from '../rules/victory';
 import type { PlayerId } from '../types/game';
 import type { GameState } from '../types/state';
 import type { UnitState, UnitType } from '../types/unit';
-import { manhattanDistance } from '../../utils/coord';
 
 export type SelfPlayParticipantId = 'left' | 'right';
 export type SelfPlaySide = PlayerId;
@@ -477,53 +476,20 @@ const buildTurnState = (
   resolvedAiProfile: resolvedAiProfile ?? undefined,
 });
 
-const getHqCoord = (state: GameState, owner: PlayerId): { x: number; y: number } | null =>
-  Object.values(state.map.tiles).find((tile) => tile.terrainType === 'HQ' && tile.owner === owner)?.coord ?? null;
-
-const getCapturableTargetCount = (state: GameState, owner: PlayerId): number =>
-  Object.values(state.map.tiles).filter((tile) => CAPTURABLE_TERRAINS.has(tile.terrainType) && tile.owner !== owner).length;
-
 const inferOperationalObjective = (
   state: GameState,
   side: SelfPlaySide,
   difficulty: AiDifficulty,
+  participant: SelfPlayParticipantConfig,
+  resolvedAiProfile: ResolvedSelfPlayProfile | null,
+  rng: () => number,
 ): SelfPlayObjective => {
-  const ownUnits = getAliveUnits(state, side);
-  const enemySide: SelfPlaySide = side === 'P1' ? 'P2' : 'P1';
-  const ownHq = getHqCoord(state, side);
-  const enemyHq = getHqCoord(state, enemySide);
-  const capturers = ownUnits.filter((unit) => UNIT_DEFINITIONS[unit.type].canCapture).length;
-  const frontline = ownUnits.filter((unit) => FRONTLINE_TYPES.has(unit.type) || HIGH_VALUE_TYPES.has(unit.type));
-  const lowSupply = ownUnits.filter((unit) => {
-    const def = UNIT_DEFINITIONS[unit.type];
-    const lowFuel = def.maxFuel > 0 && unit.fuel <= Math.max(1, Math.ceil(def.maxFuel * 0.25));
-    const lowAmmo = def.maxAmmo > 0 && unit.ammo <= Math.max(1, Math.ceil(def.maxAmmo * 0.25));
-    return lowFuel || lowAmmo;
-  }).length;
-
-  if (ownHq) {
-    const nearbyEnemy = getAliveUnits(state, enemySide).some((unit) =>
-      UNIT_DEFINITIONS[unit.type].canCapture && manhattanDistance(unit.position, ownHq) <= 3);
-    if (nearbyEnemy) {
-      return 'defend_hq';
-    }
-  }
-
-  if (lowSupply >= Math.max(2, Math.ceil(ownUnits.length / 3))) {
-    return 'regroup';
-  }
-
-  if (
-    enemyHq
-    && frontline.length >= (difficulty === 'nightmare' ? 3 : 2)
-    && capturers >= 1
-    && frontline.some((unit) => manhattanDistance(unit.position, enemyHq) <= 7)
-    && lowSupply <= Math.max(1, Math.floor(ownUnits.length / 4))
-  ) {
-    return 'hq_push';
-  }
-
-  return getCapturableTargetCount(state, side) > 0 ? 'capture' : 'hq_push';
+  const analysisState = buildTurnState(state, side, participant, resolvedAiProfile);
+  const profile = resolvedAiProfile
+    ?? (participant.selectedAiProfile === 'auto' || participant.selectedAiProfile === 'adaptive'
+      ? resolveAiProfile(analysisState, rng)
+      : participant.selectedAiProfile);
+  return getAiOperationalObjectiveForProfile(analysisState, side, difficulty, profile);
 };
 
 const buildParticipantMatchSummary = (
@@ -692,7 +658,7 @@ export const runSelfPlayMatch = (
     const side = state.currentPlayerId;
     const participantId = sideAssignments[side];
     const participant = config.participants[participantId];
-    const objective = inferOperationalObjective(state, side, participant.difficulty);
+    const objective = inferOperationalObjective(state, side, participant.difficulty, participant, resolvedProfiles[participantId], rng);
     const previousActionLogLength = state.actionLog.length;
     const nextState = runAiTurn(buildTurnState(state, side, participant, resolvedProfiles[participantId]), {
       difficulty: participant.difficulty,

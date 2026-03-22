@@ -14,6 +14,7 @@ import type { AiTurnResult, AiTurnSummaryItem, VisibleAiPlaybackEvent } from '@c
 import type { UnitState, UnitType } from '@core/types/unit';
 
 export type AiDifficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
+export type AiOperationalObjective = 'capture' | 'hq_push' | 'regroup' | 'defend_hq';
 
 const isAdvancedAiDifficulty = (difficulty: AiDifficulty): boolean => difficulty === 'hard' || difficulty === 'nightmare';
 const isNightmareAiDifficulty = (difficulty: AiDifficulty): boolean => difficulty === 'nightmare';
@@ -56,7 +57,7 @@ type StrategicEnemyContact = {
 };
 
 type AiOperationalPlan = {
-  primaryObjective: 'capture' | 'hq_push' | 'regroup' | 'defend_hq';
+  primaryObjective: AiOperationalObjective;
   targetCoord: Coord | null;
   stagingCoord: Coord | null;
   supplyAnchorCoord: Coord | null;
@@ -271,6 +272,11 @@ const isLowOnSupply = (state: GameState, unit: UnitState): boolean => {
   return fuelLow || ammoLow;
 };
 
+const isGroundOnlyBattle = (state: GameState): boolean =>
+  !(state.enableAirUnits ?? true)
+  && !(state.enableNavalUnits ?? true)
+  && !(state.enableSuicideDrones ?? false);
+
 const getEnemyHqCoord = (state: GameState, aiPlayer: PlayerId): Coord | null => {
   const enemy = getEnemyPlayer(aiPlayer);
   const hq = Object.values(state.map.tiles).find((tile) => tile.terrainType === 'HQ' && tile.owner === enemy);
@@ -321,6 +327,13 @@ const shouldProduceTransport = (state: GameState, aiPlayer: PlayerId, terrainTyp
 
   const remoteTurns = getNearestRemoteCaptureTargetDistance(state, aiPlayer);
   if (remoteTurns === null) return null;
+
+  if (isGroundOnlyBattle(state)) {
+    const ownTransports = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'TRANSPORT_TRUCK').length;
+    if (terrainType !== 'FACTORY') return null;
+    if (remoteTurns < 5) return null;
+    if (ownTransports >= 1) return null;
+  }
 
   if (terrainType === 'AIRPORT' && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.TRANSPORT_HELI.cost) {
     return 'TRANSPORT_HELI';
@@ -632,8 +645,11 @@ const buildOperationalPlan = (
     : enemyHq ?? supplyAnchorCoord;
   const nearestCapturableToHq = enemyHq ? getNearestCoord(enemyHq, capturableTargets) : null;
   const desiredCapturerCount = Math.max(2, Math.min(6, capturableTargets.length === 0 ? 2 : Math.ceil(capturableTargets.length / 2)));
+  const groundOnlyBattle = isGroundOnlyBattle(state);
   const desiredFrontlineCount = enemyHq
-    ? (difficulty === 'nightmare' ? 4 : 3)
+    ? groundOnlyBattle
+      ? (difficulty === 'nightmare' ? 3 : 2)
+      : (difficulty === 'nightmare' ? 4 : 3)
     : 2;
   const desiredSupportCount = lowSupplyUnits.length > 0 || (enemyHq && frontlineUnits.length >= 3) ? 1 : 0;
   const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
@@ -641,9 +657,9 @@ const buildOperationalPlan = (
   const airDefensePressure = enemyAirCount + droneThreatCount;
   const canPressureHqSoon = Boolean(
     enemyHq
-    && frontlineUnits.length >= desiredFrontlineCount - 1
+    && frontlineUnits.length >= Math.max(1, desiredFrontlineCount - 1)
     && capturers.length >= Math.max(1, Math.min(2, desiredCapturerCount - 1))
-    && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= 7)
+    && frontlineUnits.some((unit) => manhattanDistance(unit.position, enemyHq) <= (groundOnlyBattle ? 8 : 7))
     && lowSupplyUnits.length <= Math.max(1, Math.floor(ownUnits.length / 4)),
   );
 
@@ -652,7 +668,7 @@ const buildOperationalPlan = (
     primaryObjective = 'defend_hq';
   } else if (lowSupplyUnits.length >= Math.max(2, Math.ceil(ownUnits.length / 3))) {
     primaryObjective = 'regroup';
-  } else if (canPressureHqSoon || (profile === 'captain' && enemyHq && capturableTargets.length <= 2)) {
+  } else if (canPressureHqSoon || (profile === 'captain' && enemyHq && capturableTargets.length <= (groundOnlyBattle ? 3 : 2))) {
     primaryObjective = 'hq_push';
   }
 
@@ -703,6 +719,13 @@ const buildOperationalPlan = (
     desiredMissileAaCount,
   };
 };
+
+export const getAiOperationalObjectiveForProfile = (
+  state: GameState,
+  aiPlayer: PlayerId,
+  difficulty: AiDifficulty,
+  profile: ResolvedAiProfile,
+): AiOperationalObjective => buildOperationalPlan(state, aiPlayer, difficulty, profile).primaryObjective;
 
 const scoreHardForwardPlan = (
   state: GameState,

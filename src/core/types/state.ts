@@ -46,6 +46,8 @@ export type GameState = {
   hpRecoveryFactory?: number;
   hpRecoveryHq?: number;
   maxSupplyCharges?: number;
+  enableAirUnits?: boolean;
+  enableNavalUnits?: boolean;
   enableSuicideDrones?: boolean;
   maxFactoryDronesPerFactory?: number;
   droneInterceptionChancePercent?: number;

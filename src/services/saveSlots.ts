@@ -81,8 +81,10 @@ const normalizeSettings = (value: unknown): GameSettings => {
       typeof value.maxSupplyCharges === 'number'
         ? value.maxSupplyCharges
         : DEFAULT_SETTINGS.maxSupplyCharges,
-    enableAirUnits: true,
-    enableNavalUnits: true,
+    enableAirUnits:
+      typeof value.enableAirUnits === 'boolean' ? value.enableAirUnits : DEFAULT_SETTINGS.enableAirUnits,
+    enableNavalUnits:
+      typeof value.enableNavalUnits === 'boolean' ? value.enableNavalUnits : DEFAULT_SETTINGS.enableNavalUnits,
     enableFuelSupply:
       typeof value.enableFuelSupply === 'boolean' ? value.enableFuelSupply : DEFAULT_SETTINGS.enableFuelSupply,
     enableAmmoSupply:
@@ -170,6 +172,8 @@ const normalizeState = (state: GameState, settings: GameSettings): GameState => 
   hpRecoveryFactory: state.hpRecoveryFactory ?? settings.hpRecoveryFactory,
   hpRecoveryHq: state.hpRecoveryHq ?? settings.hpRecoveryHq,
   maxSupplyCharges: state.maxSupplyCharges ?? settings.maxSupplyCharges,
+  enableAirUnits: state.enableAirUnits ?? settings.enableAirUnits,
+  enableNavalUnits: state.enableNavalUnits ?? settings.enableNavalUnits,
   units: Object.fromEntries(
     Object.entries(state.units).map(([id, unit]) => [id, normalizeUnit(unit, state.maxSupplyCharges ?? settings.maxSupplyCharges)]),
   ),

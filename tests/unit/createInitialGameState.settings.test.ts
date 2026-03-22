@@ -98,6 +98,8 @@ describe('createInitialGameState 設定反映', () => {
     });
 
     expect(state.fogOfWar).toBe(true);
+    expect(state.enableAirUnits).toBe(true);
+    expect(state.enableNavalUnits).toBe(true);
     expect(state.enableFuelSupply).toBe(false);
     expect(state.enableAmmoSupply).toBe(false);
     expect(state.maxSupplyCharges).toBe(6);
@@ -108,4 +110,3 @@ describe('createInitialGameState 設定反映', () => {
     expect(state.carrierCargoHpRecoveryAtPort).toBe(3);
   });
 });
-

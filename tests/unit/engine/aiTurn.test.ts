@@ -1,5 +1,5 @@
 ﻿import { manhattanDistance } from '@/utils/coord';
-import { runAiTurn, runAiTurnWithPlayback } from '@core/engine/aiTurn';
+import { getAiOperationalObjectiveForProfile, runAiTurn, runAiTurnWithPlayback } from '@core/engine/aiTurn';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import type { GameState } from '@core/types/state';
@@ -309,6 +309,46 @@ describe('aiターンの挙動テスト', () => {
     expect(produceLogs.some((log) => log.detail?.startsWith('INFANTRY'))).toBe(true);
   });
 
+  it('ground-onlyでは輸送車の生産をかなり抑える', () => {
+    const state = createInitialGameState({
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'nightmare',
+        enableAirUnits: false,
+        enableNavalUnits: false,
+        enableSuicideDrones: false,
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.selectedAiProfile = 'captain';
+    state.players.P2.funds = UNIT_DEFINITIONS.TRANSPORT_TRUCK.cost;
+    state.units = {
+      p2_inf: makeUnit({
+        id: 'p2_inf',
+        owner: 'P2',
+        type: 'INFANTRY',
+        position: { x: 1, y: 1 },
+        moved: true,
+        acted: true,
+      }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['1,1'] = { coord: { x: 1, y: 1 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['3,1'] = { coord: { x: 3, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+    expect(produceLogs.some((log) => log.detail?.startsWith('TRANSPORT_TRUCK'))).toBe(false);
+  });
+
   it('Normalの生産は敵航空ユニットがいる場合に対空を優先する', () => {
     const state = createAiState('normal');
     state.players.P2.funds = 9000;
@@ -531,6 +571,46 @@ describe('aiターンの挙動テスト', () => {
     const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
 
     expect(produceLogs.some((log) => log.detail?.startsWith('ARTILLERY'))).toBe(true);
+  });
+
+  it('ground-onlyでは緩和条件でhq_pushへ移行しやすい', () => {
+    const state = createInitialGameState({
+      mapId: 'plains-clash',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'nightmare',
+        fogOfWar: true,
+        enableAirUnits: false,
+        enableNavalUnits: false,
+        enableSuicideDrones: false,
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.selectedAiProfile = 'captain';
+    state.units = {
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 5, y: 2 }, moved: true, acted: true }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 2 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+    state.map.tiles['6,1'] = { coord: { x: 6, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+    state.map.tiles['6,3'] = { coord: { x: 6, y: 3 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+    state.map.tiles['5,1'] = { coord: { x: 5, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const objective = getAiOperationalObjectiveForProfile(state, 'P2', 'nightmare', 'captain');
+
+    expect(objective).toBe('hq_push');
   });
 
   it('defend_hqでは航空脅威があるとMISSILE_AAかFLAK_TANKを優先しやすい', () => {
