@@ -545,6 +545,13 @@ const estimateIncomingThreat = (state: GameState, unit: UnitState, coord: Coord)
 const getNearbyAllies = (state: GameState, unit: UnitState, coord: Coord): UnitState[] =>
   getAliveUnits(state, unit.owner).filter((ally) => ally.id !== unit.id && manhattanDistance(ally.position, coord) <= 2);
 
+const getNearestUnitDistance = (coord: Coord, units: UnitState[]): number | null => {
+  if (units.length === 0) {
+    return null;
+  }
+  return Math.min(...units.map((unit) => manhattanDistance(coord, unit.position)));
+};
+
 const getUnitsNeedingSupply = (state: GameState, owner: PlayerId, resupplyTarget: 'GROUND' | 'AIR' | 'NAVAL'): UnitState[] =>
   getAliveUnits(state, owner).filter((unit) => {
     const movementType = UNIT_DEFINITIONS[unit.type].movementType;
@@ -732,6 +739,62 @@ const scoreHardForwardPlan = (
 
   if (isLowOnSupply(state, unit) && !isFriendlyResupplyTile(state, unit, coord) && UNIT_DEFINITIONS[unit.type].resupplyTarget) {
     score -= 6 * weights.supplyBias;
+  }
+
+  return score;
+};
+
+const scoreIndirectFormation = (
+  unit: UnitState,
+  to: Coord,
+  enemyHq: Coord | null,
+  ownHq: Coord | null,
+  plan: AiOperationalPlan,
+  frontlineUnits: UnitState[],
+  nearestEnemyDist: number,
+  weights: AiProfileWeights,
+): number => {
+  let score = 0;
+  const nearestFrontlineDistance = getNearestUnitDistance(to, frontlineUnits);
+  const currentFrontlineDistance = getNearestUnitDistance(unit.position, frontlineUnits);
+
+  if (nearestFrontlineDistance !== null) {
+    const idealFrontlineGap = plan.primaryObjective === 'defend_hq' ? 1 : 2;
+    score -= Math.abs(nearestFrontlineDistance - idealFrontlineGap) * 5 * weights.artilleryBias;
+    if (currentFrontlineDistance !== null && nearestFrontlineDistance < currentFrontlineDistance && nearestFrontlineDistance >= 1) {
+      score += (currentFrontlineDistance - nearestFrontlineDistance) * 3.5 * weights.artilleryBias;
+    }
+    if (nearestFrontlineDistance === 0) {
+      score -= 12 * weights.safetyBias;
+    }
+  }
+
+  if (plan.primaryObjective === 'hq_push' && enemyHq) {
+    const desiredTargetDistance = unit.type === 'ARTILLERY' ? 3 : 4;
+    const targetDistance = manhattanDistance(to, enemyHq);
+    score -= Math.abs(targetDistance - desiredTargetDistance) * 3.2 * weights.artilleryBias;
+    if (targetDistance < desiredTargetDistance - 1) {
+      score -= (desiredTargetDistance - targetDistance) * 8 * weights.safetyBias;
+    }
+    if (plan.stagingCoord) {
+      const stagingDistance = manhattanDistance(to, plan.stagingCoord);
+      score -= stagingDistance * 0.9 * weights.artilleryBias;
+    }
+  }
+
+  if (plan.primaryObjective === 'defend_hq' && ownHq) {
+    const desiredHqDistance = unit.type === 'MISSILE_AA' ? 2 : 1;
+    const hqDistance = manhattanDistance(to, ownHq);
+    score -= Math.abs(hqDistance - desiredHqDistance) * 3.4 * weights.artilleryBias;
+    if (hqDistance > desiredHqDistance + 2) {
+      score -= (hqDistance - (desiredHqDistance + 2)) * 5 * weights.safetyBias;
+    }
+  }
+
+  if (unit.type === 'ARTILLERY') {
+    score -= Math.abs(nearestEnemyDist - 3) * 3.2 * weights.artilleryBias;
+  } else {
+    score -= Math.abs(nearestEnemyDist - 4) * 2.2 * weights.artilleryBias;
   }
 
   return score;
@@ -949,6 +1012,9 @@ const evaluateMoveScore = (
   const threat = estimateIncomingThreat(state, unit, to);
   const terrainDefense = getDefenseModifierAt(state, movedUnit, to);
   const nearbyAllies = getNearbyAllies(state, unit, to);
+  const frontlineAllies = getAliveUnits(state, unit.owner).filter((ally) =>
+    ally.id !== unit.id && (FRONTLINE_TYPES.has(ally.type) || HIGH_VALUE_TYPES.has(ally.type)),
+  );
   const ownHq = getOwnHqCoord(state, unit.owner);
   const ownedAirports = getOwnedFacilityCoords(state, unit.owner, ['AIRPORT']);
   const ownedPorts = getOwnedFacilityCoords(state, unit.owner, ['PORT']);
@@ -1008,6 +1074,7 @@ const evaluateMoveScore = (
     if (nearestEnemyDist >= 2 && nearestEnemyDist <= 4) score += 12 * weights.artilleryBias;
     if (nearestEnemyDist === 1) score -= 20 * weights.safetyBias;
     if (nearbyAllies.some((ally) => FRONTLINE_TYPES.has(ally.type))) score += 6 * weights.artilleryBias;
+    score += scoreIndirectFormation(unit, to, enemyHq, ownHq, plan, frontlineAllies, nearestEnemyDist, weights);
   } else if (resupplyTarget) {
     const needyAllies = getUnitsNeedingSupply(state, unit.owner, resupplyTarget);
     if (needyAllies.length > 0) {

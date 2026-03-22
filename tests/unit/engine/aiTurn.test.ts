@@ -193,6 +193,62 @@ describe('aiターンの挙動テスト', () => {
     expect(manhattanDistance(artillery.position, enemy.position)).toBeGreaterThanOrEqual(2);
   });
 
+  it('hq_push中の砲兵は前線を追い越しにくい', () => {
+    const state = createAiState('nightmare');
+    state.fogOfWar = true;
+    state.selectedAiProfile = 'captain';
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_art: makeUnit({ id: 'p2_art', owner: 'P2', type: 'ARTILLERY', position: { x: 2, y: 2 } }),
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 5, y: 2 }, moved: true, acted: true }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'TANK', position: { x: 5, y: 3 }, moved: true, acted: true }),
+      p2_tank_3: makeUnit({ id: 'p2_tank_3', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 2 }, moved: true, acted: true }),
+      p2_tank_4: makeUnit({ id: 'p2_tank_4', owner: 'P2', type: 'ANTI_AIR', position: { x: 4, y: 3 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+    state.map.tiles['6,1'] = { coord: { x: 6, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+
+    expect(next.units.p2_art).toBeDefined();
+    expect(next.units.p2_art.position.x).toBeLessThanOrEqual(5);
+  });
+
+  it('defend_hq中のMISSILE_AAはHQ周辺の防衛ラインに寄りやすい', () => {
+    const state = createAiState('nightmare');
+    state.selectedAiProfile = 'captain';
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_missile: makeUnit({ id: 'p2_missile', owner: 'P2', type: 'MISSILE_AA', position: { x: 5, y: 2 } }),
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 2, y: 2 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 2, y: 3 }, moved: true, acted: true }),
+      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 2, y: 0 } }),
+      p1_inf: makeUnit({ id: 'p1_inf', owner: 'P1', type: 'INFANTRY', position: { x: 1, y: 1 } }),
+    };
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+
+    const beforeDistance = manhattanDistance(state.units.p2_missile.position, { x: 0, y: 2 });
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+    const afterDistance = manhattanDistance(next.units.p2_missile.position, { x: 0, y: 2 });
+
+    expect(afterDistance).toBeLessThan(beforeDistance);
+  });
+
   it('Normalの生産は脅威ユニットに対して歩兵を優先する', () => {
     const state = createAiState('normal');
     state.players.P2.funds = 10000;
