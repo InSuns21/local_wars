@@ -2,7 +2,7 @@ import type { GameSettings, SelectedAiProfile } from '../../app/types';
 import { SKIRMISH_MAP_METAS } from '../../data/skirmishMaps';
 import { createInitialGameState } from '../engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '../engine/unitDefinitions';
-import { type AiDifficulty, runAiTurnWithPlayback } from '../engine/aiTurn';
+import { type AiDifficulty, runAiTurnAnalysis } from '../engine/aiTurn';
 import type { VictoryReason } from '../rules/victory';
 import type { PlayerId } from '../types/game';
 import type { GameState } from '../types/state';
@@ -643,7 +643,7 @@ export const runSelfPlayMatch = (
     const participantId = sideAssignments[side];
     const participant = config.participants[participantId];
     const previousActionLogLength = state.actionLog.length;
-    const aiResult = runAiTurnWithPlayback(buildTurnState(state, side, participant, resolvedProfiles[participantId]), {
+    const aiResult = runAiTurnAnalysis(buildTurnState(state, side, participant, resolvedProfiles[participantId]), {
       difficulty: participant.difficulty,
       deps: { rng },
     });

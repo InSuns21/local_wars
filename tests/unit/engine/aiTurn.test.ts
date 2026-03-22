@@ -1,5 +1,5 @@
 ﻿import { manhattanDistance } from '@/utils/coord';
-import { getAiOperationalObjectiveForProfile, runAiTurn, runAiTurnWithPlayback } from '@core/engine/aiTurn';
+import { getAiOperationalObjectiveForProfile, runAiTurn, runAiTurnAnalysis, runAiTurnWithPlayback } from '@core/engine/aiTurn';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import type { GameState } from '@core/types/state';
@@ -654,6 +654,48 @@ describe('aiターンの挙動テスト', () => {
     expect(objective).toBe('hq_push');
   });
 
+  it('hunterは偵察車を必要数以上は量産しにくい', () => {
+    const state = createInitialGameState({
+      mapId: 'plains-clash',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'nightmare',
+        fogOfWar: true,
+        enableAirUnits: false,
+        enableNavalUnits: false,
+        enableSuicideDrones: false,
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.selectedAiProfile = 'hunter';
+    state.players.P2.funds = UNIT_DEFINITIONS.RECON.cost;
+    state.units = {
+      p2_recon_1: makeUnit({ id: 'p2_recon_1', owner: 'P2', type: 'RECON', position: { x: 2, y: 2 }, moved: true, acted: true }),
+      p2_recon_2: makeUnit({ id: 'p2_recon_2', owner: 'P2', type: 'RECON', position: { x: 3, y: 2 }, moved: true, acted: true }),
+      p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 5, y: 2 }, moved: true, acted: true }),
+      p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'ANTI_TANK', position: { x: 4, y: 2 }, moved: true, acted: true }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 4, y: 1 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 1 }, moved: true, acted: true }),
+    };
+
+    for (const tile of Object.values(state.map.tiles)) {
+      if (['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT'].includes(tile.terrainType)) {
+        tile.owner = 'P2';
+        tile.capturePoints = 20;
+      }
+    }
+
+    state.map.tiles['0,2'] = { coord: { x: 0, y: 2 }, terrainType: 'HQ', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['1,2'] = { coord: { x: 1, y: 2 }, terrainType: 'FACTORY', owner: 'P2', capturePoints: 20 };
+    state.map.tiles['7,2'] = { coord: { x: 7, y: 2 }, terrainType: 'HQ', owner: 'P1', capturePoints: 20 };
+    state.map.tiles['6,1'] = { coord: { x: 6, y: 1 }, terrainType: 'CITY', owner: undefined, capturePoints: 20 };
+
+    const next = runAiTurn(state, { difficulty: 'nightmare', deps: { rng: () => 0.5 } });
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+    expect(produceLogs.some((log) => log.detail?.startsWith('RECON'))).toBe(false);
+  });
+
   it('defend_hqでは航空脅威があるとMISSILE_AAかFLAK_TANKを優先しやすい', () => {
     const state = createAiState('nightmare');
     state.selectedAiProfile = 'captain';
@@ -899,6 +941,21 @@ describe('aiターンの挙動テスト', () => {
     const expectedObjective = getAiOperationalObjectiveForProfile(state, 'P2', 'nightmare', 'captain');
 
     expect(result.operationalObjective).toBe(expectedObjective);
+  });
+
+  it('analysis経路ではplaybackイベントを生成しない', () => {
+    const state = createAiState('normal');
+    state.players.P2.funds = 0;
+    state.units = {
+      p2_tank: makeUnit({ id: 'p2_tank', owner: 'P2', type: 'TANK', position: { x: 2, y: 2 } }),
+      p1_tank: makeUnit({ id: 'p1_tank', owner: 'P1', type: 'TANK', position: { x: 2, y: 1 } }),
+    };
+
+    const result = runAiTurnAnalysis(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+
+    expect(result.playbackEvents).toEqual([]);
+    expect(result.turnStartSummary).toEqual([]);
+    expect(result.finalState.units.p1_tank.hp).toBeLessThan(10);
   });
 
   it('可視移動では1マスずつ再生イベントを生成する', () => {
