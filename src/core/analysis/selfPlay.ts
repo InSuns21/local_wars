@@ -249,6 +249,11 @@ export type SelfPlayImprovementProposal = {
   targets: SelfPlayImprovementProposalTarget[];
 };
 
+type SelfPlayParticipantRuntimeStats = {
+  producedUnitTypes: UnitCountMap;
+  propertyCaptureCount: number;
+};
+
 const CAPTURABLE_TERRAINS = new Set(['CITY', 'FACTORY', 'HQ', 'AIRPORT', 'PORT']);
 const IMPORTANT_ACTIONS = new Set(['CAPTURE', 'ATTACK', 'ATTACK_TILE', 'FOG_ENCOUNTER', 'PRODUCE_UNIT']);
 const ACTIVE_ACTIONS = new Set(['MOVE_UNIT', 'CAPTURE', 'ATTACK', 'ATTACK_TILE', 'FOG_ENCOUNTER', 'PRODUCE_UNIT']);
@@ -350,14 +355,27 @@ const extractProducedUnitType = (detail?: string): UnitType | null => {
   return match ? (match[1] as UnitType) : null;
 };
 
-const countProducedUnitTypes = (state: GameState, playerId: PlayerId): UnitCountMap => state.actionLog
-  .filter((entry) => entry.playerId === playerId && entry.action === 'PRODUCE_UNIT')
-  .reduce<UnitCountMap>((counts, entry) => {
-    const unitType = extractProducedUnitType(entry.detail);
-    if (!unitType) return counts;
-    counts[unitType] = (counts[unitType] ?? 0) + 1;
-    return counts;
-  }, {});
+const createRuntimeStats = (): SelfPlayParticipantRuntimeStats => ({
+  producedUnitTypes: {},
+  propertyCaptureCount: 0,
+});
+
+const addUnitCount = (counts: UnitCountMap, unitType: UnitType, amount = 1): void => {
+  counts[unitType] = (counts[unitType] ?? 0) + amount;
+};
+
+const appendMajorEvents = (
+  majorEvents: Array<{ turn: number; playerId: PlayerId; action: string; detail?: string }>,
+  entries: GameState['actionLog'],
+): void => {
+  for (const entry of entries) {
+    if (!IMPORTANT_ACTIONS.has(entry.action)) continue;
+    majorEvents.push({ turn: entry.turn, playerId: entry.playerId, action: entry.action, detail: entry.detail });
+    if (majorEvents.length > 8) {
+      majorEvents.splice(0, majorEvents.length - 8);
+    }
+  }
+};
 
 const calculateCompositionShares = (units: UnitState[]): SelfPlayCompositionShares => {
   if (units.length === 0) return EMPTY_COMPOSITION;
@@ -483,15 +501,17 @@ const buildParticipantMatchSummary = (
   participant: SelfPlayParticipantConfig,
   resolvedAiProfile: ResolvedSelfPlayProfile | null,
   turnActivities: SelfPlayTurnActivity[],
+  runtimeStats: SelfPlayParticipantRuntimeStats,
+  opponentRuntimeStats: SelfPlayParticipantRuntimeStats,
 ): SelfPlayParticipantMatchSummary => {
-  const enemySide: SelfPlaySide = side === 'P1' ? 'P2' : 'P1';
   const initialOwnUnits = getAliveUnits(initialState, side);
   const finalOwnUnits = getAliveUnits(state, side);
+  const enemySide: SelfPlaySide = side === 'P1' ? 'P2' : 'P1';
   const initialEnemyUnits = getAliveUnits(initialState, enemySide);
   const finalEnemyUnits = getAliveUnits(state, enemySide);
-  const ownProducedUnitTypes = countProducedUnitTypes(state, side);
-  const enemyProducedUnitTypes = countProducedUnitTypes(state, enemySide);
-  const propertyCaptureCount = state.actionLog.filter((entry) => entry.playerId === side && entry.action === 'CAPTURE').length;
+  const ownProducedUnitTypes = runtimeStats.producedUnitTypes;
+  const enemyProducedUnitTypes = opponentRuntimeStats.producedUnitTypes;
+  const propertyCaptureCount = runtimeStats.propertyCaptureCount;
   const productionCount = sumUnitCounts(ownProducedUnitTypes);
   const ownHighValueAvailable = countUnitsInSet(initialOwnUnits, HIGH_VALUE_TYPES) + sumCountsInSet(ownProducedUnitTypes, HIGH_VALUE_TYPES);
   const enemyHighValueAvailable = countUnitsInSet(initialEnemyUnits, HIGH_VALUE_TYPES) + sumCountsInSet(enemyProducedUnitTypes, HIGH_VALUE_TYPES);
@@ -630,6 +650,11 @@ export const runSelfPlayMatch = (
     ? { P1: 'right', P2: 'left' }
     : { P1: 'left', P2: 'right' };
   const resolvedProfiles: Record<SelfPlayParticipantId, ResolvedSelfPlayProfile | null> = { left: null, right: null };
+  const runtimeStats: Record<SelfPlayParticipantId, SelfPlayParticipantRuntimeStats> = {
+    left: createRuntimeStats(),
+    right: createRuntimeStats(),
+  };
+  const majorEvents: Array<{ turn: number; playerId: PlayerId; action: string; detail?: string }> = [];
 
   const initialState = createInitialGameState({
     mapId: config.mapId,
@@ -653,6 +678,18 @@ export const runSelfPlayMatch = (
     const newEntries = nextState.actionLog
       .slice(previousActionLogLength)
       .filter((entry) => entry.turn === state.turn && entry.playerId === side);
+    appendMajorEvents(majorEvents, newEntries);
+    for (const entry of newEntries) {
+      if (entry.action === 'CAPTURE') {
+        runtimeStats[participantId].propertyCaptureCount += 1;
+      }
+      if (entry.action === 'PRODUCE_UNIT') {
+        const producedUnitType = extractProducedUnitType(entry.detail);
+        if (producedUnitType) {
+          addUnitCount(runtimeStats[participantId].producedUnitTypes, producedUnitType);
+        }
+      }
+    }
     turnActivities.push(summarizeTurnActivity(newEntries, state.turn, side, participantId, objective));
     state = nextState;
   }
@@ -660,8 +697,8 @@ export const runSelfPlayMatch = (
   const leftSide: SelfPlaySide = sideAssignments.P1 === 'left' ? 'P1' : 'P2';
   const rightSide: SelfPlaySide = sideAssignments.P1 === 'right' ? 'P1' : 'P2';
   const participantSummaries = {
-    left: buildParticipantMatchSummary(state, initialState, leftSide, config.participants.left, resolvedProfiles.left, turnActivities),
-    right: buildParticipantMatchSummary(state, initialState, rightSide, config.participants.right, resolvedProfiles.right, turnActivities),
+    left: buildParticipantMatchSummary(state, initialState, leftSide, config.participants.left, resolvedProfiles.left, turnActivities, runtimeStats.left, runtimeStats.right),
+    right: buildParticipantMatchSummary(state, initialState, rightSide, config.participants.right, resolvedProfiles.right, turnActivities, runtimeStats.right, runtimeStats.left),
   };
 
   return {
@@ -676,10 +713,7 @@ export const runSelfPlayMatch = (
     winnerSide: state.winner,
     victoryReason: state.winner ? (state.victoryReason ?? null) : 'TURN_LIMIT',
     participants: participantSummaries,
-    majorEvents: state.actionLog
-      .filter((entry) => IMPORTANT_ACTIONS.has(entry.action))
-      .slice(-8)
-      .map((entry) => ({ turn: entry.turn, playerId: entry.playerId, action: entry.action, detail: entry.detail })),
+    majorEvents,
     stall: buildMatchStallSummary(turnActivities, participantSummaries),
   };
 };
