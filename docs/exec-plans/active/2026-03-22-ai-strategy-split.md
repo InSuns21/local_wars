@@ -46,9 +46,14 @@
 - default fallback strategy
 
 ### Future phases
-- Move `drone_swarm / stealth_strike` into strategy modules
 - Move profile-specific move/attack hooks into smaller evaluators
 - Split difficulty policy from profile strategy
+
+## Scope of Phase 3
+- Extract `drone_swarm` and `stealth_strike` production hooks into strategy modules
+- Move `drone_swarm` move bonus logic behind strategy move scoring
+- Normalize `STEALTH_BOMBER / SUBMARINE` positioning as unit-type behavior instead of profile checks
+- Keep adaptive profile resolution and profile availability checks in the shared engine for now
 
 ## Minimal interface
 
@@ -88,7 +93,7 @@ type AiStrategy = {
 ## Validation
 - `npm run typecheck`
 - `npm run test:changed`
-- Confirm `captain / hunter / turtle / sieger` strategy behavior still matches current expectations
+- Confirm `captain / hunter / turtle / sieger / drone_swarm / stealth_strike` strategy behavior still matches current expectations
 
 ## Notes
 - This phase is intentionally small

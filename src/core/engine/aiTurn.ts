@@ -1408,6 +1408,29 @@ const evaluateMoveScore = (
   score += strategy.getMoveScoreBonus?.({
     state,
     unit,
+    to,
+    enemies,
+    ownHq,
+    nearestStrikeTargetDistance: (() => {
+      const strikeTargets = enemies.filter(
+        (enemy) => DRONE_STRIKE_TARGETS.has(enemy.type) || HIGH_VALUE_TYPES.has(enemy.type) || UNIT_DEFINITIONS[enemy.type].movementType === 'AIR',
+      );
+      return strikeTargets.length > 0
+        ? Math.min(...strikeTargets.map((enemy) => manhattanDistance(to, enemy.position)))
+        : null;
+    })(),
+    droneCounterPressure: getEnemyTypePressure(state, unit.owner, to, DRONE_COUNTER_TYPES, 3),
+    hasFrontlineOrCounterDroneNearby: nearbyAllies.some((ally) => FRONTLINE_TYPES.has(ally.type) || ally.type === 'COUNTER_DRONE_AA'),
+    nearestDroneThreatDistance: (() => {
+      const droneThreats = enemies.filter(
+        (enemy) => enemy.type === 'SUICIDE_DRONE' || UNIT_DEFINITIONS[enemy.type].movementType === 'AIR',
+      );
+      return droneThreats.length > 0
+        ? Math.min(...droneThreats.map((enemy) => manhattanDistance(to, enemy.position)))
+        : null;
+    })(),
+    nearestCoreDistance: getNearestCoordDistance(to, ownedCoreFacilities),
+    hasHighValueOrDroneAllyNearby: nearbyAllies.some((ally) => ally.type === 'SUICIDE_DRONE' || HIGH_VALUE_TYPES.has(ally.type)),
     nearbyAllies,
     hasFrontlineNearby: nearbyAllies.some((ally) => FRONTLINE_TYPES.has(ally.type)),
     hasIndirectSupportNearby: nearbyAllies.some((ally) => INDIRECT_SUPPORT_UNITS.has(ally.type)),
@@ -1415,6 +1438,14 @@ const evaluateMoveScore = (
     isFrontlineUnit: FRONTLINE_TYPES.has(unit.type),
     tileOwnerIsUnitOwner: tile?.owner === unit.owner,
     tileIsCapturableTerrain: Boolean(tile && CAPTURABLE_TERRAINS.has(tile.terrainType)),
+    weights: {
+      droneBias: weights.droneBias,
+      antiAirBias: weights.antiAirBias,
+      safetyBias: weights.safetyBias,
+      stealthBias: weights.stealthBias,
+      navalBias: weights.navalBias,
+      supplyBias: weights.supplyBias,
+    },
   }) ?? 0;
 
   if (UNIT_DEFINITIONS[unit.type].movementType === 'NAVAL') {
@@ -1427,47 +1458,7 @@ const evaluateMoveScore = (
     }
   }
 
-  if (profile === 'drone_swarm') {
-    if (unit.type === 'SUICIDE_DRONE') {
-      const strikeTargets = enemies.filter(
-        (enemy) => DRONE_STRIKE_TARGETS.has(enemy.type) || HIGH_VALUE_TYPES.has(enemy.type) || UNIT_DEFINITIONS[enemy.type].movementType === 'AIR',
-      );
-      const nearestStrikeTarget = strikeTargets.length > 0
-        ? Math.min(...strikeTargets.map((enemy) => manhattanDistance(to, enemy.position)))
-        : null;
-      if (nearestStrikeTarget !== null) {
-        score -= nearestStrikeTarget * 3 * weights.droneBias;
-      }
-      score -= getEnemyTypePressure(state, unit.owner, to, DRONE_COUNTER_TYPES, 3) * 9 * weights.safetyBias;
-      if (nearbyAllies.some((ally) => FRONTLINE_TYPES.has(ally.type) || ally.type === 'COUNTER_DRONE_AA')) {
-        score += 5 * weights.droneBias;
-      }
-    }
-
-    if (unit.type === 'COUNTER_DRONE_AA') {
-      const droneThreats = enemies.filter(
-        (enemy) => enemy.type === 'SUICIDE_DRONE' || UNIT_DEFINITIONS[enemy.type].movementType === 'AIR',
-      );
-      const nearestDroneThreat = droneThreats.length > 0
-        ? Math.min(...droneThreats.map((enemy) => manhattanDistance(to, enemy.position)))
-        : null;
-      const nearestCoreDistance = getNearestCoordDistance(to, ownedCoreFacilities);
-      if (nearestDroneThreat !== null) {
-        score -= nearestDroneThreat * 2.4 * weights.antiAirBias;
-      }
-      if (nearestCoreDistance !== null) {
-        score -= nearestCoreDistance * 1.8 * weights.antiAirBias;
-      }
-      if (ownHq && manhattanDistance(to, ownHq) <= 2) {
-        score += 8 * weights.antiAirBias;
-      }
-      if (nearbyAllies.some((ally) => ally.type === 'SUICIDE_DRONE' || HIGH_VALUE_TYPES.has(ally.type))) {
-        score += 4 * weights.antiAirBias;
-      }
-    }
-  }
-
-  if (profile === 'stealth_strike' || unit.type === 'STEALTH_BOMBER' || unit.type === 'SUBMARINE') {
+  if (unit.type === 'STEALTH_BOMBER' || unit.type === 'SUBMARINE') {
     if (unit.type === 'STEALTH_BOMBER') {
       const nearestAirport = getNearestCoordDistance(to, ownedAirports);
       const highValueGroundTargets = enemies.filter(
@@ -1800,14 +1791,6 @@ const selectNormalProductionUnit = (
     if (canAfford('FLAK_TANK') && ownCounts.FLAK_TANK < 1) return 'FLAK_TANK';
   }
 
-  if (profile === 'drone_swarm' && (state.enableSuicideDrones ?? false)) {
-    const droneThreat = enemyCounts.SUICIDE_DRONE + enemyAirCount;
-    const desiredCounterDrone = droneThreat > 0 ? Math.max(1, Math.ceil(droneThreat / 2)) : 0;
-    if (desiredCounterDrone > 0 && canAfford('COUNTER_DRONE_AA') && ownCounts.COUNTER_DRONE_AA < desiredCounterDrone) {
-      return 'COUNTER_DRONE_AA';
-    }
-  }
-
   if (ownCounts.RECON < desiredReconCount && canAfford('RECON')) {
     return 'RECON';
   }
@@ -1842,21 +1825,35 @@ const selectDroneProductionUnitForTile = (
   coord: Coord,
   profile: ResolvedAiProfile,
 ): UnitType | null => {
+  const strategy = getAiStrategy(profile);
+  const canAfford = (type: UnitType): boolean => state.players[aiPlayer].funds >= UNIT_DEFINITIONS[type].cost;
   if (!(state.enableSuicideDrones ?? false)) return null;
   const tile = state.map.tiles[toCoordKey(coord)];
   if (!tile || tile.terrainType !== 'FACTORY') return null;
-  if (state.players[aiPlayer].funds < UNIT_DEFINITIONS.SUICIDE_DRONE.cost) return null;
-  if (getDroneFactoryOpenSlots(state, coord) < (profile === 'drone_swarm' ? 1 : 2)) return null;
+  if (!canAfford('SUICIDE_DRONE')) return null;
 
+  const openSlots = getDroneFactoryOpenSlots(state, coord);
   const activeDrones = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'SUICIDE_DRONE').length;
   const totalUnits = getAliveUnits(state, aiPlayer).length;
   const ratioLimit = Math.max(0, Math.min(100, state.droneAiProductionRatioLimitPercent ?? 50));
-  const profileRatioLimit = profile === 'drone_swarm' ? Math.min(100, ratioLimit + 20) : ratioLimit;
-  if (totalUnits > 0 && (activeDrones / totalUnits) * 100 >= profileRatioLimit) return null;
-
   const enemyContacts = getEstimatedEnemyContacts(state, aiPlayer);
   const enemyHighValue = enemyContacts.some((contact) => UNIT_DEFINITIONS[contact.type].cost >= 7000 || UNIT_DEFINITIONS[contact.type].movementType === 'AIR');
-  if (!enemyHighValue && profile !== 'drone_swarm') return null;
+  const strategyDroneCandidate = strategy.chooseDroneProductionOverride?.({
+    state,
+    aiPlayer,
+    coord,
+    canAfford,
+    openSlots,
+    activeDroneCount: activeDrones,
+    totalUnitCount: totalUnits,
+    ratioLimit,
+    enemyHighValue,
+  });
+  if (strategyDroneCandidate) return strategyDroneCandidate;
+
+  if (openSlots < 2) return null;
+  if (totalUnits > 0 && (activeDrones / totalUnits) * 100 >= ratioLimit) return null;
+  if (!enemyHighValue) return null;
   return 'SUICIDE_DRONE';
 };
 
@@ -1874,9 +1871,24 @@ const selectNavalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile
   const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
   const ownNavalCombatCount = Array.from(NAVAL_COMBAT_TYPES).reduce((sum, type) => sum + ownCounts[type], 0);
   const enemyNavalCombatCount = Array.from(NAVAL_COMBAT_TYPES).reduce((sum, type) => sum + enemyCounts[type], 0);
+  const navalProductionContext = {
+    state,
+    aiPlayer,
+    difficulty: state.aiDifficulty ?? 'normal',
+    ownCounts,
+    enemyCounts,
+    canAfford,
+    ownedPortCount: ownedPorts.length,
+    coastalTargetCount: coastalTargets.length,
+    transportableCargoCount,
+    enemyAirCount,
+    ownNavalCombatCount,
+    enemyNavalCombatCount,
+  };
 
   if (ownedPorts.length === 0) return null;
-  if (profile === 'stealth_strike' && canAfford('SUBMARINE') && ownCounts.SUBMARINE === 0) return 'SUBMARINE';
+  const strategyNavalPriority = strategy.chooseNavalProductionPriorityOverride?.(navalProductionContext);
+  if (strategyNavalPriority) return strategyNavalPriority;
   if (ownCounts.DESTROYER === 0 && canAfford('DESTROYER')) return 'DESTROYER';
   if (coastalTargets.length > 0 && transportableCargoCount > 0 && ownCounts.LANDER === 0 && canAfford('LANDER')) return 'LANDER';
   if (enemyAirCount > 0 && ownCounts.CARRIER === 0 && canAfford('CARRIER')) return 'CARRIER';
@@ -1909,7 +1921,8 @@ const selectNavalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile
     })
   ) return 'SUPPLY_SHIP';
   if (enemyNavalCombatCount > ownNavalCombatCount && canAfford('DESTROYER')) return 'DESTROYER';
-  if (profile === 'stealth_strike' && canAfford('SUBMARINE')) return 'SUBMARINE';
+  const strategyNavalFallback = strategy.chooseNavalProductionFallbackOverride?.(navalProductionContext);
+  if (strategyNavalFallback) return strategyNavalFallback;
   if (coastalTargets.length > 0 && transportableCargoCount > ownCounts.LANDER && canAfford('LANDER')) return 'LANDER';
   return null;
 };
@@ -1939,17 +1952,24 @@ const selectAiProductionUnitForTile = (
   if (droneCandidate) return droneCandidate;
 
   if (tile.terrainType === 'AIRPORT') {
+    const strategy = getAiStrategy(profile);
     const enemyCounts = getEstimatedEnemyCounts(state, aiPlayer);
     const enemyContacts = getEstimatedEnemyContacts(state, aiPlayer);
     const enemyAir = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
     const enemyHighValueGround = enemyContacts.some((contact) => UNIT_DEFINITIONS[contact.type].cost >= 10000 && UNIT_DEFINITIONS[contact.type].movementType !== 'AIR');
+    const ownAir = getAliveUnits(state, aiPlayer).filter((unit) => UNIT_DEFINITIONS[unit.type].movementType === 'AIR').length;
+    const ownTanker = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'AIR_TANKER').length;
     if (enemyAir > 0 && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.FIGHTER.cost) return 'FIGHTER';
-    if (profile === 'stealth_strike' && enemyHighValueGround && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.STEALTH_BOMBER.cost) return 'STEALTH_BOMBER';
-    if (profile === 'stealth_strike' && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.AIR_TANKER.cost) {
-      const ownAir = getAliveUnits(state, aiPlayer).filter((unit) => UNIT_DEFINITIONS[unit.type].movementType === 'AIR').length;
-      const ownTanker = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'AIR_TANKER').length;
-      if (ownAir >= 2 && ownTanker === 0) return 'AIR_TANKER';
-    }
+    const strategyAirportOverride = strategy.chooseAirportProductionOverride?.({
+      state,
+      aiPlayer,
+      canAfford: (type: UnitType): boolean => state.players[aiPlayer].funds >= UNIT_DEFINITIONS[type].cost,
+      enemyAirCount: enemyAir,
+      enemyHighValueGround,
+      ownAirCount: ownAir,
+      ownTankerCount: ownTanker,
+    });
+    if (strategyAirportOverride) return strategyAirportOverride;
     const transportType = shouldProduceTransport(state, aiPlayer, tile.terrainType);
     if (transportType) return transportType;
     if (state.players[aiPlayer].funds >= UNIT_DEFINITIONS.ATTACKER.cost) return 'ATTACKER';
