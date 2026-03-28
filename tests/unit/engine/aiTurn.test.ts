@@ -848,6 +848,8 @@ describe('aiターンの挙動テスト', () => {
     });
     state.currentPlayerId = 'P2';
     state.players.P2.funds = 20000;
+    delete state.units.p2_destroyer;
+    delete state.units.p2_lander;
 
     for (const unit of Object.values(state.units)) {
       if (unit.owner === 'P2') {
@@ -892,6 +894,44 @@ describe('aiターンの挙動テスト', () => {
 
     expect(next.actionLog.some((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT' && log.detail?.startsWith('DESTROYER'))).toBe(true);
   });
+
+  it.each(['balanced', 'captain', 'hunter', 'turtle', 'sieger', 'drone_swarm'] as const)(
+    '%sは必要数の揚陸艦があると揚陸艦を連打しない',
+    (profile) => {
+      const state = createInitialGameState({
+        mapId: 'carrier-strike',
+        settings: {
+          ...BASE_SETTINGS,
+          aiDifficulty: 'normal',
+          enableSuicideDrones: profile === 'drone_swarm',
+        },
+      });
+      state.currentPlayerId = 'P2';
+      state.selectedAiProfile = profile;
+      state.players.P2.funds = UNIT_DEFINITIONS.LANDER.cost;
+
+      for (const tile of Object.values(state.map.tiles)) {
+        if (tile.owner === 'P2' && (tile.terrainType === 'FACTORY' || tile.terrainType === 'AIRPORT')) {
+          tile.owner = undefined;
+        }
+      }
+
+      state.units = {
+        p2_destroyer: makeUnit({ id: 'p2_destroyer', owner: 'P2', type: 'DESTROYER', position: { x: 18, y: 14 }, moved: true, acted: true }),
+        p2_lander: makeUnit({ id: 'p2_lander', owner: 'P2', type: 'LANDER', position: { x: 19, y: 17 }, moved: true, acted: true }),
+        p2_tank_1: makeUnit({ id: 'p2_tank_1', owner: 'P2', type: 'TANK', position: { x: 20, y: 14 }, moved: true, acted: true }),
+        p2_tank_2: makeUnit({ id: 'p2_tank_2', owner: 'P2', type: 'ANTI_TANK', position: { x: 20, y: 13 }, moved: true, acted: true }),
+        p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 21, y: 14 }, moved: true, acted: true }),
+        p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 21, y: 13 }, moved: true, acted: true }),
+        p1_carrier: makeUnit({ id: 'p1_carrier', owner: 'P1', type: 'CARRIER', position: { x: 6, y: 4 } }),
+      };
+
+      const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+      const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+      expect(produceLogs.some((log) => log.detail?.startsWith('LANDER'))).toBe(false);
+    },
+  );
 
 
   it('drone_swarmは自爆ドローンで高価値の航空目標を優先する', () => {

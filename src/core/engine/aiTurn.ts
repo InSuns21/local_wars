@@ -393,6 +393,20 @@ const shouldProduceTransport = (state: GameState, aiPlayer: PlayerId, terrainTyp
   return null;
 };
 
+const getDesiredLanderCount = (
+  transportableCargoCount: number,
+  coastalTargetCount: number,
+  ownedPortCount: number,
+): number => {
+  if (transportableCargoCount === 0 || coastalTargetCount === 0 || ownedPortCount === 0) {
+    return 0;
+  }
+
+  const cargoDrivenNeed = Math.max(1, Math.ceil(transportableCargoCount / 4));
+  const targetDrivenNeed = coastalTargetCount >= 3 ? 2 : 1;
+  return Math.max(1, Math.min(2, cargoDrivenNeed, targetDrivenNeed, ownedPortCount));
+};
+
 const getAttackableEnemies = (state: GameState, unit: UnitState): UnitState[] => {
   const def = UNIT_DEFINITIONS[unit.type];
   const enemies = getKnownEnemyUnits(state, unit.owner);
@@ -1881,6 +1895,7 @@ const selectNavalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile
   const enemyAirCount = enemyCounts.FIGHTER + enemyCounts.BOMBER + enemyCounts.ATTACKER + enemyCounts.STEALTH_BOMBER + enemyCounts.AIR_TANKER + enemyCounts.TRANSPORT_HELI;
   const ownNavalCombatCount = Array.from(NAVAL_COMBAT_TYPES).reduce((sum, type) => sum + ownCounts[type], 0);
   const enemyNavalCombatCount = Array.from(NAVAL_COMBAT_TYPES).reduce((sum, type) => sum + enemyCounts[type], 0);
+  const desiredLanderCount = getDesiredLanderCount(transportableCargoCount, coastalTargets.length, ownedPorts.length);
   const navalProductionContext = {
     state,
     aiPlayer,
@@ -1900,7 +1915,7 @@ const selectNavalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile
   const strategyNavalPriority = strategy.chooseNavalProductionPriorityOverride?.(navalProductionContext);
   if (strategyNavalPriority) return strategyNavalPriority;
   if (ownCounts.DESTROYER === 0 && canAfford('DESTROYER')) return 'DESTROYER';
-  if (coastalTargets.length > 0 && transportableCargoCount > 0 && ownCounts.LANDER === 0 && canAfford('LANDER')) return 'LANDER';
+  if (desiredLanderCount > 0 && ownCounts.LANDER < desiredLanderCount && canAfford('LANDER')) return 'LANDER';
   if (enemyAirCount > 0 && ownCounts.CARRIER === 0 && canAfford('CARRIER')) return 'CARRIER';
   if (
     ownNavalCombatCount >= 2
@@ -1933,7 +1948,7 @@ const selectNavalProductionUnit = (state: GameState, aiPlayer: PlayerId, profile
   if (enemyNavalCombatCount > ownNavalCombatCount && canAfford('DESTROYER')) return 'DESTROYER';
   const strategyNavalFallback = strategy.chooseNavalProductionFallbackOverride?.(navalProductionContext);
   if (strategyNavalFallback) return strategyNavalFallback;
-  if (coastalTargets.length > 0 && transportableCargoCount > ownCounts.LANDER && canAfford('LANDER')) return 'LANDER';
+  if (desiredLanderCount > 0 && ownCounts.LANDER < desiredLanderCount && canAfford('LANDER')) return 'LANDER';
   return null;
 };
 
