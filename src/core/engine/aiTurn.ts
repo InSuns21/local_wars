@@ -364,19 +364,29 @@ const shouldProduceTransport = (state: GameState, aiPlayer: PlayerId, terrainTyp
   const remoteTurns = getNearestRemoteCaptureTargetDistance(state, aiPlayer);
   if (remoteTurns === null) return null;
 
+  const ownUnits = getAliveUnits(state, aiPlayer);
+  const ownGroundTransports = ownUnits.filter((unit) => unit.type === 'TRANSPORT_TRUCK').length;
+  const ownAirTransports = ownUnits.filter((unit) => unit.type === 'TRANSPORT_HELI').length;
+  const totalTransports = ownGroundTransports + ownAirTransports;
+  const cargoCandidateCount = ownUnits.filter((unit) => LIGHT_TRANSPORTABLE_TYPES.has(unit.type)).length;
+  const desiredTransportCount = remoteTurns >= 7 ? 2 : 1;
+  if (cargoCandidateCount === 0 || totalTransports >= desiredTransportCount || cargoCandidateCount <= totalTransports) {
+    return null;
+  }
+
   if (isGroundOnlyBattle(state)) {
-    const ownTransports = getAliveUnits(state, aiPlayer).filter((unit) => unit.type === 'TRANSPORT_TRUCK').length;
     if (terrainType !== 'FACTORY') return null;
     if (remoteTurns < 5) return null;
-    if (ownTransports >= 1) return null;
+    if (ownGroundTransports >= 1) return null;
   }
 
   if (terrainType === 'AIRPORT' && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.TRANSPORT_HELI.cost) {
+    if (remoteTurns < 4 || ownAirTransports >= 1) return null;
     return 'TRANSPORT_HELI';
   }
 
-  const hasCargoCandidate = getAliveUnits(state, aiPlayer).some((unit) => LIGHT_TRANSPORTABLE_TYPES.has(unit.type));
-  if (terrainType === 'FACTORY' && hasCargoCandidate && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.TRANSPORT_TRUCK.cost) {
+  if (terrainType === 'FACTORY' && state.players[aiPlayer].funds >= UNIT_DEFINITIONS.TRANSPORT_TRUCK.cost) {
+    if (remoteTurns < 4 || ownGroundTransports >= 1) return null;
     return 'TRANSPORT_TRUCK';
   }
 

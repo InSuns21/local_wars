@@ -2,6 +2,7 @@
 import { getAiOperationalObjectiveForProfile, runAiTurn, runAiTurnAnalysis, runAiTurnWithPlayback } from '@core/engine/aiTurn';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
+import { getVisibleEnemyUnitIds } from '@core/rules/visibility';
 import type { GameState } from '@core/types/state';
 import type { UnitState } from '@core/types/unit';
 
@@ -349,6 +350,39 @@ describe('aiターンの挙動テスト', () => {
     expect(produceLogs.some((log) => log.detail?.startsWith('TRANSPORT_TRUCK'))).toBe(false);
   });
 
+  it('Normalは既に輸送ヘリがいると追加の輸送ヘリを連打しない', () => {
+    const state = createInitialGameState({
+      mapId: 'carrier-strike',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+      },
+    });
+    state.currentPlayerId = 'P2';
+    state.players.P2.funds = UNIT_DEFINITIONS.TRANSPORT_HELI.cost;
+
+    for (const unit of Object.values(state.units)) {
+      if (unit.owner === 'P2') {
+        unit.moved = true;
+        unit.acted = true;
+      }
+    }
+
+    state.units.p2_transport_heli = makeUnit({
+      id: 'p2_transport_heli',
+      owner: 'P2',
+      type: 'TRANSPORT_HELI',
+      position: { x: 21, y: 15 },
+      moved: true,
+      acted: true,
+    });
+
+    const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
+    const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
+
+    expect(produceLogs.some((log) => log.detail?.startsWith('TRANSPORT_HELI'))).toBe(false);
+  });
+
   it('Normalの生産は敵航空ユニットがいる場合に対空を優先する', () => {
     const state = createAiState('normal');
     state.players.P2.funds = 9000;
@@ -427,16 +461,25 @@ describe('aiターンの挙動テスト', () => {
   });
 
   it('FoWありでは不可視の敵航空だけでは対空生産に寄らない', () => {
-    const state = createAiState('normal');
-    state.fogOfWar = true;
+    const state = createInitialGameState({
+      mapId: 'carrier-strike',
+      settings: {
+        ...BASE_SETTINGS,
+        aiDifficulty: 'normal',
+        fogOfWar: true,
+      },
+    });
+    state.currentPlayerId = 'P2';
     state.players.P2.funds = 9000;
     state.units = {
-      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 0, y: 4 }, moved: true, acted: true }),
-      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 1, y: 4 }, moved: true, acted: true }),
-      p2_inf_3: makeUnit({ id: 'p2_inf_3', owner: 'P2', type: 'INFANTRY', position: { x: 2, y: 4 }, moved: true, acted: true }),
-      p2_inf_4: makeUnit({ id: 'p2_inf_4', owner: 'P2', type: 'INFANTRY', position: { x: 3, y: 4 }, moved: true, acted: true }),
-      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 4, y: 0 } }),
+      p2_inf_1: makeUnit({ id: 'p2_inf_1', owner: 'P2', type: 'INFANTRY', position: { x: 20, y: 14 }, moved: true, acted: true }),
+      p2_inf_2: makeUnit({ id: 'p2_inf_2', owner: 'P2', type: 'INFANTRY', position: { x: 20, y: 13 }, moved: true, acted: true }),
+      p2_inf_3: makeUnit({ id: 'p2_inf_3', owner: 'P2', type: 'INFANTRY', position: { x: 21, y: 14 }, moved: true, acted: true }),
+      p2_inf_4: makeUnit({ id: 'p2_inf_4', owner: 'P2', type: 'INFANTRY', position: { x: 21, y: 13 }, moved: true, acted: true }),
+      p1_bomber: makeUnit({ id: 'p1_bomber', owner: 'P1', type: 'BOMBER', position: { x: 2, y: 1 } }),
     };
+
+    expect(getVisibleEnemyUnitIds(state, 'P2').has('p1_bomber')).toBe(false);
 
     const next = runAiTurn(state, { difficulty: 'normal', deps: { rng: () => 0.5 } });
     const produceLogs = next.actionLog.filter((log) => log.playerId === 'P2' && log.action === 'PRODUCE_UNIT');
