@@ -1,7 +1,7 @@
 ﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-vi.mock('@/screens/BattleScreen', async () => await import('./helpers/mockBattleScreen'));
+import './helpers/mockAppFlowScreens';
 
 import { App } from '@/app/App';
 import { createSavePayload, createScopedSaveKey, seedSlots, startNewGameFlow } from './helpers/appFlowTestUtils';

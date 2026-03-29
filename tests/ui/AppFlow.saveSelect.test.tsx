@@ -1,5 +1,6 @@
 ﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import './helpers/mockAppFlowScreens';
 import { App } from '@/app/App';
 import { SAVE_KEY, createSavePayload, seedSlots } from './helpers/appFlowTestUtils';
 
