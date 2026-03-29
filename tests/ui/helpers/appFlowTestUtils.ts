@@ -1,20 +1,35 @@
 ﻿import { fireEvent, screen } from '@testing-library/react';
 import { DEFAULT_SETTINGS } from '@/app/types';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
+import type { GameState } from '@core/types/state';
 import { DEFAULT_SAVE_SLOTS_STORAGE_KEY } from '@services/saveSlots';
 
 export const SAVE_KEY = DEFAULT_SAVE_SLOTS_STORAGE_KEY;
 
 export const createScopedSaveKey = (scope: string): string => `${SAVE_KEY}__${scope}`;
 
+const stateSnapshotCache = new Map<string, string>();
+
+const cloneCachedGameState = (mapId: string, settings = DEFAULT_SETTINGS): GameState => {
+  const cacheKey = JSON.stringify({ mapId, settings });
+  const cachedSnapshot = stateSnapshotCache.get(cacheKey);
+  if (cachedSnapshot) {
+    return JSON.parse(cachedSnapshot) as GameState;
+  }
+
+  const snapshot = JSON.stringify(createInitialGameState({ mapId, settings }));
+  stateSnapshotCache.set(cacheKey, snapshot);
+  return JSON.parse(snapshot) as GameState;
+};
+
 export const createSavePayload = (mapId: string) => ({
   mapId,
-  state: createInitialGameState({ mapId, settings: DEFAULT_SETTINGS }),
+  state: cloneCachedGameState(mapId),
   settings: DEFAULT_SETTINGS,
 });
 
 export const createFinishedSavePayload = (mapId: string, winner: 'P1' | 'P2') => {
-  const state = createInitialGameState({ mapId, settings: DEFAULT_SETTINGS });
+  const state = cloneCachedGameState(mapId);
   state.winner = winner;
   return {
     mapId,
