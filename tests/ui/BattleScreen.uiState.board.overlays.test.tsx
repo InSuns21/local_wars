@@ -5,7 +5,6 @@ vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mock
 vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { renderBattleScreen } from './helpers/renderBattleScreen';
-import { createInitialGameState } from '@core/engine/createInitialGameState';
 
 describe('BattleScreen UIテスト: 盤面表示(マーカー)', () => {
   it('経路プレビューは移動可能マスと別属性で表示される', () => {
@@ -50,18 +49,29 @@ describe('BattleScreen UIテスト: 盤面表示(マーカー)', () => {
   });
 
   it('対ドローン防空車を選択すると迎撃半径が盤面表示される', () => {
-    const scenarioState = createInitialGameState({ mapId: 'interceptor-belt' });
-    scenarioState.enableSuicideDrones = true;
-
     renderBattleScreen({
-      mutateState: (state) => Object.assign(state, scenarioState),
+      mutateState: (state) => {
+        state.enableSuicideDrones = true;
+        state.units.p1_counter_drone = {
+          id: 'p1_counter_drone',
+          owner: 'P1',
+          type: 'COUNTER_DRONE_AA',
+          hp: 10,
+          fuel: 60,
+          ammo: 6,
+          position: { x: 2, y: 2 },
+          moved: false,
+          acted: false,
+          lastMovePath: [],
+        };
+      },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'タイル 5,5' }));
+    fireEvent.click(screen.getByRole('button', { name: 'タイル 2,2' }));
 
-    expect(screen.getByRole('button', { name: 'タイル 5,4' })).toHaveAttribute('data-intercept-range', 'true');
-    expect(screen.getByRole('button', { name: 'タイル 6,5' })).toHaveAttribute('data-intercept-range', 'true');
-    expect(screen.getByRole('button', { name: 'タイル 5,5' })).toHaveAttribute('data-intercept-range', 'false');
+    expect(screen.getByRole('button', { name: 'タイル 2,1' })).toHaveAttribute('data-intercept-range', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 3,2' })).toHaveAttribute('data-intercept-range', 'true');
+    expect(screen.getByRole('button', { name: 'タイル 2,2' })).toHaveAttribute('data-intercept-range', 'false');
   });
 });
 
