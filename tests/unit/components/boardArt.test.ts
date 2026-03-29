@@ -1,4 +1,4 @@
-import { TERRAIN_TEXTURES } from '@/components/board/boardArt';
+﻿import { TERRAIN_TEXTURES } from '@/components/board/boardArt';
 
 describe('board terrain textures', () => {
   const decodeTexture = (texture: string) => decodeURIComponent(texture.slice(texture.indexOf(',') + 1));
@@ -13,3 +13,4 @@ describe('board terrain textures', () => {
     expect(coastTexture).not.toBe(seaTexture);
   });
 });
+

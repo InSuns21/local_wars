@@ -1,8 +1,8 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { screen } from '@testing-library/react';
 
-jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
-jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
+vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { renderBattleScreen } from './helpers/renderBattleScreen';
 
@@ -24,3 +24,5 @@ describe('BattleScreen UIテスト: 盤面表示(所有者)', () => {
     expect(screen.getByRole('button', { name: 'タイル 3,3' })).toHaveAttribute('data-property-owner', 'P2');
   });
 });
+
+

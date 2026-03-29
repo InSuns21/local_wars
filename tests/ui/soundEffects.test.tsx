@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 
 describe('soundEffects', () => {
   const originalAudioContext = window.AudioContext;
@@ -15,24 +15,28 @@ describe('soundEffects', () => {
       writable: true,
       value: originalAudio,
     });
-    jest.resetModules();
+    vi.resetModules();
   });
 
   it('音声ファイルが使えるときはファイル再生を優先する', async () => {
-    const play = jest.fn().mockResolvedValue(undefined);
-    const clonePlay = jest.fn().mockResolvedValue(undefined);
-    const cloneNode = jest.fn(() => ({
-      volume: 1,
-      currentTime: 0,
-      play: clonePlay,
-    }));
-    const audioCtor = jest.fn(() => ({
-      preload: 'none',
-      volume: 1,
-      currentTime: 0,
-      play,
-      cloneNode,
-    }));
+    const play = vi.fn().mockResolvedValue(undefined);
+    const clonePlay = vi.fn().mockResolvedValue(undefined);
+    const cloneNode = vi.fn(function cloneAudioNode() {
+      return {
+        volume: 1,
+        currentTime: 0,
+        play: clonePlay,
+      };
+    });
+    const audioCtor = vi.fn(function FakeAudio(this: Record<string, unknown>, _src: string) {
+      return {
+        preload: 'none',
+        volume: 1,
+        currentTime: 0,
+        play,
+        cloneNode,
+      };
+    });
 
     Object.defineProperty(window, 'Audio', {
       configurable: true,
@@ -54,33 +58,33 @@ describe('soundEffects', () => {
   });
 
   it('音声ファイルが使えないときは AudioContext の仮音へフォールバックする', async () => {
-    const oscillatorStart = jest.fn();
-    const oscillatorStop = jest.fn();
-    const oscillatorConnect = jest.fn();
-    const gainConnect = jest.fn();
-    const frequencySetValueAtTime = jest.fn();
-    const gainSetValueAtTime = jest.fn();
-    const gainExponentialRampToValueAtTime = jest.fn();
+    const oscillatorStart = vi.fn();
+    const oscillatorStop = vi.fn();
+    const oscillatorConnect = vi.fn();
+    const gainConnect = vi.fn();
+    const frequencySetValueAtTime = vi.fn();
+    const gainSetValueAtTime = vi.fn();
+    const gainExponentialRampToValueAtTime = vi.fn();
 
     class FakeAudioContext {
       currentTime = 0;
       state: AudioContextState = 'running';
       destination = {} as AudioDestinationNode;
-      createOscillator = jest.fn(() => ({
+      createOscillator = vi.fn(() => ({
         type: 'sine',
         frequency: { setValueAtTime: frequencySetValueAtTime },
         connect: oscillatorConnect,
         start: oscillatorStart,
         stop: oscillatorStop,
       }));
-      createGain = jest.fn(() => ({
+      createGain = vi.fn(() => ({
         gain: {
           setValueAtTime: gainSetValueAtTime,
           exponentialRampToValueAtTime: gainExponentialRampToValueAtTime,
         },
         connect: gainConnect,
       }));
-      resume = jest.fn().mockResolvedValue(undefined);
+      resume = vi.fn().mockResolvedValue(undefined);
     }
 
     Object.defineProperty(window, 'AudioContext', {
@@ -107,16 +111,16 @@ describe('soundEffects', () => {
   });
 
   it('音量0なら AudioContext も Audio も使わずに何もしない', async () => {
-    const createOscillator = jest.fn();
-    const audioCtor = jest.fn();
+    const createOscillator = vi.fn();
+    const audioCtor = vi.fn();
 
     class FakeAudioContext {
       currentTime = 0;
       state: AudioContextState = 'running';
       destination = {} as AudioDestinationNode;
       createOscillator = createOscillator;
-      createGain = jest.fn();
-      resume = jest.fn().mockResolvedValue(undefined);
+      createGain = vi.fn();
+      resume = vi.fn().mockResolvedValue(undefined);
     }
 
     Object.defineProperty(window, 'AudioContext', {
@@ -140,3 +144,5 @@ describe('soundEffects', () => {
     expect(createOscillator).not.toHaveBeenCalled();
   });
 });
+
+

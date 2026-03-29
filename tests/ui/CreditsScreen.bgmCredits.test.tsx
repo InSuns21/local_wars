@@ -1,4 +1,4 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { CreditsScreen } from '@/screens/CreditsScreen';
 
@@ -17,4 +17,5 @@ describe('CreditsScreen BGM credits', () => {
     expect(screen.getByText(/Marty Gots a Plan/)).toBeInTheDocument();
   });
 });
+
 

@@ -1,7 +1,7 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-jest.mock('@/screens/BattleScreen', () => require('./helpers/mockBattleScreen'));
+vi.mock('@/screens/BattleScreen', async () => await import('./helpers/mockBattleScreen'));
 
 import { App } from '@/app/App';
 import { createScopedSaveKey, startNewGameFlow } from './helpers/appFlowTestUtils';
@@ -33,3 +33,5 @@ describe('App 導線テスト: セーブ終了と再開(保存して終了)', ()
     expect(parsed['1']).not.toBeNull();
   });
 });
+
+

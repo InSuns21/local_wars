@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { TitleScreen } from '@/screens/TitleScreen';
 
@@ -48,3 +48,4 @@ describe('TitleScreen UIテスト: 導線', () => {
     expect(screen.getByText('推奨: つづきから')).toBeInTheDocument();
   });
 });
+

@@ -1,11 +1,11 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import type { GameSettings } from '@/app/types';
 
 describe('SettingsScreen 人間担当陣営設定', () => {
   it('人間担当陣営でP2を選択して開始時に値が渡る', () => {
-    const onConfirm = jest.fn<void, [GameSettings]>();
+    const onConfirm = vi.fn<(settings: GameSettings) => void>();
 
     render(
       <SettingsScreen
@@ -22,6 +22,8 @@ describe('SettingsScreen 人間担当陣営設定', () => {
     expect(submitted?.humanPlayerSide).toBe('P2');
   });
 });
+
+
 
 
 

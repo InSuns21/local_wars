@@ -1,4 +1,4 @@
-import { getAiStrategy } from '@core/engine/aiStrategies';
+﻿import { getAiStrategy } from '@core/engine/aiStrategies';
 
 describe('aiStrategies', () => {
   it('captain / hunter / turtle / sieger / drone / stealth は専用strategyを返す', () => {
@@ -14,3 +14,4 @@ describe('aiStrategies', () => {
     expect(getAiStrategy('balanced').profile).toBe('balanced');
   });
 });
+

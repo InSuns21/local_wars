@@ -1,8 +1,8 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, screen, within } from '@testing-library/react';
 
-jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
-jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
+vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { createBattleState, renderBattleScreen } from './helpers/renderBattleScreen';
 
@@ -117,3 +117,5 @@ describe('BattleScreen UIテスト: 盤面表示', () => {
     expect(screen.getByRole('button', { name: 'タイル 4,2' })).toBeDisabled();
   });
 });
+
+

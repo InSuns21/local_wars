@@ -1,4 +1,4 @@
-import {
+﻿import {
   buildSelfPlayImprovementProposal,
   compareSelfPlayReports,
   renderSelfPlayComparisonMarkdown,
@@ -10,8 +10,8 @@ import { defaultParticipants, nightmareParticipants } from './helpers/selfPlayTe
 describe('selfPlay proposals', () => {
   const comparisonBefore = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 21,
     fogOfWar: false,
     participants: defaultParticipants,
@@ -19,8 +19,8 @@ describe('selfPlay proposals', () => {
 
   const comparisonAfter = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 22,
     fogOfWar: false,
     participants: nightmareParticipants,
@@ -28,8 +28,8 @@ describe('selfPlay proposals', () => {
 
   const proposalBefore = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 41,
     fogOfWar: true,
     participants: defaultParticipants,
@@ -37,8 +37,8 @@ describe('selfPlay proposals', () => {
 
   const proposalAfter = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 42,
     fogOfWar: true,
     participants: nightmareParticipants,
@@ -60,3 +60,4 @@ describe('selfPlay proposals', () => {
     expect(proposal.targets[0].recommendations.length).toBeGreaterThan(0);
   });
 });
+

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { render, type RenderResult } from '@testing-library/react';
 import { BattleScreen } from '@/screens/BattleScreen';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
@@ -29,3 +29,4 @@ export const renderBattleScreen = (
   const result = render(<BattleScreen useStore={store} {...options.props} />);
   return { ...result, store };
 };
+

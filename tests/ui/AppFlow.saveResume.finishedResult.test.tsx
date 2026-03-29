@@ -1,7 +1,7 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-jest.mock('@/screens/BattleScreen', () => require('./helpers/mockBattleScreen'));
+vi.mock('@/screens/BattleScreen', async () => await import('./helpers/mockBattleScreen'));
 
 import { App } from '@/app/App';
 import { createFinishedSavePayload, createScopedSaveKey, seedSlots } from './helpers/appFlowTestUtils';
@@ -37,3 +37,5 @@ describe('App 導線テスト: セーブ終了と再開(勝敗確定データ再
     expect(screen.getByRole('heading', { name: 'LOCAL WARS' })).toBeInTheDocument();
   });
 });
+
+

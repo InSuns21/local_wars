@@ -1143,3 +1143,4 @@ describe('aiターンの挙動テスト', () => {
     expect(result.finalState.map.tiles['2,2']?.owner).toBe('P2');
   });
 });
+

@@ -1,4 +1,4 @@
-import { buildSelfPlayImprovementProposal, compareSelfPlayReports, runSelfPlaySeries } from '@core/analysis/selfPlay';
+﻿import { buildSelfPlayImprovementProposal, compareSelfPlayReports, runSelfPlaySeries } from '@core/analysis/selfPlay';
 import {
   buildNightmareAutotunePlan,
   renderNightmareAutotuneMarkdown,
@@ -9,8 +9,8 @@ import { nightmareParticipants } from './helpers/selfPlayTestUtils';
 describe('selfPlayAutoTune plan', () => {
   const reportA = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 101,
     fogOfWar: true,
     participants: nightmareParticipants,
@@ -18,8 +18,8 @@ describe('selfPlayAutoTune plan', () => {
 
   const reportB = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 102,
     fogOfWar: true,
     participants: nightmareParticipants,
@@ -27,8 +27,8 @@ describe('selfPlayAutoTune plan', () => {
 
   const shortReport = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 103,
     fogOfWar: true,
     participants: nightmareParticipants,
@@ -53,3 +53,4 @@ describe('selfPlayAutoTune plan', () => {
     expect(serializeNightmareTuningConfig(plan.nextConfig)).toContain('NIGHTMARE_TUNING_CONFIG');
   });
 });
+

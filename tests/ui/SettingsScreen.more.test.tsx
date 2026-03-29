@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { GAME_SETTINGS_PRESETS } from '@/app/types';
@@ -13,7 +13,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
   });
 
   it('各設定を変更して開始すると変更値が渡る', () => {
-    const onConfirm = jest.fn();
+    const onConfirm = vi.fn();
 
     render(<SettingsScreen onConfirm={onConfirm} onBack={() => {}} />);
 
@@ -194,7 +194,7 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
   });
 
   it('戻るボタンでonBackが呼ばれる', () => {
-    const onBack = jest.fn();
+    const onBack = vi.fn();
     render(<SettingsScreen onConfirm={() => {}} onBack={onBack} />);
 
     fireEvent.click(screen.getByRole('button', { name: '戻る' }));
@@ -202,3 +202,5 @@ describe('SettingsScreen 追加UIカバレッジ', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
+
+

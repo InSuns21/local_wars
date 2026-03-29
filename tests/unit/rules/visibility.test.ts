@@ -1,4 +1,4 @@
-import { applyCommand } from '@core/engine/commandApplier';
+﻿import { applyCommand } from '@core/engine/commandApplier';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getVisibleEnemyCoordKeys, getVisibleEnemyUnitIds, getVisibleTileCoordKeys } from '@core/rules/visibility';
@@ -288,3 +288,4 @@ describe('visibility ルール', () => {
     expect(visible.has('p2_inf')).toBe(false);
   });
 });
+

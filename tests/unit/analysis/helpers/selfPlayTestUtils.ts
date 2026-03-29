@@ -1,4 +1,4 @@
-export const defaultParticipants = {
+﻿export const defaultParticipants = {
   left: {
     id: 'left' as const,
     label: 'captain-hard',
@@ -27,3 +27,4 @@ export const nightmareParticipants = {
     selectedAiProfile: 'hunter' as const,
   },
 };
+

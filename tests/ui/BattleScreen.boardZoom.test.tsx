@@ -1,8 +1,8 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
-jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
+vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { BattleScreen } from '@/screens/BattleScreen';
 import { createGameStore } from '@store/gameStore';
@@ -52,3 +52,5 @@ describe('BattleScreen UIテスト: 盤面ズーム', () => {
     expect(screen.getByTestId('battle-board-viewport')).toHaveStyle({ overflow: 'auto' });
   });
 });
+
+

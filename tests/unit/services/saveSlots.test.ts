@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from '@/app/types';
+﻿import { DEFAULT_SETTINGS } from '@/app/types';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { getAllSaveSlots, getSaveSlot } from '@services/saveSlots';
 
@@ -105,3 +105,4 @@ describe('saveSlots 正規化', () => {
     expect(all['3']).toBeNull();
   });
 });
+

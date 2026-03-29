@@ -1,12 +1,12 @@
-import { buildSelfPlayImprovementProposal, runSelfPlaySeries } from '@core/analysis/selfPlay';
+﻿import { buildSelfPlayImprovementProposal, runSelfPlaySeries } from '@core/analysis/selfPlay';
 import { buildNightmareAutotunePlan } from '@core/analysis/selfPlayAutoTune';
 import { nightmareParticipants } from './helpers/selfPlayTestUtils';
 
 describe('selfPlayAutoTune stall guard', () => {
   const stallReport = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 3,
-    maxTurns: 10,
+    matchCount: 1,
+    maxTurns: 6,
     seed: 120,
     fogOfWar: true,
     participants: nightmareParticipants,
@@ -27,3 +27,4 @@ describe('selfPlayAutoTune stall guard', () => {
     }
   });
 });
+

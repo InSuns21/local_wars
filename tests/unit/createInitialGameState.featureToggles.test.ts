@@ -2,11 +2,11 @@
 import type { SkirmishScenario } from '@data/skirmishMaps';
 import { getSkirmishScenario } from '@data/skirmishMaps';
 
-jest.mock('@data/skirmishMaps', () => ({
-  getSkirmishScenario: jest.fn(),
+vi.mock('@data/skirmishMaps', () => ({
+  getSkirmishScenario: vi.fn(),
 }));
 
-const mockedGetSkirmishScenario = getSkirmishScenario as jest.MockedFunction<typeof getSkirmishScenario>;
+const mockedGetSkirmishScenario = vi.mocked(getSkirmishScenario);
 
 const baseSettings = {
   aiDifficulty: 'normal' as const,
@@ -103,3 +103,5 @@ describe('createInitialGameState 航空/海ユニット常時有効', () => {
     expect(state.units.p2_lander).toBeDefined();
   });
 });
+
+

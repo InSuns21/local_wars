@@ -1,7 +1,7 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-jest.mock('@/screens/BattleScreen', () => require('./helpers/mockBattleScreen'));
+vi.mock('@/screens/BattleScreen', async () => await import('./helpers/mockBattleScreen'));
 
 import { App } from '@/app/App';
 
@@ -27,3 +27,5 @@ describe('App E2E相当導線テスト: ドローン戦初期値', () => {
   });
 
 });
+
+

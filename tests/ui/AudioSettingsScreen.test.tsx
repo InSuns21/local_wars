@@ -1,10 +1,10 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AudioSettingsScreen } from '@/screens/AudioSettingsScreen';
 
 describe('AudioSettingsScreen', () => {
   it('BGMとSEの現在音量を表示し、戻るボタンでonBackが呼ばれる', () => {
-    const onBack = jest.fn();
+    const onBack = vi.fn();
 
     render(
       <AudioSettingsScreen
@@ -24,3 +24,5 @@ describe('AudioSettingsScreen', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
+
+

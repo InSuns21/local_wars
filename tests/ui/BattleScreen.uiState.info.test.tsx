@@ -1,8 +1,8 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
-jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
-jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
+vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { BattleScreen } from '@/screens/BattleScreen';
 import { createGameStore } from '@store/gameStore';
@@ -16,7 +16,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     state.humanPlayerSide = 'P1';
 
     const store = createGameStore(state, { rng: () => 0.5 });
-    const onReturnToTitle = jest.fn();
+    const onReturnToTitle = vi.fn();
     render(<BattleScreen useStore={store} onReturnToTitle={onReturnToTitle} />);
 
     expect(screen.getByRole('dialog', { name: '対局結果' })).toBeInTheDocument();
@@ -30,7 +30,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
 
   it('チュートリアルボタンでハンドラが呼ばれる', () => {
     const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
-    const onOpenTutorial = jest.fn();
+    const onOpenTutorial = vi.fn();
 
     render(<BattleScreen useStore={store} onOpenTutorial={onOpenTutorial} />);
 
@@ -307,4 +307,6 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     expect(screen.queryByText('ターン開始サマリー')).not.toBeInTheDocument();
   });
 });
+
+
 

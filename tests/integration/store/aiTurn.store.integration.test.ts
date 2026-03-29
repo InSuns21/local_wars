@@ -1,4 +1,4 @@
-import { manhattanDistance } from '@/utils/coord';
+﻿import { manhattanDistance } from '@/utils/coord';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import type { UnitState } from '@core/types/unit';
@@ -339,3 +339,4 @@ describe('store AI手番統合', () => {
     expect(summaryMessages).toContain('HQ周辺に敵戦車が接近');
   });
 });
+

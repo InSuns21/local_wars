@@ -1,4 +1,4 @@
-import { createInitialGameState } from '@core/engine/createInitialGameState';
+﻿import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { createGameStore } from '@store/gameStore';
 
 const finalizePlayback = (store: ReturnType<typeof createGameStore>) => {

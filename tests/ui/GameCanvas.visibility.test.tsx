@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { render, screen, within } from '@testing-library/react';
 
 import { GameCanvas } from '@/components/board/GameCanvas';
@@ -185,3 +185,4 @@ describe('GameCanvas UIテスト: ステルス可視', () => {
     expect(within(tile).queryByText('弾切れ前')).not.toBeInTheDocument();
   });
 });
+

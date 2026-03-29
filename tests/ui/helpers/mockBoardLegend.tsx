@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 const LABELS = [
   '選択中ユニット',
@@ -21,3 +21,4 @@ export const BoardLegend: React.FC = () => (
     ))}
   </section>
 );
+

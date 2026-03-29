@@ -1,4 +1,4 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { configure } from '@testing-library/dom';
 
 process.env.DEBUG_PRINT_LIMIT = process.env.DEBUG_PRINT_LIMIT ?? '2000';
@@ -10,3 +10,5 @@ configure({
     return new Error(shortened);
   },
 });
+
+

@@ -1,4 +1,4 @@
-import { applyNightmareWeightMultipliers } from '@core/engine/aiNightmareTuning';
+﻿import { applyNightmareWeightMultipliers } from '@core/engine/aiNightmareTuning';
 
 describe('aiNightmareTuning', () => {
   it('nightmare以外では重みを変更しない', () => {
@@ -19,3 +19,4 @@ describe('aiNightmareTuning', () => {
     expect(applyNightmareWeightMultipliers(base, 'captain', 'hard')).toEqual(base);
   });
 });
+

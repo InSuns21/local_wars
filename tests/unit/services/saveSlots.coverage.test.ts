@@ -83,3 +83,4 @@ describe('saveSlots 追加カバレッジ', () => {
     expect(findFirstEmptySlot()).toBeNull();
   });
 });
+

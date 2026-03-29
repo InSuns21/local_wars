@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { DEFAULT_SETTINGS } from '@/app/types';
 import { MapSelectScreen } from '@/screens/MapSelectScreen';
@@ -112,3 +112,4 @@ describe('Screen layout: 内容スクロール + 固定フッター', () => {
     expectStickyLayout('tutorial-scroll-content', 'tutorial-footer');
   });
 });
+

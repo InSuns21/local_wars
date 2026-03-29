@@ -1,8 +1,8 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 
-jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
-jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
+vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { createBattleState, renderBattleScreen } from './helpers/renderBattleScreen';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
@@ -102,3 +102,5 @@ describe('BattleScreen UIテスト: 基本操作(戦闘/施設)', () => {
     expect(screen.getByText(/被ダメージ 0\(反撃なし\)/)).toBeInTheDocument();
   });
 });
+
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import type { GameState } from '@core/types/state';
 import type { ResolvedAiProfile, SelectedAiProfile } from '@/app/types';
 import type { SoundEffectId } from '@services/soundEffects';

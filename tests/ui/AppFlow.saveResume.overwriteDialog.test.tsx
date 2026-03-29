@@ -1,7 +1,7 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-jest.mock('@/screens/BattleScreen', () => require('./helpers/mockBattleScreen'));
+vi.mock('@/screens/BattleScreen', async () => await import('./helpers/mockBattleScreen'));
 
 import { App } from '@/app/App';
 import { createSavePayload, createScopedSaveKey, seedSlots, startNewGameFlow } from './helpers/appFlowTestUtils';
@@ -46,3 +46,5 @@ describe('App 導線テスト: セーブ終了と再開(上書き保存)', () =>
     expect(parsed['2'].mapId).toBe('plains-clash');
   });
 });
+
+

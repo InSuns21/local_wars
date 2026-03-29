@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MapSelectScreen } from '@/screens/MapSelectScreen';
 import { MAP_CATALOG } from '@/data/maps';
@@ -45,3 +45,4 @@ describe('MapSelectScreen UIテスト: 詳細プレビュー', () => {
     expect(screen.getByTestId('map-select-scroll-content')).toHaveStyle({ overflow: 'hidden' });
   });
 });
+

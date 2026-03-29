@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { App } from '@/app/App';
 import { SAVE_KEY, createSavePayload, seedSlots } from './helpers/appFlowTestUtils';
@@ -87,3 +87,4 @@ describe('App 導線テスト: セーブ選択', () => {
     expect(parsed['1']).toBeNull();
   });
 });
+

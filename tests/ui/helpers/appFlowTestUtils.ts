@@ -48,3 +48,4 @@ export const startNewGameFlow = (): void => {
   fireEvent.click(screen.getByRole('button', { name: 'この設定で開始' }));
 };
 
+

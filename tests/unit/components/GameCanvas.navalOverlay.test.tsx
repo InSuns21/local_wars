@@ -1,6 +1,6 @@
-/** @jest-environment jsdom */
+﻿/** @jest-environment jsdom */
 
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/react';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { GameCanvas } from '@/components/board/GameCanvas';
@@ -26,3 +26,4 @@ describe('GameCanvas naval move overlay', () => {
     expect(screen.getByRole('button', { name: 'タイル 3,4' })).toHaveAttribute('data-move-overlay-tone', 'none');
   });
 });
+

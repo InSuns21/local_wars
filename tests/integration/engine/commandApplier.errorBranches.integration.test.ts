@@ -1,4 +1,4 @@
-import { applyCommand } from '@core/engine/commandApplier';
+﻿import { applyCommand } from '@core/engine/commandApplier';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 
 describe('commandApplier 失敗分岐', () => {
@@ -299,3 +299,4 @@ describe('commandApplier 失敗分岐', () => {
     expect(res.result.ok).toBe(false);
   });
 });
+

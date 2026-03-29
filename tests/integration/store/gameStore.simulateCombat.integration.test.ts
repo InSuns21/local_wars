@@ -1,4 +1,4 @@
-import { createGameStore } from '@store/gameStore';
+﻿import { createGameStore } from '@store/gameStore';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
 
 describe('gameStore simulateCombat', () => {
@@ -32,3 +32,4 @@ describe('gameStore simulateCombat', () => {
     expect(forecast?.defenderToAttacker).not.toBeNull();
   });
 });
+

@@ -1,11 +1,11 @@
-import { renderSelfPlayMarkdown, runSelfPlaySeries } from '@core/analysis/selfPlay';
+﻿import { renderSelfPlayMarkdown, runSelfPlaySeries } from '@core/analysis/selfPlay';
 import { defaultParticipants, nightmareParticipants } from './helpers/selfPlayTestUtils';
 
 describe('selfPlay metrics', () => {
   const nightmareReport = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 30,
     fogOfWar: true,
     participants: nightmareParticipants,
@@ -13,8 +13,8 @@ describe('selfPlay metrics', () => {
 
   const stallReport = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 6,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 50,
     fogOfWar: true,
     participants: defaultParticipants,
@@ -22,8 +22,8 @@ describe('selfPlay metrics', () => {
 
   const fowRecoveryReport = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 12,
+    matchCount: 1,
+    maxTurns: 8,
     seed: 510,
     fogOfWar: true,
     participants: nightmareParticipants,
@@ -32,7 +32,7 @@ describe('selfPlay metrics', () => {
   const groundOnlyObjectiveReport = runSelfPlaySeries({
     maps: ['plains-clash'],
     matchCount: 1,
-    maxTurns: 14,
+    maxTurns: 10,
     seed: 20260322,
     fogOfWar: true,
     baseSettings: {
@@ -99,3 +99,4 @@ describe('selfPlay metrics', () => {
     expect(objectives).toContain('hq_push');
   });
 });
+

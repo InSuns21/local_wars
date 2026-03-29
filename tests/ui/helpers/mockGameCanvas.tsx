@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import { getCaptureTarget } from '@core/rules/capture';
 import { getVisibleEnemyCoordKeys, getVisibleTileCoordKeys } from '@core/rules/visibility';
@@ -279,3 +279,4 @@ export const GameCanvas: React.FC<MockGameCanvasProps> = ({
     </section>
   );
 };
+

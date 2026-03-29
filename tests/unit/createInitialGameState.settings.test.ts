@@ -110,3 +110,4 @@ describe('createInitialGameState 設定反映', () => {
     expect(state.carrierCargoHpRecoveryAtPort).toBe(3);
   });
 });
+

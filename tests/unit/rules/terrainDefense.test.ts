@@ -1,4 +1,4 @@
-import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
+﻿import { getTerrainDefenseModifier } from '@core/rules/terrainDefense';
 import type { TerrainType } from '@core/types/map';
 
 describe('terrainDefense 防御補正', () => {
@@ -64,3 +64,4 @@ describe('terrainDefense 防御補正', () => {
     expect(getTerrainDefenseModifier(undefined, 'TANK')).toBe(1);
   });
 });
+

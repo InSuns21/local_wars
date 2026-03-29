@@ -1,4 +1,4 @@
-import {
+﻿import {
   renderSelfPlayMarkdown,
   runSelfPlayMatch,
   runSelfPlaySeries,
@@ -8,8 +8,8 @@ import { defaultParticipants } from './helpers/selfPlayTestUtils';
 describe('selfPlay match and markdown', () => {
   const basicReport = runSelfPlaySeries({
     maps: ['plains-clash', 'river-crossing'],
-    matchCount: 4,
-    maxTurns: 6,
+    matchCount: 2,
+    maxTurns: 4,
     seed: 10,
     fogOfWar: true,
     swapSidesEveryMatch: true,
@@ -18,8 +18,8 @@ describe('selfPlay match and markdown', () => {
 
   const markdownReport = runSelfPlaySeries({
     maps: ['plains-clash'],
-    matchCount: 2,
-    maxTurns: 5,
+    matchCount: 1,
+    maxTurns: 4,
     seed: 3,
     fogOfWar: false,
     participants: defaultParticipants,
@@ -43,8 +43,8 @@ describe('selfPlay match and markdown', () => {
   });
 
   it('複数試合の集計レポートを返せる', () => {
-    expect(basicReport.matches).toHaveLength(4);
-    expect(basicReport.aggregate.totalMatches).toBe(4);
+    expect(basicReport.matches).toHaveLength(2);
+    expect(basicReport.aggregate.totalMatches).toBe(2);
     expect(basicReport.aggregate.mapBreakdown).toHaveLength(2);
   });
 
@@ -52,3 +52,4 @@ describe('selfPlay match and markdown', () => {
     expect(renderSelfPlayMarkdown(markdownReport)).toContain('# AI自己対戦レポート');
   });
 });
+

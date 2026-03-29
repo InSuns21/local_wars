@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { DEFAULT_SE_VOLUME, SE_VOLUME_STORAGE_KEY, loadSeVolume, saveSeVolume } from '@/services/seVolume';
 
 describe('seVolume', () => {
@@ -17,3 +17,4 @@ describe('seVolume', () => {
     expect(localStorage.getItem(SE_VOLUME_STORAGE_KEY)).toBe('0');
   });
 });
+

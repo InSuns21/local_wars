@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TutorialScreen } from '@/screens/TutorialScreen';
 
@@ -34,3 +34,4 @@ describe('TutorialScreen UIテスト: セクション分割', () => {
     expect(screen.queryByText('基本操作の流れ')).not.toBeInTheDocument();
   });
 });
+

@@ -1,4 +1,4 @@
-import { DRONE_FOCUSED_MAP_IDS, GAME_SETTINGS_PRESETS, isDroneFocusedMapId } from '@/app/types';
+﻿import { DRONE_FOCUSED_MAP_IDS, GAME_SETTINGS_PRESETS, isDroneFocusedMapId } from '@/app/types';
 
 describe('map preset rules', () => {
   it('ドローン戦マップID一覧は期待した4件に固定される', () => {
@@ -17,3 +17,4 @@ describe('map preset rules', () => {
     expect(GAME_SETTINGS_PRESETS.drone.enableSuicideDrones).toBe(true);
   });
 });
+

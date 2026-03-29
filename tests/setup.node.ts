@@ -1,4 +1,4 @@
-type StorageShape = {
+﻿type StorageShape = {
   clear: () => void;
   getItem: (key: string) => string | null;
   key: (index: number) => string | null;
@@ -34,3 +34,4 @@ if (!('localStorage' in globalThis)) {
     configurable: true,
   });
 }
+

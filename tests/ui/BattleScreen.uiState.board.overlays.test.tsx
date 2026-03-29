@@ -1,8 +1,8 @@
-import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, screen } from '@testing-library/react';
 
-jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
-jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
+vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { renderBattleScreen } from './helpers/renderBattleScreen';
 import { createInitialGameState } from '@core/engine/createInitialGameState';
@@ -64,3 +64,5 @@ describe('BattleScreen UIテスト: 盤面表示(マーカー)', () => {
     expect(screen.getByRole('button', { name: 'タイル 5,5' })).toHaveAttribute('data-intercept-range', 'false');
   });
 });
+
+

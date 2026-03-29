@@ -1,4 +1,4 @@
-import { createInitialGameState } from '@core/engine/createInitialGameState';
+﻿import { createInitialGameState } from '@core/engine/createInitialGameState';
 import { UNIT_DEFINITIONS } from '@core/engine/unitDefinitions';
 import {
   applyFacilityDestruction,
@@ -241,3 +241,4 @@ describe('facilities rules', () => {
     expect(isFacilityTargetInRange(UNIT_DEFINITIONS.BOMBER, 5)).toBe(false);
   });
 });
+

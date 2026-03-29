@@ -1,8 +1,8 @@
-﻿import '@testing-library/jest-dom';
+﻿import '@testing-library/jest-dom/vitest';
 import { fireEvent, screen, within } from '@testing-library/react';
 
-jest.mock('@components/board/GameCanvas', () => require('./helpers/mockGameCanvas'));
-jest.mock('@components/board/BoardLegend', () => require('./helpers/mockBoardLegend'));
+vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
+vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
 import { createBattleState, renderBattleScreen } from './helpers/renderBattleScreen';
 
@@ -135,7 +135,7 @@ describe('BattleScreen UIテスト: 基本操作', () => {
   });
 
   it('自軍ユニット選択で unit-select のSEを鳴らす', () => {
-    const onPlaySoundEffect = jest.fn();
+    const onPlaySoundEffect = vi.fn();
 
     renderBattleScreen({ props: { onPlaySoundEffect } });
 
@@ -145,7 +145,7 @@ describe('BattleScreen UIテスト: 基本操作', () => {
   });
 
   it('移動成功で移動種別ごとのSEを鳴らす', () => {
-    const onPlaySoundEffect = jest.fn();
+    const onPlaySoundEffect = vi.fn();
 
     renderBattleScreen({ props: { onPlaySoundEffect } });
 
@@ -157,7 +157,7 @@ describe('BattleScreen UIテスト: 基本操作', () => {
   });
 
   it('攻撃成功で attack と destroy のSEを鳴らす', () => {
-    const onPlaySoundEffect = jest.fn();
+    const onPlaySoundEffect = vi.fn();
     const state = createBattleState();
     state.units.p2_tank.position = { x: 2, y: 2 };
     state.units.p2_tank.hp = 1;
@@ -173,7 +173,7 @@ describe('BattleScreen UIテスト: 基本操作', () => {
   });
 
   it('失敗コマンドで error のSEを鳴らす', () => {
-    const onPlaySoundEffect = jest.fn();
+    const onPlaySoundEffect = vi.fn();
 
     renderBattleScreen({ props: { onPlaySoundEffect } });
 
@@ -182,3 +182,5 @@ describe('BattleScreen UIテスト: 基本操作', () => {
     expect(onPlaySoundEffect).toHaveBeenCalledWith('error');
   });
 });
+
+

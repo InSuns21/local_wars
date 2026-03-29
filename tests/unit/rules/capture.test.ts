@@ -115,3 +115,4 @@ describe('占領ルール', () => {
     expect(getCapturePower(invalid)).toBe(0);
   });
 });
+

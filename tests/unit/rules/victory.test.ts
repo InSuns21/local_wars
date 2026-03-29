@@ -163,3 +163,4 @@ describe('勝利判定ルール', () => {
     expect(result.reason).toBeNull();
   });
 });
+
