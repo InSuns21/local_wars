@@ -260,12 +260,34 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ initialSettings 
   const [selectedPreset, setSelectedPreset] = useState<GameSettingsPreset>(detectPreset(initialSettings));
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
 
-  const isValid = useMemo(
-    () => Object.entries(NUMERIC_FIELD_META).every(([key, meta]) => {
+  const numericFieldStatusByKey = useMemo(
+    () => Object.fromEntries(Object.entries(NUMERIC_FIELD_META).map(([key, meta]) => {
       const value = settings[key as keyof typeof NUMERIC_FIELD_META];
-      return typeof value === 'number' && !Number.isNaN(value) && value >= meta.min && value <= meta.max;
-    }),
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        return [key, {
+          error: true,
+          helperText: `${meta.description} 入力可能範囲は ${meta.min}-${meta.max} です。`,
+        }];
+      }
+      if (value < meta.min || value > meta.max) {
+        return [key, {
+          error: true,
+          helperText: `${meta.description} 許容範囲は ${meta.min}-${meta.max} です。${meta.recommendedRangeText}。`,
+        }];
+      }
+      return [key, {
+        error: false,
+        helperText: `${meta.description} 標準値: ${meta.defaultValue} / ${meta.recommendedRangeText}`,
+      }];
+    })) as {
+      [K in keyof typeof NUMERIC_FIELD_META]: { error: boolean; helperText: string };
+    },
     [settings],
+  );
+
+  const isValid = useMemo(
+    () => Object.values(numericFieldStatusByKey).every((status) => !status.error),
+    [numericFieldStatusByKey],
   );
 
   const applyPreset = (preset: GameSettingsPreset): void => {
@@ -284,26 +306,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ initialSettings 
 
   const getNumericFieldStatus = (
     key: keyof typeof NUMERIC_FIELD_META,
-  ): { error: boolean; helperText: string } => {
-    const meta = NUMERIC_FIELD_META[key];
-    const value = settings[key];
-    if (typeof value !== 'number' || Number.isNaN(value)) {
-      return {
-        error: true,
-        helperText: `${meta.description} 入力可能範囲は ${meta.min}-${meta.max} です。`,
-      };
-    }
-    if (value < meta.min || value > meta.max) {
-      return {
-        error: true,
-        helperText: `${meta.description} 許容範囲は ${meta.min}-${meta.max} です。${meta.recommendedRangeText}。`,
-      };
-    }
-    return {
-      error: false,
-      helperText: `${meta.description} 標準値: ${meta.defaultValue} / ${meta.recommendedRangeText}`,
-    };
-  };
+  ): { error: boolean; helperText: string } => numericFieldStatusByKey[key];
 
   const showDroneSettings = settings.enableSuicideDrones;
 

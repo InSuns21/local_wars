@@ -1,23 +1,20 @@
 ﻿import '@testing-library/jest-dom/vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 
 vi.mock('@components/board/GameCanvas', async () => await import('./helpers/mockGameCanvas'));
 vi.mock('@components/board/BoardLegend', async () => await import('./helpers/mockBoardLegend'));
 
-import { BattleScreen } from '@/screens/BattleScreen';
-import { createGameStore } from '@store/gameStore';
-import { createInitialGameState } from '@core/engine/createInitialGameState';
+import { createBattleState, renderBattleScreen } from './helpers/renderBattleScreen';
 
 describe('BattleScreen UIテスト: 情報表示と導線', () => {
   it('勝敗確定時に結果モーダルと勝利条件が表示され、タイトル復帰ボタンが機能する', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.winner = 'P1';
     state.victoryReason = 'HQ_CAPTURE';
     state.humanPlayerSide = 'P1';
 
-    const store = createGameStore(state, { rng: () => 0.5 });
     const onReturnToTitle = vi.fn();
-    render(<BattleScreen useStore={store} onReturnToTitle={onReturnToTitle} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state), props: { onReturnToTitle } });
 
     expect(screen.getByRole('dialog', { name: '対局結果' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '対局結果' })).toBeInTheDocument();
@@ -29,10 +26,8 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('チュートリアルボタンでハンドラが呼ばれる', () => {
-    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
     const onOpenTutorial = vi.fn();
-
-    render(<BattleScreen useStore={store} onOpenTutorial={onOpenTutorial} />);
+    renderBattleScreen({ props: { onOpenTutorial } });
 
     fireEvent.click(screen.getByRole('button', { name: 'その他' }));
     fireEvent.click(screen.getByRole('button', { name: 'ヘルプ' }));
@@ -41,31 +36,28 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('トップバーで自軍資金と自軍収入を確認できる', () => {
-    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen();
 
     expect(screen.getByText('自軍資金: 10000')).toBeInTheDocument();
     expect(screen.getByText('自軍収入: +4000/ターン')).toBeInTheDocument();
   });
 
   it('トップバーで確定した敵AI傾向を確認できる', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.selectedAiProfile = 'adaptive';
     state.resolvedAiProfile = 'captain';
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     expect(screen.getByText('敵AI傾向: 可変→占領')).toBeInTheDocument();
   });
 
   it('adaptiveの再抽選結果が変わるとトップバー表示も更新される', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.selectedAiProfile = 'adaptive';
     state.resolvedAiProfile = 'hunter';
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    const { store } = renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     expect(screen.getByText('敵AI傾向: 可変→撃破')).toBeInTheDocument();
 
@@ -80,8 +72,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('可視マスでは地形/ユニット詳細ツールチップが表示される', () => {
-    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen();
 
     const tile = screen.getByRole('button', { name: 'タイル 1,2' });
     const tooltip = tile.getAttribute('title') ?? '';
@@ -96,13 +87,12 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('不可視マスでも地形ツールチップを表示し、ユニット情報は含めない', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.fogOfWar = true;
     state.units.p1_inf.position = { x: 0, y: 0 };
     state.units.p1_tank.position = { x: 0, y: 0 };
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     const hiddenTile = screen.getByRole('button', { name: 'タイル 4,4' });
     const tooltip = hiddenTile.getAttribute('title') ?? '';
@@ -113,14 +103,13 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('経過ログは新しい順で表示される', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.actionLog = [
       { turn: 1, playerId: 'P1', action: 'MOVE_UNIT', detail: 'old' },
       { turn: 1, playerId: 'P1', action: 'ATTACK', detail: 'new' },
     ];
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     const logSection = screen.getByLabelText('経過ログ');
     const newest = 'T1 自軍 攻撃 | new';
@@ -134,8 +123,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('HQ/工場/都市のツールチップに拠点耐久が表示される', () => {
-    const store = createGameStore(createInitialGameState(), { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen();
 
     const hqTile = screen.getByRole('button', { name: 'タイル 0,0' });
     const factoryTile = screen.getByRole('button', { name: 'タイル 0,1' });
@@ -147,15 +135,14 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('選択ユニットの低燃料・残弾僅少は左バーで警告表示する', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.units.p1_tank = {
       ...state.units.p1_tank,
       fuel: 10,
       ammo: 1,
     };
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     fireEvent.click(screen.getByRole('button', { name: 'タイル 1,2' }));
 
@@ -166,7 +153,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('敵方ログ表示設定がOFFのとき、経過ログに敵方の行動は表示されない', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.humanPlayerSide = 'P1';
     state.showEnemyActionLogs = false;
     state.actionLog = [
@@ -174,8 +161,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
       { turn: 1, playerId: 'P2', action: 'END_TURN', detail: 'enemy' },
     ];
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     const logSection = screen.getByLabelText('経過ログ');
     const text = logSection.textContent ?? '';
@@ -185,7 +171,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('敵方ログ表示設定がOFFでも味方に関わる敵の戦闘と占領は表示される', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.humanPlayerSide = 'P1';
     state.showEnemyActionLogs = false;
     state.actionLog = [
@@ -194,8 +180,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
       { turn: 1, playerId: 'P2', action: 'CAPTURE', detail: 'P2_inf @ 1,1 terrain=CITY owner=P1' },
     ];
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     const logSection = screen.getByLabelText('経過ログ');
     const text = logSection.textContent ?? '';
@@ -207,15 +192,14 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('敵軍の中立施設占領は敵方ログ非表示時に表示しない', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.humanPlayerSide = 'P1';
     state.showEnemyActionLogs = false;
     state.actionLog = [
       { turn: 1, playerId: 'P2', action: 'CAPTURE', detail: 'P2_inf @ 3,3 terrain=CITY owner=NEUTRAL' },
     ];
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     const logSection = screen.getByLabelText('経過ログ');
     const text = logSection.textContent ?? '';
@@ -223,15 +207,14 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     expect(text).not.toContain('敵軍 占領');
   });
   it('AI再生バナーが敵軍ターン中に表示され、スキップで自軍ターンへ戻る', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.players.P2.funds = 0;
     state.units = {
       p2_tank: { ...state.units.p2_tank, position: { x: 2, y: 2 } },
       p1_tank: { ...state.units.p1_tank, position: { x: 2, y: 1 } },
     };
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    const { store } = renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     act(() => {
       store.getState().endTurn();
@@ -245,15 +228,14 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('AI再生中の可視移動は盤面へ逐次反映される', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.players.P2.funds = 0;
     state.units = {
       p2_tank: { ...state.units.p2_tank, position: { x: 0, y: 4 } },
       p1_tank: { ...state.units.p1_tank, position: { x: 4, y: 0 } },
     };
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    const { store } = renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     act(() => {
       store.getState().endTurn();
@@ -274,7 +256,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
   });
 
   it('再生後のターン開始サマリーに新規視認が表示され、閉じられる', () => {
-    const state = createInitialGameState();
+    const state = createBattleState();
     state.fogOfWar = true;
     state.selectedAiProfile = 'balanced';
     state.aiDifficulty = 'normal';
@@ -285,8 +267,7 @@ describe('BattleScreen UIテスト: 情報表示と導線', () => {
     };
     state.map.tiles['2,0'] = { coord: { x: 2, y: 0 }, terrainType: 'FOREST' };
 
-    const store = createGameStore(state, { rng: () => 0.5 });
-    render(<BattleScreen useStore={store} />);
+    const { store } = renderBattleScreen({ mutateState: (nextState) => Object.assign(nextState, state) });
 
     act(() => {
       store.getState().endTurn();

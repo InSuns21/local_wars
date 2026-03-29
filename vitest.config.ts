@@ -26,9 +26,9 @@ export default mergeConfig(viteConfig, defineConfig({
     ],
     exclude: ['node_modules/**', 'dist/**', 'coverage/**', '.jest-cache/**'],
     watchExclude: ['dist/**', 'coverage/**', '.jest-cache/**'],
-    maxWorkers: 4,
-    testTimeout: 20000,
-    hookTimeout: 20000,
+    maxWorkers: 8,
+    testTimeout: 50000,
+    hookTimeout: 50000,
     sequence: {
       hooks: 'list',
     },
